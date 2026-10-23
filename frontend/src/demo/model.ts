@@ -2,7 +2,7 @@ import { z } from 'zod'
 export const profileSchema = z.object({
   id: z.string(),
   name: z.string(),
-  role: z.enum(['Administrator', 'Department Editor', 'Inventory Custodian', 'Staff']),
+  role: z.enum(['Administrator', 'Inventory Custodian', 'Staff']),
   department: z.string(),
 })
 const itemSchema = z.object({
@@ -23,37 +23,6 @@ const loanSchema = z.object({
   returned: z.string().optional(),
   after: z.string().optional(),
 })
-const assignmentSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string(),
-  deliverable: z.string(),
-  department: z.string(),
-  assignee: z.string(),
-  due: z.string(),
-  hours: z.number(),
-  points: z.number(),
-  type: z.string(),
-  status: z.enum([
-    'Pending',
-    'In progress',
-    'Submitted',
-    'Completed',
-    'Excuse requested',
-    'Excused',
-  ]),
-  reason: z.string().optional(),
-  feedback: z.string().optional(),
-})
-const submissionSchema = z.object({
-  id: z.string(),
-  assignmentId: z.string(),
-  url: z.string(),
-  notes: z.string(),
-  at: z.string(),
-  reviewer: z.string().optional(),
-  approved: z.boolean(),
-})
 const incidentSchema = z.object({
   id: z.string(),
   itemId: z.string(),
@@ -64,15 +33,6 @@ const incidentSchema = z.object({
   outcome: z.string().optional(),
   resolved: z.string().optional(),
 })
-const meritSchema = z.object({
-  id: z.string(),
-  assignmentId: z.string(),
-  submissionId: z.string(),
-  profileId: z.string(),
-  points: z.number(),
-  at: z.string(),
-  reviewer: z.string(),
-})
 const eventSchema = z.object({
   id: z.string(),
   actor: z.string(),
@@ -81,35 +41,23 @@ const eventSchema = z.object({
   entityId: z.string(),
 })
 export const stateSchema = z.object({
-  version: z.literal(1),
-  profiles: z.array(profileSchema).min(8),
-  departments: z.array(z.string()),
+  version: z.literal(2),
+  profiles: z.array(profileSchema).min(1),
   items: z.array(itemSchema),
   loans: z.array(loanSchema),
-  assignments: z.array(assignmentSchema),
-  submissions: z.array(submissionSchema),
   incidents: z.array(incidentSchema),
-  merits: z.array(meritSchema),
   events: z.array(eventSchema),
 })
 export type State = z.infer<typeof stateSchema>
 export type Profile = z.infer<typeof profileSchema>
 export type Item = z.infer<typeof itemSchema>
-export type Assignment = z.infer<typeof assignmentSchema>
-export const criteria: Record<string, number> = {
-  Article: 10,
-  Photography: 8,
-  Layout: 12,
-  Editing: 6,
-  Administration: 4,
-}
 export const uid = () => crypto.randomUUID()
 export const isOverdue = (due: string) => new Date(due).getTime() < Date.now()
 export function seed(now = new Date()): State {
   const date = (days: number) => new Date(now.getTime() + days * 86400000).toISOString()
   const profiles: Profile[] = [
     { id: 'admin', name: 'Alex Rivera', role: 'Administrator', department: 'Editorial' },
-    { id: 'editor', name: 'Maya Santos', role: 'Department Editor', department: 'Editorial' },
+    { id: 'editor', name: 'Maya Santos', role: 'Staff', department: 'Editorial' },
     { id: 'custodian', name: 'Leo Cruz', role: 'Inventory Custodian', department: 'Visuals' },
     { id: 'staff', name: 'Sam Reyes', role: 'Staff', department: 'Editorial' },
     { id: 'p5', name: 'Isabel Flores', role: 'Staff', department: 'Visuals' },
@@ -135,75 +83,14 @@ export function seed(now = new Date()): State {
     location: i === 7 ? 'Layout desk' : 'Equipment cabinet',
     condition: i === 6 ? 'Damaged' : 'Good',
   }))
-  const statuses: Assignment['status'][] = [
-    'Pending',
-    'In progress',
-    'Pending',
-    'Submitted',
-    'Completed',
-    'Excused',
-  ]
-  const titles = [
-    'Campus voices: the new semester',
-    'Student council interview',
-    'Library hours fact-check',
-    'Editorial: room for every voice',
-    'Freshman welcome story',
-    'Weekend campus coverage',
-  ]
-  const assignments: Assignment[] = titles.map((title, i) => ({
-    id: `a${i}`,
-    title,
-    description: 'Bring student perspectives into a clear, carefully verified story.',
-    deliverable: 'A reviewed draft with sources',
-    department: 'Editorial',
-    assignee: i === 2 ? 'p7' : 'staff',
-    due: date(i === 2 ? -2 : i + 2),
-    hours: i + 1,
-    points: 10,
-    type: 'Article',
-    status: statuses[i],
-    ...(i === 5 ? { reason: 'Approved academic examination schedule' } : {}),
-  }))
   return {
-    version: 1,
+    version: 2,
     profiles,
-    departments: ['Editorial', 'Visuals', 'Production'],
+
     items,
     loans: [
       { id: 'l0', itemId: 'i0', borrowerId: 'staff', out: date(-4), due: date(-1), before: 'Good' },
       { id: 'l1', itemId: 'i2', borrowerId: 'p5', out: date(-1), due: date(2), before: 'Good' },
-    ],
-    assignments,
-    submissions: [
-      {
-        id: 's3',
-        assignmentId: 'a3',
-        url: 'https://example.com/editorial-draft',
-        notes: 'Draft ready for editorial review.',
-        at: date(-1),
-        approved: false,
-      },
-      {
-        id: 's4',
-        assignmentId: 'a4',
-        url: 'https://example.com/welcome-story',
-        notes: 'Verified welcome feature.',
-        at: date(-3),
-        approved: true,
-        reviewer: 'editor',
-      },
-    ],
-    merits: [
-      {
-        id: 'm4',
-        assignmentId: 'a4',
-        submissionId: 's4',
-        profileId: 'staff',
-        points: 10,
-        at: date(-2),
-        reviewer: 'editor',
-      },
     ],
     incidents: [
       {
@@ -218,20 +105,16 @@ export function seed(now = new Date()): State {
     events: [
       {
         id: 'e0',
-        actor: 'editor',
+        actor: 'custodian',
         at: date(-2),
-        entityId: 'a4',
-        text: 'Approved Freshman welcome story · 10 merit points',
+        entityId: 'i6',
+        text: 'Equipment condition flagged for inspection',
       },
     ],
   }
 }
 export const canInventory = (p: Profile) =>
   ['Administrator', 'Inventory Custodian'].includes(p.role)
-export const canEdit = (p: Profile, department: string) =>
-  p.role === 'Administrator' || (p.role === 'Department Editor' && p.department === department)
-export const visibleAssignments = (s: State, p: Profile) =>
-  s.assignments.filter((a) => a.assignee === p.id || canEdit(p, a.department))
 export const available = (s: State, id: string) =>
   !s.loans.some((l) => l.itemId === id && !l.returned) &&
   !s.incidents.some((i) => i.itemId === id && !i.resolved) &&
@@ -242,11 +125,6 @@ export type Action =
   | { type: 'return'; loanId: string; condition: Item['condition'] }
   | { type: 'incident'; itemId: string; kind: 'Damaged' | 'Missing'; notes: string }
   | { type: 'resolve'; id: string; outcome: string; condition: Item['condition'] }
-  | { type: 'assignment'; assignment: Assignment }
-  | { type: 'start'; id: string }
-  | { type: 'submit'; id: string; url: string; notes: string }
-  | { type: 'excuse'; id: string; reason: string }
-  | { type: 'review'; id: string; decision: 'approve' | 'revise' | 'excuse'; feedback: string }
 const requireThat = (ok: unknown, message: string) => {
   if (!ok) throw new Error(message)
 }
@@ -342,119 +220,50 @@ export function transition(state: State, actorId: string, action: Action): State
     i!.resolved = now
     s.items.find((x) => x.id === i!.itemId)!.condition = action.condition
     log(`Resolved incident: ${action.outcome}`, i!.itemId)
-  } else if (action.type === 'assignment') {
-    const a = action.assignment
-    requireThat(canEdit(p, a.department), 'You cannot assign work in this department.')
-    requireThat(
-      s.profiles.some((p) => p.id === a.assignee && p.department === a.department),
-      'Choose a staff member in this department.',
-    )
-    requireThat(
-      a.title.trim() && a.description.trim() && a.deliverable.trim(),
-      'Complete the assignment details.',
-    )
-    requireThat(future(a.due), 'Assignment deadline must be in the future.')
-    requireThat(
-      Number.isFinite(a.hours) &&
-        a.hours > 0 &&
-        Number.isInteger(a.points) &&
-        a.points >= 0 &&
-        a.points <= 100,
-      'Use positive effort and 0–100 whole points.',
-    )
-    requireThat(!s.assignments.some((x) => x.id === a.id), 'Assignment already exists.')
-    s.assignments.unshift({ ...a, status: 'Pending' })
-    log(`Created assignment: ${a.title}`, a.id)
-  } else {
-    const a = s.assignments.find((a) => a.id === action.id)
-    requireThat(a, 'Assignment not found.')
-    if (action.type === 'review') {
-      requireThat(canEdit(p, a!.department), 'You cannot review this department.')
-      requireThat(a!.assignee !== p.id, 'You cannot verify your own work.')
-      if (action.decision === 'excuse') {
-        requireThat(a!.status === 'Excuse requested', 'No excuse request is pending.')
-        requireThat(action.feedback.trim(), 'Record the reason for approving the excuse.')
-        a!.status = 'Excused'
-      } else {
-        requireThat(
-          a!.status === 'Submitted',
-          'This assignment is not awaiting contribution review.',
-        )
-        const sub = s.submissions.find((x) => x.assignmentId === a!.id && !x.approved)
-        requireThat(sub, 'Submission not found.')
-        if (action.decision === 'approve') {
-          requireThat(!s.merits.some((m) => m.assignmentId === a!.id), 'Merit already awarded.')
-          a!.status = 'Completed'
-          sub!.approved = true
-          sub!.reviewer = p.id
-          s.merits.unshift({
-            id: uid(),
-            assignmentId: a!.id,
-            submissionId: sub!.id,
-            profileId: a!.assignee,
-            points: a!.points,
-            at: now,
-            reviewer: p.id,
-          })
-        } else {
-          requireThat(action.feedback.trim(), 'Add revision feedback.')
-          a!.status = 'In progress'
-        }
-      }
-      a!.feedback = action.feedback
-      log(
-        `${action.decision === 'approve' ? 'Approved contribution' : action.decision === 'excuse' ? 'Approved excuse' : 'Requested revision'}: ${a!.title}${action.feedback ? ` · ${action.feedback}` : ''}`,
-        a!.id,
-      )
-    } else {
-      requireThat(a!.assignee === p.id, 'Only the assignee can update this work.')
-      requireThat(
-        ['Pending', 'In progress'].includes(a!.status),
-        'This assignment cannot be updated in its current state.',
-      )
-      if (action.type === 'start') {
-        a!.status = 'In progress'
-        log(`Started: ${a!.title}`, a!.id)
-      }
-      if (action.type === 'excuse') {
-        requireThat(action.reason.trim(), 'Explain the excuse request.')
-        a!.status = 'Excuse requested'
-        a!.reason = action.reason
-        log(`Requested an excuse: ${a!.title}`, a!.id)
-      }
-      if (action.type === 'submit') {
-        let url: URL
-        try {
-          url = new URL(action.url)
-        } catch {
-          throw new Error('Enter a valid https:// or http:// output URL.')
-        }
-        requireThat(
-          ['http:', 'https:'].includes(url.protocol),
-          'Use an http:// or https:// output URL.',
-        )
-        s.submissions.unshift({
-          id: uid(),
-          assignmentId: a!.id,
-          url: action.url,
-          notes: action.notes,
-          at: now,
-          approved: false,
-        })
-        a!.status = 'Submitted'
-        log(`Submitted: ${a!.title}`, a!.id)
-      }
-    }
   }
   return s
 }
-export const STORAGE_KEY = 'timber-publication-demo-v1'
+export const visibleIncidents = (s: State, p: Profile) =>
+  s.incidents.filter(
+    (i) =>
+      canInventory(p) ||
+      i.reporter === p.id ||
+      s.loans.some(
+        (l) =>
+          l.itemId === i.itemId &&
+          l.borrowerId === p.id &&
+          Date.parse(l.out) <= Date.parse(i.at) &&
+          (!l.returned || Date.parse(l.returned) >= Date.parse(i.at)),
+      ),
+  )
+export const STORAGE_KEY = 'timber-inventory-demo-v2'
+export const LEGACY_STORAGE_KEY = 'timber-publication-demo-v1'
 export function load(storage: Pick<Storage, 'getItem'>): { state: State; warning: string } {
   try {
-    const raw = storage.getItem(STORAGE_KEY)
+    const current = storage.getItem(STORAGE_KEY)
+    const raw = current ?? storage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return { state: seed(), warning: '' }
-    const parsed = stateSchema.safeParse(JSON.parse(raw))
-    if (parsed.success) return { state: parsed.data, warning: '' }
+    const data = JSON.parse(raw)
+    const migrating = current === null && data.version === 1
+    if (migrating) {
+      data.version = 2
+      if (Array.isArray(data.profiles))
+        data.profiles = data.profiles.map((p: Record<string, unknown>) => ({
+          ...p,
+          role: p.role === 'Department Editor' ? 'Staff' : p.role,
+        }))
+    }
+    const parsed = stateSchema.safeParse(data)
+    if (parsed.success) {
+      const state = parsed.data
+      state.events = state.events.filter((e) => state.items.some((i) => i.id === e.entityId))
+      return {
+        state,
+        warning: migrating
+          ? 'Your saved equipment, loans, and incident records have been carried into the inventory workspace.'
+          : '',
+      }
+    }
     return { state: seed(), warning: 'Saved demo data was incompatible and has been reset.' }
   } catch {
     return {

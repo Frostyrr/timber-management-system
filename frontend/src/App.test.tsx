@@ -24,70 +24,64 @@ function render(path: string, persona = 'admin') {
     </MemoryRouter>,
   )
 }
-describe('offline screen rendering', () => {
-  for (const route of [
-    '/',
-    '/inventory',
-    '/incidents',
-    '/assignments',
-    '/reviews',
-    '/contributions',
-    '/staff',
-  ]) {
-    it(`renders ${route} with application shell`, () => {
+describe('inventory-only workspace', () => {
+  for (const route of ['/', '/inventory', '/incidents']) {
+    it(`renders ${route} without removed module links`, () => {
       const html = render(route)
       expect(html).toContain('Timber')
       expect(html).toContain('Skip to content')
-      expect(html).not.toContain('Reset demo data')
+      for (const retired of ['/assignments', '/reviews', '/contributions', '/staff'])
+        expect(html).not.toContain(`href="${retired}`)
+      expect(html).not.toContain('Department Editor')
     })
   }
-  it('staff sees only own assignments and no management controls', () => {
-    const html = render('/assignments', 'staff')
-    expect(html).toContain('Campus voices')
-    expect(html).not.toContain('Library hours fact-check')
-    expect(html).not.toContain('Create assignment')
-    expect(html).not.toContain('Contribution review')
+  it('shows inventory metrics and direct return/register actions', () => {
+    const html = render('/')
+    for (const label of [
+      'Inventory overview',
+      'Available equipment',
+      'Active loans',
+      'Overdue returns',
+      'Open incident reviews',
+      'Inventory activity',
+    ])
+      expect(html).toContain(label)
+    expect(html).toContain('/inventory?action=register')
+    expect(html).toContain('/inventory?action=return&amp;loan=l0')
+    expect(html).not.toContain('assignments')
+    expect(html).not.toContain('merit')
   })
-  it('filters available equipment and individual contribution views', () => {
-    const inventory = render('/inventory?status=available')
-    expect(inventory).toContain('Sony a6400')
-    expect(inventory).not.toContain('Canon EOS 80D')
-    const contributions = render('/contributions?person=p8')
-    expect(contributions).toContain('No assignments recorded.')
-    expect(contributions).not.toContain('Freshman welcome story')
-  })
-  it('keeps loan history management controls away from staff', () => {
-    const html = render('/inventory', 'staff')
+  it('keeps borrower views scoped and hides management actions', () => {
+    const html = render('/', 'staff')
+    expect(html).toContain('Canon EOS 80D')
+    expect(html).not.toContain('Zoom H1n recorder')
+    expect(html).not.toContain('Light flickers')
     expect(html).not.toContain('Register equipment')
-    expect(html).not.toContain('Check out')
-    expect(html).toContain('History')
+    expect(html).not.toContain('/inventory?action=return')
+    expect(html).toContain('/inventory?action=history')
+    const inventory = render('/inventory', 'staff')
+    expect(inventory).toContain('History')
+    expect(inventory).not.toContain('Check out')
   })
-  it('renders dashboard summary cards, workload panels, and persona-scoped actions', () => {
-    const adminHtml = render('/', 'admin')
-    expect(adminHtml).toContain('Overview Dashboard')
-    expect(adminHtml).toContain('Available equipment')
-    expect(adminHtml).toContain('Active loans')
-    expect(adminHtml).toContain('Overdue returns')
-    expect(adminHtml).toContain('Open assignments')
-    expect(adminHtml).toContain('Pending contribution approvals')
-    expect(adminHtml).toContain('Assignment workload by department')
-    expect(adminHtml).toContain('Assignment status')
-    expect(adminHtml).toContain('Upcoming &amp; overdue assignments')
-    expect(adminHtml).toContain('Equipment loans needing follow-up')
-    expect(adminHtml).toContain('Register equipment')
-    expect(adminHtml).toContain('Create assignment')
-
-    const editorHtml = render('/', 'editor')
-    expect(editorHtml).toContain('Create assignment')
-    expect(editorHtml).not.toContain('Register equipment')
-
-    const custodianHtml = render('/', 'custodian')
-    expect(custodianHtml).toContain('Register equipment')
-    expect(custodianHtml).not.toContain('Create assignment')
-
-    const unassignedStaffHtml = render('/', 'p8')
-    expect(unassignedStaffHtml).not.toContain('Register equipment')
-    expect(unassignedStaffHtml).not.toContain('Create assignment')
-    expect(unassignedStaffHtml).toContain('No assignments recorded.')
+  it('filters available and overdue equipment', () => {
+    const available = render('/inventory?status=available')
+    expect(available).toContain('Sony a6400')
+    expect(available).not.toContain('Canon EOS 80D')
+    const overdue = render('/inventory?status=overdue')
+    expect(overdue).toContain('Canon EOS 80D')
+    expect(overdue).not.toContain('Sony a6400')
+  })
+  it('custodian retains equipment management and staff have useful empty views', () => {
+    expect(render('/', 'custodian')).toContain('Register equipment')
+    expect(render('/', 'p8')).toContain('No active loans in your view.')
+    expect(render('/incidents', 'p8')).not.toContain('Light flickers')
+  })
+  it('direct links open the right inventory action only for authorized personas', () => {
+    expect(render('/inventory?action=register')).toContain('Equipment name')
+    expect(render('/inventory?action=return&loan=l0')).toContain('Record equipment return')
+    expect(render('/inventory?action=return&loan=l0', 'staff')).not.toContain(
+      'Record equipment return',
+    )
+    expect(render('/inventory?action=return&loan=unknown')).not.toContain('Record equipment return')
   })
 })

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Plus, Search, Package, ShieldAlert, ArrowUpRight } from 'lucide-react'
 import { useDemo } from '../demo/context'
-import { canInventory, available, isOverdue, uid, type Item } from '../demo/model'
+import { canInventory, available, isOverdue, uid, visibleIncidents, type Item } from '../demo/model'
 import { Heading } from '../components/layout'
 import { Badge, Empty, Modal, Field } from '../components/ui'
 
@@ -15,7 +15,18 @@ export function Inventory() {
   const [modal, setModal] = useState<{
     type: 'item' | 'checkout' | 'return' | 'history'
     id?: string
-  } | null>(null)
+  } | null>(() => {
+    if (query.get('action') === 'register' && canInventory(person)) return { type: 'item' }
+    if (
+      query.get('action') === 'return' &&
+      canInventory(person) &&
+      state.loans.some((l) => l.id === query.get('loan') && !l.returned)
+    )
+      return { type: 'return', id: query.get('loan')! }
+    if (query.get('action') === 'history' && state.items.some((i) => i.id === query.get('item')))
+      return { type: 'history', id: query.get('item')! }
+    return null
+  })
 
   const manager = canInventory(person)
   const item = state.items.find((i) => i.id === modal?.id)
@@ -330,8 +341,8 @@ export function Inventory() {
           {modal.type === 'return' && (
             <>
               <p>
-                Returning <strong>{state.items.find((i) => i.id === loan?.itemId)?.name}</strong>. An
-                adverse condition opens an incident review without assigning blame.
+                Returning <strong>{state.items.find((i) => i.id === loan?.itemId)?.name}</strong>.
+                An adverse condition opens an incident review without assigning blame.
               </p>
               <Field label="Condition after borrowing">
                 <select name="condition">
@@ -387,12 +398,7 @@ export function Incidents() {
   const { state, person, act } = useDemo()
   const [modal, setModal] = useState<string | null>(null)
   const manager = canInventory(person)
-  const incidents = state.incidents.filter(
-    (i) =>
-      manager ||
-      i.reporter === person.id ||
-      state.loans.some((l) => l.itemId === i.itemId && l.borrowerId === person.id),
-  )
+  const incidents = visibleIncidents(state, person)
   const reportable = state.items.filter(
     (i) =>
       manager ||
