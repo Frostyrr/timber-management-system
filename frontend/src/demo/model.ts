@@ -1,9 +1,11 @@
+import { releaseDetailsSchema, externalSchema, type ReleaseDetails } from './release'
 import { z } from 'zod'
 export const profileSchema = z.object({
   id: z.string(),
   name: z.string(),
   role: z.enum(['Administrator', 'Inventory Custodian', 'Staff']),
   department: z.string(),
+  status: z.enum(['pending','active','suspended']).optional(),
 })
 const itemSchema = z.object({
   id: z.string(),
@@ -12,6 +14,8 @@ const itemSchema = z.object({
   tag: z.string(),
   location: z.string(),
   condition: z.enum(['Good', 'Fair', 'Damaged', 'Missing']),
+  archived: z.boolean().optional(),
+  unavailable: z.boolean().optional(),
 })
 export const EVENT_CATEGORIES = [
   'Sports Coverage',
@@ -28,7 +32,12 @@ export type EventCategory = (typeof EVENT_CATEGORIES)[number]
 const loanSchema = z.object({
   id: z.string(),
   itemId: z.string(),
-  borrowerId: z.string(),
+  borrowerId: z.string().optional(),
+  useType: z.enum(['publication_use','member_borrowing','external_borrowing']).optional(),
+  purpose: z.string().optional(),
+  external: externalSchema.optional(),
+  issuedBy: z.string().optional(),
+  receivedBy: z.string().optional(),
   out: z.string(),
   due: z.string(),
   before: z.string(),
@@ -53,9 +62,18 @@ const eventSchema = z.object({
   at: z.string(),
   text: z.string(),
   entityId: z.string(),
+  action: z.string().optional(),
+  actorRole: z.string().optional(),
+  subjectId: z.string().nullable().optional(),
+  releaseId: z.string().nullable().optional(),
+  requestId: z.string().optional(),
+  before: z.record(z.string(),z.unknown()).nullable().optional(),
+  after: z.record(z.string(),z.unknown()).nullable().optional(),
+  reason: z.string().optional(),
+  useType: z.string().nullable().optional(),
 })
 export const stateSchema = z.object({
-  version: z.literal(2),
+  version: z.literal(3),
   profiles: z.array(profileSchema).min(1),
   items: z.array(itemSchema),
   loans: z.array(loanSchema),
@@ -98,7 +116,7 @@ export function seed(now = new Date()): State {
     condition: i === 6 ? 'Damaged' : 'Good',
   }))
   return {
-    version: 2,
+    version: 3,
     profiles,
 
     items,
@@ -107,6 +125,7 @@ export function seed(now = new Date()): State {
         id: 'l0',
         itemId: 'i0',
         borrowerId: 'staff',
+        useType:'publication_use',purpose:'University Games Coverage',issuedBy:'custodian',
         out: date(-4),
         due: date(-1),
         before: 'Good',
@@ -117,6 +136,7 @@ export function seed(now = new Date()): State {
         id: 'l1',
         itemId: 'i2',
         borrowerId: 'p5',
+        useType:'member_borrowing',purpose:'Personal audio practice',issuedBy:'custodian',
         out: date(-1),
         due: date(2),
         before: 'Good',
@@ -148,23 +168,21 @@ export function seed(now = new Date()): State {
 export const canInventory = (p: Profile) =>
   ['Administrator', 'Inventory Custodian'].includes(p.role)
 export const available = (s: State, id: string) =>
-  !s.loans.some((l) => l.itemId === id && !l.returned) &&
+  !s.items.find(i=>i.id===id)?.archived && !s.items.find(i=>i.id===id)?.unavailable && !s.loans.some((l) => l.itemId === id && !l.returned) &&
   !s.incidents.some((i) => i.itemId === id && !i.resolved) &&
   ['Good', 'Fair'].includes(s.items.find((i) => i.id === id)?.condition ?? '')
 export type Action =
   | { type: 'item'; item: Item }
-  | {
-      type: 'checkout'
-      itemId: string
-      borrowerId: string
-      due: string
-      condition: string
-      event?: string
-      eventCategory?: string
-    }
+  | ({ type:'checkout';itemId:string;due:string;condition:string;event?:string;eventCategory?:string } & ReleaseDetails)
   | { type: 'return'; loanId: string; condition: Item['condition'] }
   | { type: 'incident'; itemId: string; kind: 'Damaged' | 'Missing'; notes: string }
   | { type: 'resolve'; id: string; outcome: string; condition: Item['condition'] }
+  | { type: 'archive'; itemId: string; reason: string }
+  | { type: 'correct'; loanId: string; purpose: string; due: string; reason: string }
+  | { type: 'membership'; id: string; role: Profile['role']; status: 'active' | 'pending' | 'suspended'; reason: string }
+export const displayEvent = (text:string)=>text.replace('Checked out equipment','Released equipment').replace('Closed loan','Recorded return')
+export const borrowerName=(s:State,l:State['loans'][number])=>l.external?.name??s.profiles.find(p=>p.id===l.borrowerId)?.name??'Not recorded'
+export const visibleEvents=(s:State,p:Profile)=>s.events.filter(e=>canInventory(p)||e.actor===p.id||e.subjectId===p.id)
 const requireThat = (ok: unknown, message: string) => {
   if (!ok) throw new Error(message)
 }
@@ -175,7 +193,7 @@ export function transition(state: State, actorId: string, action: Action): State
   requireThat(p, 'Unknown persona.')
   const now = new Date().toISOString()
   const log = (text: string, entityId: string) =>
-    s.events.unshift({ id: uid(), actor: actorId, at: now, text, entityId })
+    s.events.unshift({ id: uid(), actor: actorId, actorRole:p.role, action:action.type, at: now, text, entityId })
   const incident = (itemId: string, kind: 'Damaged' | 'Missing', notes: string) => {
     s.incidents.unshift({ id: uid(), itemId, kind, notes, at: now, reporter: actorId })
     s.items.find((i) => i.id === itemId)!.condition = kind
@@ -209,16 +227,14 @@ export function transition(state: State, actorId: string, action: Action): State
   } else if (action.type === 'checkout') {
     requireThat(canInventory(p), 'Only custodians and administrators issue equipment.')
     requireThat(available(s, action.itemId), 'Equipment is unavailable.')
-    requireThat(
-      s.profiles.some((p) => p.id === action.borrowerId),
-      'Choose a borrower.',
-    )
+    const details=releaseDetailsSchema.parse(action)
+    if(details.useType !== 'external_borrowing') requireThat(s.profiles.some(p=>p.id===details.borrowerId),'Choose a member.')
     requireThat(future(action.due), 'Return deadline must be in the future.')
     requireThat(action.condition.trim(), 'Record checkout condition.')
     s.loans.unshift({
       id: uid(),
       itemId: action.itemId,
-      borrowerId: action.borrowerId,
+      ...details, issuedBy:actorId,
       out: now,
       due: action.due,
       before: action.condition,
@@ -227,12 +243,13 @@ export function transition(state: State, actorId: string, action: Action): State
     })
     const eventSuffix = action.event?.trim() ? ` for ${action.event.trim()}` : ''
     const categorySuffix = action.eventCategory?.trim() ? ` [${action.eventCategory.trim()}]` : ''
-    const borrowerName = s.profiles.find((p) => p.id === action.borrowerId)?.name ?? 'staff'
-    log(`Released equipment to ${borrowerName}${eventSuffix}${categorySuffix}`, action.itemId)
+    const name = details.useType==='external_borrowing'?'external borrower':s.profiles.find(p=>p.id===details.borrowerId)?.name??'member'
+    log(`Released equipment to ${name}${eventSuffix}${categorySuffix}`, action.itemId)
   } else if (action.type === 'return') {
     requireThat(canInventory(p), 'Only custodians and administrators record returns.')
     const l = s.loans.find((l) => l.id === action.loanId)
-    requireThat(l && !l.returned, 'This loan is already closed or does not exist.')
+    requireThat(l && !l.returned, 'This usage record is already closed or does not exist.')
+    l!.receivedBy = actorId
     l!.returned = now
     l!.after = action.condition
     s.items.find((i) => i.id === l!.itemId)!.condition = action.condition
@@ -242,7 +259,7 @@ export function transition(state: State, actorId: string, action: Action): State
         action.condition as 'Damaged' | 'Missing',
         'Condition recorded when closing the loan. Review required; no responsibility presumed.',
       )
-    log(`Closed loan · ${action.condition}`, l!.itemId)
+    log(`Recorded return · ${action.condition}`, l!.itemId)
   } else if (action.type === 'incident') {
     requireThat(
       s.items.some((i) => i.id === action.itemId),
@@ -281,17 +298,18 @@ export const visibleIncidents = (s: State, p: Profile) =>
           (!l.returned || Date.parse(l.returned) >= Date.parse(i.at)),
       ),
   )
-export const STORAGE_KEY = 'timber-inventory-demo-v2'
+export const STORAGE_KEY = 'timber-inventory-demo-v3'
+export const PREVIOUS_STORAGE_KEY = 'timber-inventory-demo-v2'
 export const LEGACY_STORAGE_KEY = 'timber-publication-demo-v1'
 export function load(storage: Pick<Storage, 'getItem'>): { state: State; warning: string } {
   try {
     const current = storage.getItem(STORAGE_KEY)
-    const raw = current ?? storage.getItem(LEGACY_STORAGE_KEY)
+    const raw = current ?? storage.getItem(PREVIOUS_STORAGE_KEY) ?? storage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return { state: seed(), warning: '' }
     const data = JSON.parse(raw)
-    const migrating = current === null && data.version === 1
+    const migrating = current === null && [1,2].includes(data.version)
     if (migrating) {
-      data.version = 2
+      data.version = 3
       if (Array.isArray(data.profiles))
         data.profiles = data.profiles.map((p: Record<string, unknown>) => ({
           ...p,
@@ -326,3 +344,4 @@ export function save(storage: Pick<Storage, 'setItem'>, state: State) {
     return 'Browser storage is unavailable. Changes will last only for this session.'
   }
 }
+

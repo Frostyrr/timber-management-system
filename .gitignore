@@ -1,0 +1,6 @@
+.local-postgres/
+supabase/.temp/
+supabase/.branches/
+.env
+.env.local
+*.log

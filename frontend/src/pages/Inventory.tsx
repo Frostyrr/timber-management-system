@@ -1,9 +1,11 @@
+import { releaseDetailsSchema, USE_TYPES, type UseType } from '../demo/release'
 import { value, dateText, tomorrow, categoryClass } from '../components/format'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Plus, Search, Package, ShieldAlert, ArrowUpRight, Clock3, RefreshCw, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
 import { useDemo } from '../demo/context'
 import {
+  borrowerName,
   canInventory,
   available,
   isOverdue,
@@ -431,8 +433,9 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
 }
 
 export function Inventory() {
-  const { state, person, act } = useDemo()
+  const { state, person, act, refresh } = useDemo()
   const query = new URLSearchParams(useLocation().search)
+  const [useType, setUseType] = useState<UseType>('publication_use')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState(query.get('status') ?? 'all')
   const [modal, setModal] = useState<{
@@ -459,9 +462,9 @@ export function Inventory() {
   const [refreshing, setRefreshing] = useState(false)
   const [page, setPage] = useState(1)
   const pageSize = 10
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true)
-    setTimeout(() => setRefreshing(false), 500)
+    try { await refresh?.() } finally { setRefreshing(false) }
   }
 
   const manager = canInventory(person)
@@ -871,9 +874,9 @@ export function Inventory() {
           }
           submit={modal.type === 'history' ? 'Done' : 'Save changes'}
           onClose={() => setModal(null)}
-          onSubmit={(f) => {
+          onSubmit={async (f) => {
             if (modal.type === 'item')
-              act({
+              await act({
                 type: 'item',
                 item: {
                   id: item?.id ?? uid(),
@@ -885,17 +888,17 @@ export function Inventory() {
                 },
               })
             if (modal.type === 'checkout')
-              act({
+              await act({
                 type: 'checkout',
                 itemId: item?.id ?? value(f, 'item'),
-                borrowerId: value(f, 'borrower'),
+                ...releaseDetailsSchema.parse({ useType, purpose: value(f,'event'), borrowerId: value(f,'borrower'), external: { name:value(f,'externalName'), organization:value(f,'organization'),contactMethod:value(f,'contactMethod'),contact:value(f,'contact') } }),
                 due: value(f, 'due'),
                 condition: value(f, 'condition'),
                 event: value(f, 'event'),
                 eventCategory: value(f, 'eventCategory'),
               })
             if (modal.type === 'return')
-              act({
+              await act({
                 type: 'return',
                 loanId: loan!.id,
                 condition: value(f, 'condition') as Item['condition'],
@@ -951,17 +954,23 @@ export function Inventory() {
                   </Select>
                 </Field>
               )}
-              <Field label="Staff member / Assignee">
-                <Select name="borrower" defaultValue="staff">
-                  {state.profiles.map((p) => (
+              <Field label="Release type"><select value={useType} onChange={e=>setUseType(e.target.value as UseType)}>{Object.entries(USE_TYPES).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></Field>
+              {useType === 'external_borrowing' ? <>
+                <Field label="Borrower name"><input name="externalName" required maxLength={120}/></Field>
+                <Field label="Organization (optional)"><input name="organization" maxLength={160}/></Field>
+                <Field label="Contact method"><select name="contactMethod"><option value="email">Email</option><option value="phone">Phone</option></select></Field>
+                <Field label="Contact details"><input name="contact" required maxLength={160}/></Field>
+              </> : <Field label="Responsible member">
+                <Select name="borrower" defaultValue={state.profiles.find(p=>!p.status || p.status==='active')?.id}>
+                  {state.profiles.filter(p=>!p.status || p.status==='active').map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>
                   ))}
                 </Select>
               </Field>
-              <div className="form-grid">
-                <Field label="Type of event coverage">
+              }<div className="form-grid">
+                <Field label="Type of event coverage (optional)">
                   <input
                     name="eventCategory"
                     placeholder="e.g. Sports Coverage, Campus News, Features, Investigative…"
@@ -977,9 +986,9 @@ export function Inventory() {
                     <option value="Studio & Internal Production" />
                   </datalist>
                 </Field>
-                <Field label="Specific event / assignment">
+                <Field label="Purpose / event name">
                   <input
-                    name="event"
+                    name="event" required maxLength={200}
                     placeholder="e.g. UAAP Men's Basketball Finals, Student Council Forum…"
                     autoComplete="off"
                   />
@@ -1019,7 +1028,7 @@ export function Inventory() {
           {modal.type === 'history' && (
             <>
               <p className="hint">
-                Demo usage history. Other staff members' usage details are restricted in this view.
+                Usage history. Other staff members' usage details are restricted in this view.
               </p>
               {state.loans
                 .filter((l) => l.itemId === item?.id && (manager || l.borrowerId === person.id))
@@ -1027,10 +1036,10 @@ export function Inventory() {
                   <article className="history-card flex flex-col gap-3 rounded-2xl border border-white/90 bg-white/85 p-4 shadow-xs" key={l.id}>
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle pb-2.5">
                       <div className="flex items-center gap-2.5">
-                        <Avatar name={state.profiles.find((p) => p.id === l.borrowerId)?.name ?? 'Staff'} />
+                        <Avatar name={borrowerName(state,l)} />
                         <div>
                           <strong className="block text-[13.5px] font-medium text-ink">
-                            {state.profiles.find((p) => p.id === l.borrowerId)?.name}
+                            {borrowerName(state,l)}
                           </strong>
                           <span className="block text-[11px] text-muted-ink">
                             {state.profiles.find((p) => p.id === l.borrowerId)?.role}
@@ -1038,6 +1047,7 @@ export function Inventory() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge>{l.useType ? USE_TYPES[l.useType] : 'Legacy / unspecified'}</Badge>
                         {l.eventCategory && (
                           <span className={`category-pill ${categoryClass(l.eventCategory)}`}>
                             {l.eventCategory}
@@ -1276,16 +1286,16 @@ export function Incidents() {
         <Modal
           title={modal === 'new' ? 'Report an equipment incident' : 'Resolve incident review'}
           onClose={() => setModal(null)}
-          onSubmit={(f) => {
+          onSubmit={async (f) => {
             if (modal === 'new')
-              act({
+              await act({
                 type: 'incident',
                 itemId: value(f, 'item'),
                 kind: value(f, 'kind') as 'Damaged' | 'Missing',
                 notes: value(f, 'notes'),
               })
             else
-              act({
+              await act({
                 type: 'resolve',
                 id: modal,
                 outcome: value(f, 'outcome'),

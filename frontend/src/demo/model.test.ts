@@ -14,7 +14,7 @@ describe('equipment workflows', () => {
   it('prevents double checkout and repeated returns without mutating the source', () => {
     const s = seed()
     const out = transition(s, 'custodian', {
-      type: 'checkout',
+      type: 'checkout', useType:'publication_use', purpose:'Coverage',
       itemId: 'i1',
       borrowerId: 'staff',
       due: due(),
@@ -24,7 +24,7 @@ describe('equipment workflows', () => {
     expect(available(out, 'i1')).toBe(false)
     expect(() =>
       transition(out, 'admin', {
-        type: 'checkout',
+        type: 'checkout', useType:'publication_use', purpose:'Coverage',
         itemId: 'i1',
         borrowerId: 'p5',
         due: due(),
@@ -68,7 +68,7 @@ describe('equipment workflows', () => {
     for (const d of ['invalid', '2020-01-01'])
       expect(() =>
         transition(seed(), 'admin', {
-          type: 'checkout',
+          type: 'checkout', useType:'publication_use', purpose:'Coverage',
           itemId: 'i1',
           borrowerId: 'staff',
           due: d,
@@ -97,7 +97,7 @@ describe('browser persistence and reset', () => {
     s = seed()
     save(storage, s)
     expect(load(storage).state.loans[0].returned).toBeUndefined()
-    expect(STORAGE_KEY).toContain('v2')
+    expect(STORAGE_KEY).toContain('v3')
   })
   it('recovers corrupt or incompatible records and reports unavailable storage', () => {
     for (const raw of ['{bad', '{}', JSON.stringify({ ...seed(), version: 99 })]) {

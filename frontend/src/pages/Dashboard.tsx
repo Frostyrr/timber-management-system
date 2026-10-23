@@ -7,13 +7,13 @@ import { available, canInventory, isOverdue, visibleIncidents } from '../demo/mo
 import { Badge, Empty, CardSkeleton, KpiSkeletonGrid, Skeleton } from '../components/ui'
 
 export function Dashboard() {
-  const { state, person } = useDemo()
+  const { state, person, refresh } = useDemo()
   const manager = canInventory(person)
   const [refreshing, setRefreshing] = useState(false)
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true)
-    setTimeout(() => setRefreshing(false), 550)
+    try { await refresh?.() } finally { setRefreshing(false) }
   }
 
   const loans = state.loans
@@ -82,7 +82,7 @@ export function Dashboard() {
             <button
               type="button"
               className="hero-btn-secondary"
-              title="Simulate data sync (Skeleton loading preview)"
+              title="Refresh inventory data"
               aria-label="Refresh inventory status"
               onClick={handleRefresh}
             >

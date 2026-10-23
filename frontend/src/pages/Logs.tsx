@@ -3,31 +3,24 @@ import { Link } from 'react-router-dom'
 import { Search, Package, ShieldAlert, Clock3, RefreshCw } from 'lucide-react'
 import { dateText } from '../components/format'
 import { useDemo } from '../demo/context'
-import { canInventory } from '../demo/model'
+import { visibleEvents as scopedEvents } from '../demo/model'
 import { Heading, Avatar } from '../components/layout'
 import { Badge, Empty, TableSkeleton, Pagination, Select } from '../components/ui'
 
 export function Logs() {
-  const { state, person } = useDemo()
-  const manager = canInventory(person)
+  const { state, person, refresh } = useDemo()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
   const [page, setPage] = useState(1)
   const pageSize = 10
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true)
-    setTimeout(() => setRefreshing(false), 500)
+    try { await refresh?.() } finally { setRefreshing(false) }
   }
 
-  // Scoped events based on persona transparency rules
-  const visibleEvents = state.events.filter((e) => {
-    if (manager) return true
-    // Staff can see events they performed or events involving items they borrowed
-    const userLoans = state.loans.filter((l) => l.borrowerId === person.id)
-    return e.actor === person.id || userLoans.some((l) => l.itemId === e.entityId)
-  })
+  const visibleEvents = scopedEvents(state,person)
 
   const filteredEvents = visibleEvents.filter((e) => {
     const item = state.items.find((i) => i.id === e.entityId)
@@ -39,7 +32,7 @@ export function Logs() {
     if (!matchesSearch) return false
 
     if (filter === 'loans') {
-      return e.text.toLowerCase().includes('checked out') || e.text.toLowerCase().includes('closed loan')
+      return ['checkout','return','releases.insert','releases.update'].includes(e.action ?? '') || e.text.toLowerCase().includes('checked out') || e.text.toLowerCase().includes('closed loan')
     }
     if (filter === 'incidents') {
       return e.text.toLowerCase().includes('incident') || e.text.toLowerCase().includes('flagged')
@@ -89,7 +82,7 @@ export function Logs() {
             {
               visibleEvents.filter(
                 (e) =>
-                  e.text.toLowerCase().includes('checked out') ||
+                  ['checkout','return','releases.insert','releases.update'].includes(e.action ?? '') || e.text.toLowerCase().includes('checked out') ||
                   e.text.toLowerCase().includes('closed loan'),
               ).length
             }
@@ -175,7 +168,7 @@ export function Logs() {
                   e.text.toLowerCase().includes('incident') ||
                   e.text.toLowerCase().includes('flagged')
                 const isLoan =
-                  e.text.toLowerCase().includes('checked out') ||
+                  ['checkout','return','releases.insert','releases.update'].includes(e.action ?? '') || e.text.toLowerCase().includes('checked out') ||
                   e.text.toLowerCase().includes('closed loan')
 
                 return (
@@ -238,7 +231,7 @@ export function Logs() {
                       e.text.toLowerCase().includes('incident') ||
                       e.text.toLowerCase().includes('flagged')
                     const isLoan =
-                      e.text.toLowerCase().includes('checked out') ||
+                      ['checkout','return','releases.insert','releases.update'].includes(e.action ?? '') || e.text.toLowerCase().includes('checked out') ||
                       e.text.toLowerCase().includes('closed loan')
 
                     return (

@@ -3,7 +3,10 @@ import type { Action, Profile, State } from './model'
 export const DemoContext = createContext<{
   state: State
   person: Profile
-  act: (a: Action) => void
+  act: (a: Action) => void | Promise<void>
+  mode?: 'demo' | 'live'
+  refresh?: () => Promise<void>
+  signOut?: () => Promise<void>
   switchPerson: (id: string) => void
   reset: () => void
   warning: string
