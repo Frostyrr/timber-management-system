@@ -60,7 +60,7 @@ export function Logs() {
         description="Chronological record of equipment registration, checkout, returns, and incident reviews."
       >
         <Link to="/inventory" className="secondary">
-          <Package size={16} /> Equipment catalog
+          <Package size={16} /> Equipment inventory
         </Link>
         <Link to="/incidents" className="secondary">
           <ShieldAlert size={16} /> Incident reviews
@@ -187,7 +187,7 @@ export function Logs() {
                         <Clock3 size={13} /> {dateText(e.at)}
                       </span>
                       <Badge>
-                        {isIncident ? 'Incident' : isLoan ? 'Release / Return' : 'Catalog update'}
+                        {isIncident ? 'Incident' : isLoan ? 'Release / Return' : 'Inventory update'}
                       </Badge>
                     </div>
 
@@ -284,7 +284,7 @@ export function Logs() {
                         </td>
                         <td>
                           <Badge>
-                            {isIncident ? 'Incident' : isLoan ? 'Release / Return' : 'Catalog update'}
+                            {isIncident ? 'Incident' : isLoan ? 'Release / Return' : 'Inventory update'}
                           </Badge>
                         </td>
                       </tr>

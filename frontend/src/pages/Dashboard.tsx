@@ -91,7 +91,7 @@ export function Dashboard() {
             </button>
             <Link className="hero-btn-secondary" to="/inventory">
               <Boxes size={15} />
-              Equipment catalog
+              Equipment inventory
             </Link>
           </div>
         </div>
@@ -200,7 +200,7 @@ export function Dashboard() {
                   )
                 })}
                 {!loans.length && (
-                  <Empty text="No equipment currently in use in your view. Browse the equipment catalog to see what is available." />
+                  <Empty text="No equipment currently in use in your view. Browse the equipment inventory to see what is available." />
                 )}
               </div>
             )}
@@ -214,7 +214,7 @@ export function Dashboard() {
                 <p className="muted">Recent equipment updates and transactions</p>
               </div>
               <Link className="panel-link" to="/inventory">
-                Catalog <ArrowUpRight size={14} />
+                Inventory <ArrowUpRight size={14} />
               </Link>
             </div>
             {refreshing ? (

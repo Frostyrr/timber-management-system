@@ -237,7 +237,7 @@ export function Inventory() {
           style={{ '--stagger-i': 0 } as React.CSSProperties}
           onClick={() => { setFilter('all'); setPage(1); }}
         >
-          <span>Total catalog</span>
+          <span>Total inventory</span>
           <strong>{state.items.length}</strong>
         </button>
         <button
@@ -284,7 +284,7 @@ export function Inventory() {
             <button
               type="button"
               className="icon-button"
-              title="Refresh equipment catalog"
+              title="Refresh equipment inventory"
               aria-label="Refresh records"
               onClick={handleRefresh}
             >
@@ -839,7 +839,7 @@ export function Incidents() {
         description="Document what happened, consider the context, and record a fair resolution."
       >
         <Link to="/inventory" className="secondary">
-          Equipment catalog <ArrowUpRight size={15} />
+          Equipment inventory <ArrowUpRight size={15} />
         </Link>
         {!!reportable.length && (
           <button className="primary" onClick={() => setModal('new')}>
