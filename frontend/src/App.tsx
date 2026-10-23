@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Package,
   ShieldAlert,
+  ShieldCheck,
   ScrollText,
   Menu,
   X,
@@ -25,6 +26,7 @@ import { Inventory, Incidents } from './pages/Inventory'
 import { Logs } from './pages/Logs'
 import { Login } from './pages/Login'
 import { Settings } from './pages/Settings'
+import { Security } from './pages/Security'
 import './App.css'
 
 const links = [
@@ -32,6 +34,7 @@ const links = [
   { to: '/inventory', name: 'Inventory', icon: Package },
   { to: '/incidents', name: 'Incident reviews', icon: ShieldAlert },
   { to: '/logs', name: 'Logs', icon: ScrollText },
+  { to: '/security', name: 'Cybersecurity', icon: ShieldCheck },
 ]
 
 export default function App() {
@@ -381,6 +384,7 @@ export default function App() {
                 <Route path="/inventory" element={<Inventory key={location.search} />} />
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/logs" element={<Logs />} />
+                <Route path="/security" element={<Security />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

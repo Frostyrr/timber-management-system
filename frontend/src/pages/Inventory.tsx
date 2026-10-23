@@ -989,7 +989,13 @@ export function Inventory() {
                 <SchedulePicker defaultValue={tomorrow()} />
               </Field>
               <Field label="Condition before release">
-                <textarea name="condition" required defaultValue={item?.condition ?? 'Good'} placeholder="e.g. Fully functional, clean lens optics, 100% battery, SD card formatted…" />
+                <Select name="condition" defaultValue={item?.condition === 'Fair' ? 'Fair' : 'Good'}>
+                  <option value="Good">Good — Fully functional & inspected</option>
+                  <option value="Good · 100% Battery & Clean Optics">Good · 100% Battery & Clean Optics</option>
+                  <option value="Good · SD Card Formatted & Media Cleared">Good · SD Card Formatted & Media Cleared</option>
+                  <option value="Fair">Fair — Minor cosmetic wear, fully operational</option>
+                  <option value="Fair · Minor exterior scuffs, verified functional">Fair · Minor exterior scuffs, verified functional</option>
+                </Select>
               </Field>
             </>
           )}
