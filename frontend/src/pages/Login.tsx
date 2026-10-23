@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { client, demoMode } from '../backend/client'
-import { useDemo } from '../demo/context'
+import { DemoContext } from '../demo/context'
 import { GoogleIcon } from '../components/auth'
 
 export function Login({ checkingSession = false }: { checkingSession?: boolean }) {
-  const { person, switchPerson } = useDemo()
+  const demo = useContext(DemoContext)
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +25,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         // Instant simulated Google OAuth entry
         setTimeout(() => {
           setBusy(false)
-          switchPerson(person?.id || 'admin')
+          demo?.switchPerson(demo?.person?.id || 'admin')
           navigate('/')
         }, 400)
       }
@@ -85,6 +85,19 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
           <p className="text-[11.5px] text-muted-ink">
             Use your authorized student publication Google account
           </p>
+
+          <div className="pt-2 border-t border-line-subtle">
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('timber_demo_override', 'true')
+                window.location.href = '/'
+              }}
+              className="text-[12px] font-medium text-primary hover:text-forest-deep transition-colors"
+            >
+              Explore sample demo workspace &rarr;
+            </button>
+          </div>
         </div>
       </div>
     </div>

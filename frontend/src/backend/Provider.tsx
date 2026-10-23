@@ -7,7 +7,10 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { Login } from '../pages/Login'
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  return demoMode ? <DemoProvider>{children}</DemoProvider> : <LiveProvider>{children}</LiveProvider>
+  const isDemo =
+    demoMode ||
+    (typeof window !== 'undefined' && localStorage.getItem('timber_demo_override') === 'true')
+  return isDemo ? <DemoProvider>{children}</DemoProvider> : <LiveProvider>{children}</LiveProvider>
 }
 function LiveProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
