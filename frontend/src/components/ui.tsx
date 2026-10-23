@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode, type FormEvent } from 'react'
-import { X, Inbox, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useId, useMemo, useRef, useState, Children, isValidElement, type ReactNode, type FormEvent } from 'react'
+import { X, Inbox, ChevronLeft, ChevronRight, ChevronDown, Check } from 'lucide-react'
 
 export function Badge({ children }: { children: ReactNode }) {
   const raw = String(children)
@@ -114,7 +114,7 @@ export function Modal({
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="field flex flex-col gap-1.5 text-[12.5px] font-[450] text-ink">
+    <label className="field relative flex flex-col gap-1.5 text-[12.5px] font-[450] text-ink">
       <span className="field-label">{label}</span>
       {children}
     </label>
@@ -306,5 +306,218 @@ export function Pagination({
         </div>
       )}
     </nav>
+  )
+}
+
+export interface SelectOption {
+  value: string
+  label: ReactNode
+}
+
+export function Select({
+  name,
+  value,
+  defaultValue,
+  options,
+  children,
+  onChange,
+  placeholder = 'Select an option',
+  disabled = false,
+  required = false,
+  className = '',
+  buttonClassName = '',
+  menuClassName = '',
+  'aria-label': ariaLabel,
+}: {
+  name?: string
+  value?: string
+  defaultValue?: string
+  options?: Array<SelectOption | string>
+  children?: ReactNode
+  onChange?: (e: { target: { value: string; name?: string }; currentTarget: { value: string; name?: string } }) => void
+  placeholder?: string
+  disabled?: boolean
+  required?: boolean
+  className?: string
+  buttonClassName?: string
+  menuClassName?: string
+  'aria-label'?: string
+}) {
+  const parsedOptions: SelectOption[] = useMemo(() => {
+    const list: SelectOption[] = []
+    if (options && options.length > 0) {
+      for (const opt of options) {
+        if (typeof opt === 'string') {
+          list.push({ value: opt, label: opt })
+        } else {
+          list.push(opt)
+        }
+      }
+    } else if (children) {
+      Children.forEach(children, (child) => {
+        if (isValidElement(child)) {
+          const props = child.props as { value?: string | number; children?: ReactNode }
+          const val = props.value !== undefined ? String(props.value) : String(props.children ?? '')
+          list.push({
+            value: val,
+            label: props.children ?? val,
+          })
+        }
+      })
+    }
+    return list
+  }, [options, children])
+
+  const isControlled = value !== undefined
+  const [uncontrolledValue, setUncontrolledValue] = useState<string>(() => {
+    return defaultValue !== undefined ? defaultValue : (parsedOptions[0]?.value ?? '')
+  })
+
+  const currentValue = isControlled ? value : (uncontrolledValue || parsedOptions[0]?.value || '')
+  const selectedOption = parsedOptions.find((o) => o.value === currentValue)
+  const displayLabel = selectedOption ? selectedOption.label : (placeholder || currentValue)
+
+  const [isOpen, setIsOpen] = useState(false)
+  const [opensUpward, setOpensUpward] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('touchstart', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('touchstart', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
+  const toggleDropdown = () => {
+    if (disabled) return
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const spaceBelowWindow = window.innerHeight - rect.bottom
+
+      const scrollParent = containerRef.current.closest('.dialog-body, dialog, .table-wrap, .panel')
+      let spaceBelowParent = spaceBelowWindow
+      if (scrollParent) {
+        const parentRect = scrollParent.getBoundingClientRect()
+        spaceBelowParent = parentRect.bottom - rect.bottom
+      }
+
+      const availableBelow = Math.min(spaceBelowWindow, spaceBelowParent)
+      setOpensUpward(availableBelow < 190 && rect.top > 160)
+    }
+    setIsOpen((prev) => !prev)
+  }
+
+  const handleSelect = (val: string) => {
+    if (!isControlled) {
+      setUncontrolledValue(val)
+    }
+    setIsOpen(false)
+    if (onChange) {
+      const syntheticEvent = {
+        target: { value: val, name: name ?? '' },
+        currentTarget: { value: val, name: name ?? '' },
+      }
+      onChange(syntheticEvent)
+    }
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className={`custom-select-container relative inline-block w-full text-left font-sans ${isOpen ? 'is-open z-[9999]' : 'z-10'} ${className}`}
+      style={{ zIndex: isOpen ? 9999 : undefined }}
+    >
+      {name && (
+        <input
+          type="hidden"
+          name={name}
+          value={currentValue}
+          required={required}
+        />
+      )}
+
+      <button
+        type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={toggleDropdown}
+        className={`group relative flex w-full items-center justify-between gap-2 rounded-xl border border-[#dfe5de] bg-white/85 px-3.5 py-2.5 text-left text-[13px] font-[450] text-ink shadow-[0_1px_3px_rgba(24,34,29,0.04)] backdrop-blur-md transition-all duration-150 hover:border-primary/40 hover:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+          isOpen ? 'border-primary ring-2 ring-primary/20' : ''
+        } ${buttonClassName}`}
+      >
+        <span className="truncate pr-1 text-ink">{displayLabel}</span>
+        <ChevronDown
+          size={15}
+          className={`shrink-0 text-muted-ink transition-transform duration-200 group-hover:text-primary ${
+            isOpen ? 'rotate-180 text-primary' : ''
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          role="listbox"
+          aria-label={ariaLabel}
+          className={`absolute left-0 z-[9999] w-full min-w-[180px] max-h-60 overflow-y-auto rounded-xl border border-white/90 bg-white/95 p-1.5 shadow-[0_20px_50px_rgba(24,34,29,0.22)] backdrop-blur-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150 ${
+            opensUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+          } ${menuClassName}`}
+          style={{ zIndex: 9999 }}
+        >
+          {parsedOptions.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-muted-ink">No options available</div>
+          ) : (
+            parsedOptions.map((opt) => {
+              const isSelected = opt.value === currentValue
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => handleSelect(opt.value)}
+                  className={`group/opt flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] font-[450] transition-colors duration-100 ${
+                    isSelected
+                      ? 'bg-emerald-50 text-primary font-medium'
+                      : 'text-ink hover:bg-black/[0.04]'
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && (
+                    <Check
+                      size={14}
+                      className="ml-2 shrink-0 text-primary"
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+              )
+            })
+          )}
+        </div>
+      )}
+    </div>
   )
 }

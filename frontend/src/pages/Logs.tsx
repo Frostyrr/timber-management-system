@@ -5,7 +5,7 @@ import { dateText } from '../components/format'
 import { useDemo } from '../demo/context'
 import { canInventory } from '../demo/model'
 import { Heading, Avatar } from '../components/layout'
-import { Badge, Empty, TableSkeleton, Pagination } from '../components/ui'
+import { Badge, Empty, TableSkeleton, Pagination, Select } from '../components/ui'
 
 export function Logs() {
   const { state, person } = useDemo()
@@ -147,16 +147,18 @@ export function Logs() {
             >
               <RefreshCw size={15} className={refreshing ? 'animate-spin text-primary' : ''} />
             </button>
-            <select
+            <Select
               aria-label="Filter logs by type"
               value={filter}
               onChange={(e) => { setFilter(e.target.value); setPage(1); }}
+              className="w-auto min-w-[170px]"
+              buttonClassName="h-9 py-1 px-3 text-xs"
             >
               <option value="all">All log types</option>
               <option value="loans">Releases & returns</option>
               <option value="incidents">Incident events</option>
               <option value="equipment">Equipment updates</option>
-            </select>
+            </Select>
           </div>
         </div>
 

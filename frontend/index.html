@@ -17,16 +17,7 @@
     />
     <title>Timber · Inventory Management</title>
     <script>
-      try {
-        const theme = localStorage.getItem('timber_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-          document.documentElement.setAttribute('data-theme', 'dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.setAttribute('data-theme', 'light');
-        }
-      } catch (e) {}
+      try { localStorage.removeItem('timber_theme'); } catch (e) {}
     </script>
   </head>
   <body>

@@ -50,27 +50,6 @@
     --color-danger-border: #f3caca;
   }
 
-  :root.dark,
-  [data-theme='dark'] {
-    --color-primary: #34d399;
-    --color-primary-hover: #10b981;
-    --color-supporting: #6ee7b7;
-    --color-pale: rgba(16, 185, 129, 0.16);
-    --color-ink: #f0f4f1;
-    --color-muted-ink: #93a299;
-    --color-canvas: #141e18;
-    --color-workspace: #0b120e;
-    --color-surface: #111a15;
-    --color-line: #1e2c24;
-    --color-line-subtle: #18231c;
-    --color-warning-bg: rgba(180, 83, 9, 0.22);
-    --color-warning-text: #fcd34d;
-    --color-warning-border: rgba(245, 158, 11, 0.35);
-    --color-danger-bg: rgba(153, 27, 27, 0.25);
-    --color-danger-text: #fca5a5;
-    --color-danger-border: rgba(239, 68, 68, 0.35);
-  }
-
   :root {
     font-family: var(--font-sans);
     font-weight: 400;

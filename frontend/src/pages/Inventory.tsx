@@ -1,7 +1,7 @@
 import { value, dateText, tomorrow, categoryClass } from '../components/format'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Plus, Search, Package, ShieldAlert, ArrowUpRight, Clock3, RefreshCw } from 'lucide-react'
+import { Plus, Search, Package, ShieldAlert, ArrowUpRight, Clock3, RefreshCw, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
 import { useDemo } from '../demo/context'
 import {
   canInventory,
@@ -12,7 +12,7 @@ import {
   type Item,
 } from '../demo/model'
 import { Heading, Avatar } from '../components/layout'
-import { Badge, Empty, Modal, Field, TableSkeleton, Pagination } from '../components/ui'
+import { Badge, Empty, Modal, Field, TableSkeleton, Pagination, Select } from '../components/ui'
 
 function getScheduleSummary(iso: string) {
   const targetTime = Date.parse(iso)
@@ -28,6 +28,298 @@ function getScheduleSummary(iso: string) {
     minute: '2-digit',
   })
   return { dateStr, duration }
+}
+
+function parseIsoDate(iso: string) {
+  const [dPart = '2026-10-25', tPart = '17:00'] = iso.split('T')
+  const [yStr = '2026', mStr = '10', dStr = '25'] = dPart.split('-')
+  const [hStr = '17', minStr = '00'] = tPart.split(':')
+  return {
+    year: Number(yStr) || 2026,
+    month: Math.max(0, (Number(mStr) || 10) - 1),
+    day: Number(dStr) || 25,
+    hour: Number(hStr) || 17,
+    minute: Number(minStr) || 0,
+  }
+}
+
+function CustomDateTimePicker({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (iso: string) => void
+}) {
+  const parsed = parseIsoDate(value)
+  const [navMonth, setNavMonth] = useState<{ year: number; month: number } | null>(null)
+  const viewMonth = navMonth ?? { year: parsed.year, month: parsed.month }
+  const [today] = useState(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  const emit = (year: number, month: number, day: number, hour24: number, minute: number) => {
+    const iso = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hour24)}:${pad(minute)}`
+    onChange(iso)
+  }
+
+  const prevMonth = () => {
+    setNavMonth({
+      year: viewMonth.month === 0 ? viewMonth.year - 1 : viewMonth.year,
+      month: viewMonth.month === 0 ? 11 : viewMonth.month - 1,
+    })
+  }
+
+  const nextMonth = () => {
+    setNavMonth({
+      year: viewMonth.month === 11 ? viewMonth.year + 1 : viewMonth.year,
+      month: viewMonth.month === 11 ? 0 : viewMonth.month + 1,
+    })
+  }
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ]
+
+  const daysInMonth = new Date(viewMonth.year, viewMonth.month + 1, 0).getDate()
+  const firstDayOfWeek = new Date(viewMonth.year, viewMonth.month, 1).getDay()
+
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+  const blanks = Array.from({ length: firstDayOfWeek }, (_, i) => i)
+
+  const period: 'AM' | 'PM' = parsed.hour >= 12 ? 'PM' : 'AM'
+  const hour12 = parsed.hour % 12 === 0 ? 12 : parsed.hour % 12
+
+  const setHour12 = (h: number) => {
+    const clamped = Math.max(1, Math.min(12, h))
+    const h24 = period === 'AM' ? (clamped === 12 ? 0 : clamped) : (clamped === 12 ? 12 : clamped + 12)
+    emit(parsed.year, parsed.month, parsed.day, h24, parsed.minute)
+  }
+
+  const setMinute = (m: number) => {
+    const clamped = Math.max(0, Math.min(59, m))
+    emit(parsed.year, parsed.month, parsed.day, parsed.hour, clamped)
+  }
+
+  const setPeriod = (p: 'AM' | 'PM') => {
+    const h24 = p === 'AM' ? (hour12 === 12 ? 0 : hour12) : (hour12 === 12 ? 12 : hour12 + 12)
+    emit(parsed.year, parsed.month, parsed.day, h24, parsed.minute)
+  }
+
+  const quickTimes = [
+    { label: '9:00 AM', h: 9, m: 0 },
+    { label: '12:00 PM', h: 12, m: 0 },
+    { label: '5:00 PM', h: 17, m: 0 },
+    { label: '8:00 PM', h: 20, m: 0 },
+  ]
+
+  return (
+    <div className="custom-datetime-picker mt-2 flex flex-col gap-3 rounded-2xl border border-line-subtle bg-white/95 p-3.5 shadow-[0_8px_24px_rgba(21,63,50,0.06)] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+      <div className="flex items-center justify-between border-b border-line-subtle pb-2.5">
+        <div className="flex items-center gap-2 text-xs font-medium text-ink">
+          <CalendarIcon size={14} className="text-primary" />
+          <span>Interactive Calendar & Time</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-ink">
+          <button
+            type="button"
+            className="hover:text-primary hover:underline font-medium"
+            onClick={() => {
+              const now = new Date()
+              setNavMonth({ year: now.getFullYear(), month: now.getMonth() })
+              emit(now.getFullYear(), now.getMonth(), now.getDate(), parsed.hour, parsed.minute)
+            }}
+          >
+            Today
+          </button>
+          <span>·</span>
+          <button
+            type="button"
+            className="hover:text-primary hover:underline font-medium"
+            onClick={() => {
+              const tmrw = new Date(Date.now() + 86400000)
+              setNavMonth({ year: tmrw.getFullYear(), month: tmrw.getMonth() })
+              emit(tmrw.getFullYear(), tmrw.getMonth(), tmrw.getDate(), parsed.hour, parsed.minute)
+            }}
+          >
+            Tomorrow
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.25fr_1fr]">
+        {/* Left: Calendar Month */}
+        <div className="calendar-pane flex flex-col gap-2 sm:border-r sm:border-line-subtle sm:pr-3.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[12.5px] font-semibold text-ink">
+              {monthNames[viewMonth.month]} {viewMonth.year}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={prevMonth}
+                className="flex h-6 w-6 items-center justify-center rounded-lg border border-line-subtle bg-surface text-muted-ink transition-colors hover:border-line hover:bg-canvas hover:text-ink"
+                aria-label="Previous month"
+              >
+                <ChevronLeft size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="flex h-6 w-6 items-center justify-center rounded-lg border border-line-subtle bg-surface text-muted-ink transition-colors hover:border-line hover:bg-canvas hover:text-ink"
+                aria-label="Next month"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+              <span key={d} className="text-[10px] font-medium text-muted-ink">
+                {d}
+              </span>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {blanks.map((b) => (
+              <div key={`blank-${b}`} className="h-7 w-7 sm:h-7.5 sm:w-7.5" />
+            ))}
+            {days.map((day) => {
+              const dateObj = new Date(viewMonth.year, viewMonth.month, day)
+              dateObj.setHours(0, 0, 0, 0)
+              const isPast = dateObj.getTime() < today.getTime()
+              const isSelected =
+                parsed.year === viewMonth.year &&
+                parsed.month === viewMonth.month &&
+                parsed.day === day
+              const isTodayDate =
+                today.getFullYear() === viewMonth.year &&
+                today.getMonth() === viewMonth.month &&
+                today.getDate() === day
+
+              return (
+                <button
+                  type="button"
+                  key={day}
+                  disabled={isPast}
+                  onClick={() => emit(viewMonth.year, viewMonth.month, day, parsed.hour, parsed.minute)}
+                  className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-medium transition-all duration-150 sm:h-7.5 sm:w-7.5 ${
+                    isSelected
+                      ? 'bg-primary text-white shadow-[0_2px_8px_rgba(21,63,50,0.35)] scale-105'
+                      : isPast
+                        ? 'text-slate-300 cursor-not-allowed'
+                        : isTodayDate
+                          ? 'border border-primary/50 bg-pale text-primary font-semibold'
+                          : 'text-ink hover:bg-black/[0.04] hover:text-primary'
+                  }`}
+                  aria-label={`${monthNames[viewMonth.month]} ${day}, ${viewMonth.year}`}
+                  aria-pressed={isSelected}
+                >
+                  {day}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Right: Time Controls */}
+        <div className="time-pane flex flex-col justify-between gap-3">
+          <div>
+            <span className="mb-1.5 block text-[11px] font-medium tracking-[0.03em] text-muted-ink uppercase">
+              Deadline Time
+            </span>
+
+            {/* Time Controls: Hour, Minute, AM/PM */}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center rounded-xl border border-line-subtle bg-surface px-2 py-1 focus-within:border-primary focus-within:bg-canvas">
+                <input
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={hour12}
+                  onChange={(e) => setHour12(Number(e.target.value))}
+                  aria-label="Hour"
+                  className="w-7 border-0 bg-transparent text-center font-mono text-xs font-semibold text-ink focus:outline-none"
+                />
+                <span className="font-mono text-xs text-muted-ink">:</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={pad(parsed.minute)}
+                  onChange={(e) => setMinute(Number(e.target.value))}
+                  aria-label="Minute"
+                  className="w-7 border-0 bg-transparent text-center font-mono text-xs font-semibold text-ink focus:outline-none"
+                />
+              </div>
+
+              {/* AM / PM Segmented Control */}
+              <div className="flex rounded-xl border border-line-subtle bg-surface p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setPeriod('AM')}
+                  className={`rounded-lg px-2 py-1 text-xs font-medium transition-all duration-150 ${
+                    period === 'AM'
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'text-muted-ink hover:text-ink'
+                  }`}
+                >
+                  AM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPeriod('PM')}
+                  className={`rounded-lg px-2 py-1 text-xs font-medium transition-all duration-150 ${
+                    period === 'PM'
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'text-muted-ink hover:text-ink'
+                  }`}
+                >
+                  PM
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Time Presets */}
+            <div className="mt-3">
+              <span className="mb-1.5 block text-[10.5px] text-muted-ink">Preset deadlines</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {quickTimes.map((qt) => {
+                  const isActive =
+                    ((period === 'AM' ? (hour12 === 12 ? 0 : hour12) : (hour12 === 12 ? 12 : hour12 + 12)) === qt.h) &&
+                    parsed.minute === qt.m
+                  return (
+                    <button
+                      type="button"
+                      key={qt.label}
+                      onClick={() => emit(parsed.year, parsed.month, parsed.day, qt.h, qt.m)}
+                      className={`rounded-lg border px-2 py-1 text-center text-[11px] font-medium transition-all duration-150 ${
+                        isActive
+                          ? 'border-primary bg-pale text-primary font-semibold'
+                          : 'border-line-subtle bg-canvas text-ink hover:border-line hover:bg-surface'
+                      }`}
+                    >
+                      {qt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-primary/20 bg-pale/50 px-2.5 py-1.5 text-center text-[11px] font-medium text-primary">
+            Target: {pad(hour12)}:{pad(parsed.minute)} {period}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function SchedulePicker({ defaultValue }: { defaultValue: string }) {
@@ -58,6 +350,11 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
     const local = new Date(target.getTime() - tzOffset).toISOString().slice(0, 16)
     setIsoValue(local)
     setSummary(getScheduleSummary(local))
+  }
+
+  const handleCustomChange = (newIso: string) => {
+    setIsoValue(newIso)
+    setSummary(getScheduleSummary(newIso))
   }
 
   return (
@@ -114,30 +411,21 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
         <button
           type="button"
           className="shrink-0 text-[11.5px] font-medium text-primary underline hover:text-primary-hover"
-          onClick={() => setPreset('custom')}
+          onClick={() => setPreset((p) => (p === 'custom' ? 'tomorrow' : 'custom'))}
         >
-          {preset === 'custom' ? 'Custom mode' : 'Customize date & time'}
+          {preset === 'custom' ? 'Close custom picker' : 'Customize date & time'}
         </button>
       </div>
 
-      {preset === 'custom' ? (
-        <div className="pt-1">
-          <label className="mb-1 block text-[11px] text-muted-ink">Exact Return Timestamp</label>
-          <input
-            type="datetime-local"
-            name="due"
-            required
-            value={isoValue}
-            onChange={(e) => {
-              setIsoValue(e.target.value)
-              setSummary(getScheduleSummary(e.target.value))
-            }}
-            className="w-full"
-          />
-        </div>
-      ) : (
-        <input type="hidden" name="due" value={isoValue} />
+      {preset === 'custom' && (
+        <CustomDateTimePicker
+          value={isoValue}
+          onChange={handleCustomChange}
+        />
       )}
+
+      {/* Hidden input ensures FormData always receives the exact selected timestamp */}
+      <input type="hidden" name="due" value={isoValue} required />
     </div>
   )
 }
@@ -290,16 +578,18 @@ export function Inventory() {
             >
               <RefreshCw size={15} className={refreshing ? 'animate-spin text-primary' : ''} />
             </button>
-            <select
+            <Select
               aria-label="Equipment status"
               value={filter}
               onChange={(e) => { setFilter(e.target.value); setPage(1); }}
+              className="w-auto min-w-[160px]"
+              buttonClassName="h-9 py-1 px-3 text-xs"
             >
               <option value="all">All equipment</option>
               <option value="available">Available</option>
               <option value="loans">Equipment in use</option>
               <option value="overdue">Overdue returns</option>
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -635,10 +925,10 @@ export function Inventory() {
               </Field>
               {!item && (
                 <Field label="Initial condition">
-                  <select name="condition">
-                    <option>Good</option>
-                    <option>Fair</option>
-                  </select>
+                  <Select name="condition" defaultValue="Good">
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                  </Select>
                 </Field>
               )}
               {item && (
@@ -652,23 +942,23 @@ export function Inventory() {
             <>
               {!item && (
                 <Field label="Equipment to release">
-                  <select name="item" required defaultValue={availableItems[0]?.id}>
+                  <Select name="item" required defaultValue={availableItems[0]?.id}>
                     {availableItems.map((ai) => (
                       <option key={ai.id} value={ai.id}>
                         {ai.name} ({ai.tag}) · {ai.category}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
               )}
               <Field label="Staff member / Assignee">
-                <select name="borrower" defaultValue="staff">
+                <Select name="borrower" defaultValue="staff">
                   {state.profiles.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <div className="form-grid">
                 <Field label="Type of event coverage">
@@ -711,12 +1001,12 @@ export function Inventory() {
                 adverse condition opens an incident review without assigning blame.
               </p>
               <Field label="Condition upon return">
-                <select name="condition">
-                  <option>Good</option>
-                  <option>Fair</option>
-                  <option>Damaged</option>
-                  <option>Missing</option>
-                </select>
+                <Select name="condition" defaultValue="Good">
+                  <option value="Good">Good</option>
+                  <option value="Fair">Fair</option>
+                  <option value="Damaged">Damaged</option>
+                  <option value="Missing">Missing</option>
+                </Select>
               </Field>
             </>
           )}
@@ -1000,19 +1290,19 @@ export function Incidents() {
           {modal === 'new' ? (
             <>
               <Field label="Equipment">
-                <select name="item">
+                <Select name="item" defaultValue={reportable[0]?.id}>
                   {reportable.map((i) => (
                     <option key={i.id} value={i.id}>
                       {i.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field label="Observed condition">
-                <select name="kind">
-                  <option>Damaged</option>
-                  <option>Missing</option>
-                </select>
+                <Select name="kind" defaultValue="Damaged">
+                  <option value="Damaged">Damaged</option>
+                  <option value="Missing">Missing</option>
+                </Select>
               </Field>
               <Field label="What happened? Include facts and context.">
                 <textarea name="notes" required placeholder="Describe what occurred during assignment: e.g. Dropped during coverage; autofocus ring sticking or loose screw…" />
@@ -1024,12 +1314,12 @@ export function Incidents() {
                 <textarea name="outcome" required placeholder="Document the resolution: e.g. Replaced filter ring at authorized center. Verified full operability and restocked in cabinet." />
               </Field>
               <Field label="Condition after review">
-                <select name="condition">
-                  <option>Good</option>
-                  <option>Fair</option>
-                  <option>Damaged</option>
-                  <option>Missing</option>
-                </select>
+                <Select name="condition" defaultValue="Good">
+                  <option value="Good">Good</option>
+                  <option value="Fair">Fair</option>
+                  <option value="Damaged">Damaged</option>
+                  <option value="Missing">Missing</option>
+                </Select>
               </Field>
               <p className="hint">
                 Equipment remains unavailable if damaged, missing, on loan, or subject to another

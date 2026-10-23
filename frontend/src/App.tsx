@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, NavLink, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -12,8 +12,6 @@ import {
   ChevronDown,
   LogOut,
   Settings as SettingsIcon,
-  Sun,
-  Moon,
   Bell,
   Clock3,
   CheckCheck,
@@ -22,7 +20,6 @@ import { useDemo } from './demo/context'
 import { visibleIncidents, canInventory, isOverdue } from './demo/model'
 import { dateText } from './components/format'
 import { Avatar } from './components/layout'
-import { GoogleIcon, GoogleAuthModal } from './components/auth'
 import { Dashboard } from './pages/Dashboard'
 import { Inventory, Incidents } from './pages/Inventory'
 import { Logs } from './pages/Logs'
@@ -39,38 +36,7 @@ const links = [
 
 export default function App() {
   const { state, person, warning, notice } = useDemo()
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('timber_theme')
-      if (saved === 'dark' || saved === 'light') return saved
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return 'light'
-  })
-
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
-      root.setAttribute('data-theme', 'dark')
-    } else {
-      root.classList.remove('dark')
-      root.setAttribute('data-theme', 'light')
-    }
-    try {
-      localStorage.setItem('timber_theme', theme)
-    } catch {
-      // ignore in tests / private browsing
-    }
-  }, [theme])
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
-  }
-
   const [menu, setMenu] = useState(false)
-  const [authModalOpen, setAuthModalOpen] = useState(false)
-  const [googleConnected, setGoogleConnected] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [allRead, setAllRead] = useState(false)
@@ -85,6 +51,21 @@ export default function App() {
   const openIncidents = visibleIncidents(state, person).filter((i) => !i.resolved)
   const unreadCount = overdueLoans.length + openIncidents.length
 
+  const isLoginPage = location.pathname === '/login'
+
+  if (isLoginPage) {
+    return (
+      <div className="workspace min-h-screen flex items-center justify-center p-4">
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
+        <main id="main" className="w-full flex justify-center">
+          <Login />
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="app-backdrop min-h-screen bg-workspace">
       <a className="skip-link" href="#main">
@@ -93,7 +74,7 @@ export default function App() {
 
       <div className="app-canvas mx-auto flex min-h-screen w-full max-w-[1400px] flex-col px-3 sm:px-6 lg:px-10">
         {/* Sleek Floating Top Header with matching pill border radius */}
-        <header className="topbar sticky top-2.5 z-30 mb-3.5 flex items-center justify-between gap-2.5 rounded-full border border-white/85 bg-white/80 px-4 py-2 shadow-[0_4px_16px_rgba(21,63,50,0.06)] backdrop-blur-xl sm:top-3 sm:mb-4 sm:gap-3 sm:px-5 sm:py-2.5">
+        <header className="topbar sticky top-3.5 z-30 mb-6 flex items-center justify-between gap-2.5 rounded-full border border-white/85 bg-white/80 px-4 py-2 shadow-[0_4px_16px_rgba(21,63,50,0.06)] backdrop-blur-xl sm:top-4 sm:mb-8 sm:gap-3 sm:px-5 sm:py-2.5 lg:top-5 lg:mb-9">
           {/* Brand Identity */}
           <div className="topbar-left flex items-center gap-2.5 sm:gap-3">
             <Link
@@ -239,21 +220,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Dark Mode / Light Mode Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="theme-toggle-btn flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/90 bg-white/85 text-ink shadow-[0_2px_8px_rgba(21,63,50,0.06)] backdrop-blur-xl transition-all duration-150 hover:border-white hover:bg-white active:scale-95"
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {theme === 'dark' ? (
-                <Sun size={17} className="text-amber-400" />
-              ) : (
-                <Moon size={17} className="text-[#3c5044]" />
-              )}
-            </button>
-
             {/* Profile Dropdown */}
             <div className="relative">
               <button
@@ -305,17 +271,6 @@ export default function App() {
                         <SettingsIcon size={15} />
                         <span>Account settings</span>
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfileDropdownOpen(false)
-                          setAuthModalOpen(true)
-                        }}
-                        className="dropdown-item"
-                      >
-                        <GoogleIcon size={15} />
-                        <span>Google Workspace SSO</span>
-                      </button>
                     </div>
 
 
@@ -366,7 +321,7 @@ export default function App() {
                       aria-label="Use equipment"
                       className={`rail-primary-btn ${location.pathname === '/inventory' && location.search.includes('action=release') ? 'active' : ''}`}
                     >
-                      <span className="icon-shiny-wrapper relative inline-flex items-center justify-center">
+                      <span className="relative inline-flex items-center justify-center">
                         <ArrowUpRight size={19} className="text-white" />
                       </span>
                       <span className="rail-label">Use equipment</span>
@@ -490,7 +445,7 @@ export default function App() {
                     className="flex min-h-[46px] items-center justify-center gap-2 rounded-2xl bg-primary px-3 text-xs font-medium text-white shadow-[0_4px_14px_rgba(21,63,50,0.3)] active:scale-98 transition-all"
                     aria-label="Use equipment"
                   >
-                    <span className="icon-shiny-wrapper">
+                    <span className="relative inline-flex items-center justify-center">
                       <ArrowUpRight size={17} className="text-white" />
                     </span>
                     <span>Use equipment</span>
@@ -613,7 +568,7 @@ export default function App() {
             className="mobile-dock-action-btn"
             aria-label="Use equipment"
           >
-            <span className="icon-shiny-wrapper">
+            <span className="relative inline-flex items-center justify-center">
               <ArrowUpRight size={19} className="text-white" />
             </span>
             <span className="text-[9.5px] font-medium leading-none text-white">Use</span>
@@ -651,13 +606,6 @@ export default function App() {
           <span>Menu</span>
         </button>
       </nav>
-
-      <GoogleAuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        connected={googleConnected}
-        onToggleConnect={setGoogleConnected}
-      />
     </div>
   )
 }
