@@ -141,53 +141,9 @@
 }
 
 @media (max-width: 767px) {
+  /* On mobile, navigation is handled exclusively via the Bottom Dock & Mobile Menu Modal Sheet */
   .floating-pill-rail {
-    @apply fixed top-3 bottom-3 left-3 z-50 m-0 w-[285px] -translate-x-[calc(100%+24px)] items-stretch justify-start rounded-[26px] border border-white/90 bg-white/95 p-4 shadow-[0_20px_50px_rgba(21,63,50,0.22)] backdrop-blur-2xl transition-transform duration-250 ease-out;
-  }
-
-  .floating-pill-rail.open {
-    @apply translate-x-0;
-  }
-
-  .floating-pill-rail .pill-rail-inner {
-    @apply flex h-full w-full flex-col items-stretch p-0;
-  }
-
-  .rail-pill-item {
-    @apply h-[46px] w-full justify-start gap-3.5 rounded-xl px-3.5 text-ink;
-  }
-
-  .rail-primary-btn {
-    @apply h-[46px] w-full justify-start gap-3.5 rounded-xl px-3.5 text-white;
-  }
-
-  .rail-primary-btn .rail-label {
-    @apply pointer-events-auto visible static translate-x-0 translate-y-0 bg-transparent p-0 text-[13.5px] font-medium text-white opacity-100 shadow-none;
-  }
-
-  .rail-register-btn {
-    @apply h-[46px] w-full justify-start gap-3.5 rounded-xl border border-[#cbd8cf] bg-[#eef3f0] px-3.5 text-primary;
-  }
-
-  .rail-register-btn .rail-label {
-    @apply pointer-events-auto visible static translate-x-0 translate-y-0 bg-transparent p-0 text-[13.5px] font-medium text-inherit opacity-100 shadow-none;
-  }
-
-  .rail-register-btn.active {
-    @apply bg-primary text-white;
-  }
-
-  .rail-register-btn.active .rail-label {
-    @apply text-white;
-  }
-
-  .rail-label {
-    @apply pointer-events-auto visible static translate-x-0 translate-y-0 bg-transparent p-0 text-[13.5px] font-medium text-inherit opacity-100 shadow-none;
-  }
-
-  .rail-pill-item:hover .rail-label,
-  .rail-pill-item:focus-visible .rail-label {
-    @apply translate-x-0 translate-y-0;
+    display: none !important;
   }
 }
 
@@ -886,5 +842,22 @@ select {
     transition: none !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+
+/* Rounded-full Navbars matching the floating sidebar pill */
+.topbar {
+  border-radius: 9999px !important;
+}
+
+.mobile-bottom-dock {
+  border-radius: 9999px !important;
+  backdrop-filter: blur(24px) saturate(180%);
+}
+
+@media (max-width: 767px) {
+  .floating-pill-rail {
+    display: none !important;
   }
 }
