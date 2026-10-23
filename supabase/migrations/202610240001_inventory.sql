@@ -1,4 +1,5 @@
 -- Application tables are private. Only the narrow authenticated RPCs below are exposed.
+begin;
 create schema if not exists timber;
 revoke all on schema timber from public, anon, authenticated;
 
@@ -218,3 +219,4 @@ revoke all on all functions in schema timber from public,anon,authenticated;
 revoke all on function public.inventory_identity(), public.inventory_snapshot(), public.inventory_mutate(jsonb,uuid) from public,anon;
 grant execute on function public.inventory_identity(), public.inventory_snapshot(), public.inventory_mutate(jsonb,uuid) to authenticated;
 revoke all on all tables in schema timber from public,anon,authenticated;
+commit;
