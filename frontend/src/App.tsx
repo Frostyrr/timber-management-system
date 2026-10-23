@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, NavLink, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -6,6 +6,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   ScrollText,
+  Users,
   Menu,
   X,
   ArrowUpRight,
@@ -17,28 +18,21 @@ import {
   Clock3,
   CheckCheck,
 } from 'lucide-react'
-import { useDemo } from './demo/context'
-import { visibleIncidents, canInventory, isOverdue } from './demo/model'
+import { useInventory } from './backend/context'
+import { visibleIncidents, canInventory, isOverdue } from './backend/model'
 import { dateText } from './components/format'
 import { Avatar } from './components/layout'
 import { Dashboard } from './pages/Dashboard'
 import { Inventory, Incidents } from './pages/Inventory'
 import { Logs } from './pages/Logs'
+import { Staff } from './pages/Staff'
 import { Login } from './pages/Login'
 import { Settings } from './pages/Settings'
 import { Security } from './pages/Security'
 import './App.css'
 
-const links = [
-  { to: '/', name: 'Overview', icon: LayoutDashboard },
-  { to: '/inventory', name: 'Inventory', icon: Package },
-  { to: '/incidents', name: 'Incident reviews', icon: ShieldAlert },
-  { to: '/logs', name: 'Logs', icon: ScrollText },
-  { to: '/security', name: 'Cybersecurity', icon: ShieldCheck },
-]
-
 export default function App() {
-  const { state, person, warning, notice, mode, signOut } = useDemo()
+  const { state, person, warning, notice, signOut } = useInventory()
   const [menu, setMenu] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -46,6 +40,17 @@ export default function App() {
   const location = useLocation()
   const navigate = useNavigate()
   const manager = canInventory(person)
+
+  const links = [
+    { to: '/', name: 'Overview', icon: LayoutDashboard },
+    { to: '/inventory', name: 'Inventory', icon: Package },
+    { to: '/incidents', name: 'Incident reviews', icon: ShieldAlert },
+    { to: '/logs', name: 'Logs', icon: ScrollText },
+    ...(manager ? [{ to: '/staff', name: 'Staff roster', icon: Users }] : []),
+    { to: '/security', name: 'Cybersecurity', icon: ShieldCheck },
+    { to: '/settings', name: 'Account settings', icon: SettingsIcon },
+  ]
+
   const openIncidentCount = visibleIncidents(state, person).filter((i) => !i.resolved).length
 
   const overdueLoans = state.loans.filter(
@@ -53,6 +58,63 @@ export default function App() {
   )
   const openIncidents = visibleIncidents(state, person).filter((i) => !i.resolved)
   const unreadCount = overdueLoans.length + openIncidents.length
+
+  // Apple macOS Dock Magnification Engine for the floating sidebar
+  const dockRef = useRef<HTMLElement>(null)
+  const itemCentersRef = useRef<{ el: HTMLElement; top: number; height: number }[]>([])
+
+  const updateDockCenters = () => {
+    if (!dockRef.current) return
+    const items = dockRef.current.querySelectorAll<HTMLElement>('.dock-item')
+    itemCentersRef.current = Array.from(items).map((el) => {
+      const rect = el.getBoundingClientRect()
+      return { el, top: rect.top, height: rect.height }
+    })
+  }
+
+  const handleDockMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (!itemCentersRef.current.length) {
+      updateDockCenters()
+    }
+    const mouseY = e.clientY
+    const maxDistance = 130
+    const maxScale = 1.36
+    const maxNudge = 5
+
+    for (const { el, top, height } of itemCentersRef.current) {
+      const centerY = top + height / 2
+      const dist = Math.abs(mouseY - centerY)
+      if (dist < maxDistance) {
+        const factor = Math.cos((dist / maxDistance) * (Math.PI / 2))
+        const scale = 1 + (maxScale - 1) * factor
+        const direction = centerY < mouseY ? -1 : 1
+        const nudge = direction * maxNudge * Math.sin((dist / maxDistance) * Math.PI)
+        el.style.setProperty('--dock-scale', scale.toFixed(3))
+        el.style.setProperty('--dock-nudge', `${nudge.toFixed(1)}px`)
+      } else {
+        el.style.setProperty('--dock-scale', '1')
+        el.style.setProperty('--dock-nudge', '0px')
+      }
+    }
+  }
+
+  const handleDockMouseLeave = () => {
+    itemCentersRef.current = []
+    if (!dockRef.current) return
+    const items = dockRef.current.querySelectorAll<HTMLElement>('.dock-item')
+    items.forEach((el) => {
+      el.style.setProperty('--dock-scale', '1')
+      el.style.setProperty('--dock-nudge', '0px')
+    })
+  }
+
+  useEffect(() => {
+    const onResize = () => {
+      itemCentersRef.current = []
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const isLoginPage = location.pathname === '/login'
 
@@ -77,7 +139,7 @@ export default function App() {
 
       <div className="app-canvas mx-auto flex min-h-screen w-full max-w-[1400px] flex-col px-3 sm:px-6 lg:px-10">
         {/* Sleek Floating Top Header with matching pill border radius */}
-        <header className="topbar sticky top-3.5 z-30 mb-6 flex items-center justify-between gap-2.5 rounded-full border border-white/85 bg-white/80 px-4 py-2 shadow-[0_4px_16px_rgba(21,63,50,0.06)] backdrop-blur-xl sm:top-4 sm:mb-8 sm:gap-3 sm:px-5 sm:py-2.5 lg:top-5 lg:mb-9">
+        <header className={`topbar sticky top-3.5 ${notificationsOpen || profileDropdownOpen ? 'z-[100000]' : 'z-30'} mb-6 flex items-center justify-between gap-2.5 rounded-full border border-white/85 bg-white/80 px-4 py-2 shadow-[0_4px_16px_rgba(21,63,50,0.06)] backdrop-blur-xl sm:top-4 sm:mb-8 sm:gap-3 sm:px-5 sm:py-2.5 lg:top-5 lg:mb-9`}>
           {/* Brand Identity */}
           <div className="topbar-left flex items-center gap-2.5 sm:gap-3">
             <Link
@@ -122,11 +184,11 @@ export default function App() {
               {notificationsOpen && (
                 <>
                   <div
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 z-[99998]"
                     aria-hidden="true"
                     onClick={() => setNotificationsOpen(false)}
                   />
-                  <div className="notification-dropdown-menu">
+                  <div className="notification-dropdown-menu" style={{ zIndex: 99999 }}>
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -167,7 +229,7 @@ export default function App() {
                                 <span className="text-[10.5px] font-medium text-warning-text">Overdue</span>
                               </div>
                               <p className="mt-0.5 text-xs text-muted-ink">
-                                <strong>{item?.name}</strong> was due on {dateText(l.due)}{borrower ? ` (${borrower.name})` : ''}.
+                                <strong>{item?.name}</strong> was due on {dateText(l.due)}{borrower ? ` (${borrower.name}${borrower.title ? ` — ${borrower.title}` : ''})` : ''}.
                               </p>
                             </div>
                           </Link>
@@ -242,26 +304,29 @@ export default function App() {
               {profileDropdownOpen && (
                 <>
                   <div
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 z-[99998]"
                     aria-hidden="true"
                     onClick={() => setProfileDropdownOpen(false)}
                   />
-                  <div className="profile-dropdown-menu">
-                    <div className="border-b border-line-subtle px-3 py-2.5">
-                      <div className="flex items-center gap-2.5">
+                  <div className="profile-dropdown-menu" style={{ zIndex: 99999 }}>
+                    <div className="border-b border-line-subtle px-4 py-3.5">
+                      <div className="flex items-center gap-3">
                         <Avatar name={person.name} />
                         <div className="min-w-0 flex-1">
-                          <strong className="block truncate text-[13px] font-medium text-ink">
+                          <strong className="block truncate text-[13.5px] font-semibold text-ink leading-tight">
                             {person.name}
                           </strong>
-                          <span className="block truncate text-[11px] text-muted-ink">
+                          <span className="block truncate text-[11px] text-muted-ink mt-0.5">
                             {person.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@timber.publication.edu
                           </span>
                         </div>
                       </div>
-                      <div className="mt-2 flex items-center gap-1.5 text-[10.5px] font-medium text-supporting">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span>{person.role}</span>
+                      <div className="mt-4 flex items-center justify-between border-t border-line-subtle/80 pt-2.5">
+                        <span className="text-[10.5px] font-medium text-muted-ink">System Role</span>
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-primary border border-emerald-200/60 shadow-2xs">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          <span>{person.role}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -285,7 +350,7 @@ export default function App() {
                           setProfileDropdownOpen(false)
                           if (signOut) void signOut(); else navigate('/login')
                         }}
-                        className="dropdown-item danger"
+                        className="dropdown-item text-muted-ink hover:text-ink hover:bg-surface"
                       >
                         <LogOut size={15} />
                         <span>Log out</span>
@@ -298,7 +363,6 @@ export default function App() {
           </div>
         </header>
 
-        {mode !== 'live' && <div className="mb-4 rounded-xl bg-pale px-4 py-2 text-sm" role="status">Demo — sample data stored in this browser. Persona switching is not authorization.</div>}
         {warning && (
           <div role="alert" className="warning mb-4">
             {warning}
@@ -309,13 +373,17 @@ export default function App() {
         <div className="workspace-body flex min-w-0 flex-1 items-start md:pl-[84px] lg:pl-[96px]">
           {/* Creative Floating Glassmorphic Pill Sidebar Dock (Desktop only) */}
           <aside
+            ref={dockRef}
+            onMouseEnter={updateDockCenters}
+            onMouseMove={handleDockMouseMove}
+            onMouseLeave={handleDockMouseLeave}
             className="floating-pill-rail hidden md:flex"
             aria-label="Workspace navigation"
           >
-            <div className="pill-rail-inner flex flex-col items-center gap-3.5 py-2 px-1">
+            <div className="pill-rail-inner flex flex-col items-center py-1">
               <nav
                 aria-label="Main navigation"
-                className="rail-links flex w-full flex-col items-center gap-2"
+                className="rail-links flex w-full flex-col items-center gap-3"
               >
                 {/* Primary Action Buttons at the very top of Sidebar: Use equipment & Register equipment */}
                 {manager && (
@@ -323,7 +391,7 @@ export default function App() {
                     <Link
                       to="/inventory?action=release"
                       aria-label="Use equipment"
-                      className={`rail-primary-btn ${location.pathname === '/inventory' && location.search.includes('action=release') ? 'active' : ''}`}
+                      className={`dock-item rail-primary-btn ${location.pathname === '/inventory' && location.search.includes('action=release') ? 'active' : ''}`}
                     >
                       <span className="relative inline-flex items-center justify-center">
                         <ArrowUpRight size={19} className="text-white" />
@@ -333,14 +401,14 @@ export default function App() {
                     <Link
                       to="/inventory?action=register"
                       aria-label="Register equipment"
-                      className={`rail-register-btn ${location.pathname === '/inventory' && location.search.includes('action=register') ? 'active' : ''}`}
+                      className={`dock-item rail-register-btn ${location.pathname === '/inventory' && location.search.includes('action=register') ? 'active' : ''}`}
                     >
                       <span className="relative inline-flex items-center justify-center">
                         <Plus size={19} />
                       </span>
                       <span className="rail-label">Register equipment</span>
                     </Link>
-                    <div className="my-1 h-px w-6 bg-line" aria-hidden="true" />
+                    <div className="my-1.5 h-px w-6 bg-line-subtle" aria-hidden="true" />
                   </>
                 )}
                 {links.map(({ to, name, icon: Icon }) => {
@@ -352,7 +420,7 @@ export default function App() {
                       to={to}
                       aria-label={name}
                       className={({ isActive }) =>
-                        `rail-pill-item ${isActive ? 'active' : ''}`
+                        `dock-item rail-pill-item ${isActive ? 'active' : ''}`
                       }
                     >
                       <span className="relative inline-flex items-center justify-center">
@@ -377,7 +445,12 @@ export default function App() {
           {/* Page Main Content with bottom padding for mobile dock */}
           <main id="main" className="workspace-main flex min-w-0 flex-1 flex-col pb-24 md:pb-12">
             <div className="notice" role="status" aria-live="polite">
-              {notice}
+              {notice ? (
+                <span className="flex items-center gap-2">
+                  <CheckCheck size={16} className="shrink-0 text-primary" />
+                  <span>{notice}</span>
+                </span>
+              ) : null}
             </div>
             <div key={person.id} className="page-content mx-auto w-full max-w-[1400px] flex-1">
               <Routes>
@@ -385,6 +458,7 @@ export default function App() {
                 <Route path="/inventory" element={<Inventory key={location.search} />} />
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/logs" element={<Logs />} />
+                <Route path="/staff" element={<Staff />} />
                 <Route path="/security" element={<Security />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/login" element={<Login />} />
@@ -498,21 +572,6 @@ export default function App() {
                     </Link>
                   )
                 })}
-
-                <Link
-                  to="/settings"
-                  onClick={() => setMenu(false)}
-                  className={`flex min-h-[48px] items-center gap-3 rounded-2xl px-4 text-[14px] font-medium transition-all ${
-                    location.pathname === '/settings'
-                      ? 'border border-primary/30 bg-pale text-primary font-semibold'
-                      : 'text-ink hover:bg-surface'
-                  }`}
-                >
-                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${location.pathname === '/settings' ? 'bg-primary text-white' : 'bg-surface text-muted-ink'}`}>
-                    <SettingsIcon size={17} />
-                  </span>
-                  <span>Account settings</span>
-                </Link>
               </nav>
 
               {/* User Profile & Logout Footer */}
@@ -525,15 +584,18 @@ export default function App() {
                   </div>
                 </div>
 
-                <Link
-                  to="/login"
-                  onClick={() => setMenu(false)}
-                  className="flex h-9 items-center gap-1.5 rounded-xl border border-danger-border bg-danger-bg px-3 text-xs font-medium text-danger-text hover:bg-danger-bg/80 active:scale-95 transition-all"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenu(false)
+                    if (signOut) void signOut(); else navigate('/login')
+                  }}
+                  className="flex h-9 items-center gap-1.5 rounded-xl border border-line-subtle bg-white/80 px-3 text-xs font-medium text-muted-ink hover:border-line hover:bg-surface hover:text-ink active:scale-95 transition-all cursor-pointer"
                   aria-label="Log out"
                 >
                   <LogOut size={14} />
                   <span>Log out</span>
-                </Link>
+                </button>
               </div>
             </div>
           </div>

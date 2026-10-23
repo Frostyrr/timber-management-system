@@ -1,13 +1,10 @@
-import { useContext, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { RefreshCw, AlertCircle } from 'lucide-react'
-import { client, demoMode } from '../backend/client'
-import { DemoContext } from '../demo/context'
+import { client } from '../backend/client'
 import { GoogleIcon } from '../components/auth'
 
 export function Login({ checkingSession = false }: { checkingSession?: boolean }) {
-  const demo = useContext(DemoContext)
-  const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -15,19 +12,14 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
     setError('')
     setBusy(true)
     try {
-      if (client && !demoMode) {
+      if (client) {
         const { error: failure } = await client.auth.signInWithOAuth({
           provider: 'google',
           options: { redirectTo: `${window.location.origin}/auth/callback` },
         })
         if (failure) throw failure
       } else {
-        // Instant simulated Google OAuth entry
-        setTimeout(() => {
-          setBusy(false)
-          demo?.switchPerson(demo?.person?.id || 'admin')
-          navigate('/')
-        }, 400)
+        throw Error('Sign-in is not configured. Contact the publication administrator.')
       }
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Unable to connect to Google Workspace. Please try again.')
@@ -85,19 +77,6 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
           <p className="text-[11.5px] text-muted-ink">
             Use your authorized student publication Google account
           </p>
-
-          <div className="pt-2 border-t border-line-subtle">
-            <button
-              type="button"
-              onClick={() => {
-                localStorage.setItem('timber_demo_override', 'true')
-                window.location.href = '/'
-              }}
-              className="text-[12px] font-medium text-primary hover:text-forest-deep transition-colors"
-            >
-              Explore sample demo workspace &rarr;
-            </button>
-          </div>
         </div>
       </div>
     </div>

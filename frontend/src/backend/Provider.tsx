@@ -1,16 +1,78 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { DemoProvider } from '../demo/Provider'
-import { DemoContext } from '../demo/context'
-import { type Action, type Profile, type State } from '../demo/model'
-import { client, demoMode, identity, mutate, snapshot } from './client'
+import { InventoryContext } from '../backend/context'
+import { type Action, type Profile, type State } from '../backend/model'
+import { client, identity, mutate, snapshot } from './client'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Login } from '../pages/Login'
 
+function getActionSuccessMessage(action: Action, state: State | null): string {
+  switch (action.type) {
+    case 'checkout': {
+      const item = state?.items.find((i) => i.id === action.itemId)
+      return item
+        ? `Equipment release for ${item.name} recorded successfully.`
+        : 'Equipment release recorded successfully.'
+    }
+    case 'return': {
+      const loan = state?.loans.find((l) => l.id === action.loanId)
+      const item = loan ? state?.items.find((i) => i.id === loan.itemId) : null
+      return item
+        ? `Equipment return for ${item.name} recorded successfully.`
+        : 'Equipment return recorded successfully.'
+    }
+    case 'item': {
+      const isExisting = state?.items.some((i) => i.id === action.item.id)
+      return isExisting
+        ? `Equipment details for ${action.item.name} updated successfully.`
+        : `New equipment "${action.item.name}" registered successfully.`
+    }
+    case 'incident': {
+      const item = state?.items.find((i) => i.id === action.itemId)
+      return item
+        ? `Incident report for ${item.name} submitted for review.`
+        : 'Incident report submitted for review.'
+    }
+    case 'resolve': {
+      const inc = state?.incidents.find((i) => i.id === action.id)
+      const item = inc ? state?.items.find((i) => i.id === inc.itemId) : null
+      return item
+        ? `Incident review for ${item.name} resolved successfully.`
+        : 'Incident review resolved successfully.'
+    }
+    case 'archive': {
+      const item = state?.items.find((i) => i.id === action.itemId)
+      return item
+        ? `Equipment "${item.name}" decommissioned successfully.`
+        : 'Equipment decommissioned successfully.'
+    }
+    case 'correct': {
+      return 'Loan schedule and details updated successfully.'
+    }
+    case 'membership': {
+      const target = state?.profiles.find((p) => p.id === action.id)
+      return target
+        ? `Access permissions for ${target.name} updated successfully.`
+        : 'Member access permissions updated successfully.'
+    }
+    case 'update-profile': {
+      const target = state?.profiles.find((p) => p.id === action.id)
+      return target
+        ? `Staff details for ${target.name} updated successfully.`
+        : 'Staff details updated successfully.'
+    }
+    case 'delete-profile': {
+      const target = state?.profiles.find((p) => p.id === action.id)
+      return target
+        ? `Access for ${target.name} suspended successfully.`
+        : 'Staff access suspended successfully.'
+    }
+    default:
+      return 'Changes saved successfully.'
+  }
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
-  const isDemo =
-    demoMode ||
-    (typeof window !== 'undefined' && localStorage.getItem('timber_demo_override') === 'true')
-  return isDemo ? <DemoProvider>{children}</DemoProvider> : <LiveProvider>{children}</LiveProvider>
+  return <LiveProvider>{children}</LiveProvider>
 }
 function LiveProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
@@ -22,6 +84,14 @@ function LiveProvider({ children }: { children: ReactNode }) {
   const [signedIn, setSignedIn] = useState(false)
   const generation = useRef(0)
   const pending = useRef(new Map<string, string>())
+  const noticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimeout.current) clearTimeout(noticeTimeout.current)
+    }
+  }, [])
+
   const refresh = async () => {
     const token = generation.current
     try {
@@ -69,26 +139,49 @@ function LiveProvider({ children }: { children: ReactNode }) {
     await mutate(action, requestId)
     pending.current.delete(payload)
     if (token !== generation.current) return
-    setNotice('Saved to Supabase. The server recorded the change in audit history.')
+    const msg = getActionSuccessMessage(action, state)
+    setNotice(msg)
+    if (noticeTimeout.current) clearTimeout(noticeTimeout.current)
+    noticeTimeout.current = setTimeout(() => setNotice(''), 6000)
     await refresh()
   }
+  if (loading) return <div className="app-backdrop min-h-screen bg-workspace" />
+
   if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
-  if (state && person) return <DemoContext.Provider value={{ state, person, act, mode: 'live', refresh, signOut,
-    switchPerson: () => { throw Error('Persona switching is available only in demo mode.') }, reset: () => { throw Error('Live records cannot be reset.') }, warning: error, notice }}>{children}</DemoContext.Provider>
+  if (state && person) return <InventoryContext.Provider value={{ state, person, act, mode: 'live', refresh, signOut,
+    warning: error, notice }}>{children}</InventoryContext.Provider>
   if (!signedIn) return <>
-    {!loading && location.pathname !== '/login' && <Navigate to="/login" replace />}
-    <main className="min-h-screen bg-workspace flex items-center justify-center p-6"><Login checkingSession={loading} /></main>
+    {location.pathname !== '/login' && <Navigate to="/login" replace />}
+    <main className="min-h-screen bg-workspace flex items-center justify-center p-4"><Login checkingSession={false} /></main>
   </>
-  return <main className="min-h-screen bg-workspace flex items-center justify-center p-6"><section className="bg-white rounded-3xl p-8 max-w-lg space-y-5 shadow-lg">
-    <img src="/logo.png" alt="Timber publication" className="h-14" />
-    <h1 className="text-2xl font-semibold">Timber inventory</h1>
-    {!client ? <p>Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in frontend/.env.local, then restart the development server. For fictional sample records only, set VITE_APP_MODE=demo.</p>
-      : loading ? <p role="status">Loading your membership…</p>
-      : signedIn ? <><p>{person?.status === 'suspended' ? 'Your access is suspended. Contact a publication administrator.' : 'Your account needs approval from a publication administrator.'}</p><button className="secondary" onClick={() => void refresh()}>Check access again</button><button className="secondary" onClick={() => void signOut()}>Sign out</button></>
-      : <><p>Sign in with Google. New accounts require administrator approval before accessing inventory.</p><button className="primary" onClick={async () => {
-        const { error: failure } = await client!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })
-        if (failure) setError(failure.message)
-      }}>Continue with Google</button></>}
-    {error && <p role="alert">{error}</p>}
-  </section></main>
+  return <main className="min-h-screen bg-workspace flex items-center justify-center p-4">
+    <div className="w-full max-w-[440px] rounded-[32px] border border-white/90 bg-white/85 p-8 shadow-[0_24px_64px_rgba(21,63,50,0.12)] backdrop-blur-2xl text-center animate-enter">
+      <img src="/logo.png" alt="The Timberland logo" className="h-16 w-auto mx-auto mb-4 object-contain" />
+      <h1 className="text-[24px] font-semibold tracking-[-0.03em] text-ink">
+        {person?.status === 'suspended' ? 'Access Suspended' : 'Membership Approval Required'}
+      </h1>
+      <p className="mt-2 text-[13px] leading-relaxed text-muted-ink">
+        {person?.status === 'suspended'
+          ? 'Your publication equipment access has been suspended. Please contact the administrator.'
+          : 'Your Google account has been authenticated, but requires role authorization from a publication administrator.'}
+      </p>
+      <div className="mt-6 flex flex-col gap-2.5">
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-[13px] font-medium text-white shadow-sm transition hover:bg-forest-deep"
+        >
+          Check access status
+        </button>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-line-subtle bg-white px-4 py-2.5 text-[13px] font-medium text-muted-ink transition hover:text-ink hover:bg-surface"
+        >
+          Sign out
+        </button>
+      </div>
+      {error && <p className="mt-4 text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200" role="alert">{error}</p>}
+    </div>
+  </main>
 }

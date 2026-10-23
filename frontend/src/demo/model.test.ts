@@ -8,6 +8,7 @@ import {
   STORAGE_KEY,
   LEGACY_STORAGE_KEY,
   visibleIncidents,
+  formatEventDetails,
 } from './model'
 const due = () => new Date(Date.now() + 86400000).toISOString()
 describe('equipment workflows', () => {
@@ -79,6 +80,40 @@ describe('equipment workflows', () => {
     expect(() =>
       transition(s, 'admin', { type: 'item', item: { ...s.items[1], tag: s.items[0].tag } }),
     ).toThrow('tag')
+  })
+  it('supports deleting equipment and deleting profiles with permission and constraint checks', () => {
+    let s = seed()
+    // Deleting equipment out on loan should throw
+    expect(() =>
+      transition(s, 'admin', { type: 'archive', itemId: 'i0', reason: 'Decommissioned' }),
+    ).toThrow('out on loan')
+
+    // Deleting available equipment should succeed
+    const initialItemCount = s.items.length
+    s = transition(s, 'admin', { type: 'archive', itemId: 'i1', reason: 'Sold' })
+    expect(s.items).toHaveLength(initialItemCount - 1)
+    expect(s.items.some((i) => i.id === 'i1')).toBe(false)
+
+    // Unauthorized staff cannot delete equipment
+    expect(() =>
+      transition(s, 'staff', { type: 'archive', itemId: 'i2', reason: 'Decommissioned' }),
+    ).toThrow('custodians and administrators')
+
+    // Administrator deleting another profile
+    const initialProfileCount = s.profiles.length
+    s = transition(s, 'admin', { type: 'delete-profile', id: 'p8', reason: 'Departed' })
+    expect(s.profiles).toHaveLength(initialProfileCount - 1)
+    expect(s.profiles.some((p) => p.id === 'p8')).toBe(false)
+
+    // Cannot delete own admin account
+    expect(() =>
+      transition(s, 'admin', { type: 'delete-profile', id: 'admin', reason: 'Self' }),
+    ).toThrow('cannot delete your own')
+
+    // Cannot delete profile with active unreturned loans
+    expect(() =>
+      transition(s, 'admin', { type: 'delete-profile', id: 'staff', reason: 'Loan open' }),
+    ).toThrow('active equipment loans')
   })
 })
 describe('browser persistence and reset', () => {
@@ -222,5 +257,61 @@ describe('inventory migration and scoped incidents', () => {
       condition: 'Good',
     })
     expect(available(s, 'i1')).toBe(false)
+  })
+
+  it('translates technical database action keys into user-friendly editorial log descriptions', () => {
+    const s = seed()
+    const releaseInsertEvent = {
+      id: 'e1',
+      actor: 'admin',
+      at: new Date().toISOString(),
+      text: 'releases.insert',
+      action: 'releases.insert',
+      entityId: 'i0',
+      subjectId: 'staff',
+      after: { purpose: 'UAAP Basketball Coverage' },
+    }
+    expect(formatEventDetails(releaseInsertEvent, s)).toBe(
+      'Released Canon EOS 80D to Christian Punay for UAAP Basketball Coverage',
+    )
+
+    const releaseUpdateReturnEvent = {
+      id: 'e2',
+      actor: 'custodian',
+      at: new Date().toISOString(),
+      text: 'releases.update',
+      action: 'releases.update',
+      entityId: 'i0',
+      after: { returned_at: new Date().toISOString(), condition_after: 'Good' },
+    }
+    expect(formatEventDetails(releaseUpdateReturnEvent, s)).toBe(
+      'Recorded return for Canon EOS 80D (Good condition)',
+    )
+
+    const itemUpdateConditionEvent = {
+      id: 'e3',
+      actor: 'admin',
+      at: new Date().toISOString(),
+      text: 'items.update',
+      action: 'items.update',
+      entityId: 'i0',
+      before: { condition: 'Good' },
+      after: { condition: 'Fair' },
+    }
+    expect(formatEventDetails(itemUpdateConditionEvent, s)).toBe(
+      'Updated condition of Canon EOS 80D (Good → Fair)',
+    )
+
+    const itemUpdateGeneralEvent = {
+      id: 'e4',
+      actor: 'admin',
+      at: new Date().toISOString(),
+      text: 'items.update',
+      action: 'items.update',
+      entityId: 'i0',
+    }
+    expect(formatEventDetails(itemUpdateGeneralEvent, s)).toBe(
+      'Updated equipment details for Canon EOS 80D',
+    )
   })
 })

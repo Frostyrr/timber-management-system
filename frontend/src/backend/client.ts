@@ -1,10 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
-import { profileSchema, stateSchema } from '../demo/model'
+import { profileSchema, stateSchema } from './model'
 
-export const demoMode = import.meta.env.VITE_APP_MODE === 'demo'
 const url = import.meta.env.VITE_SUPABASE_URL
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-export const client = !demoMode && url?.startsWith('https://') && key && !key.includes('REPLACE_ME') && !url.includes('YOUR_PROJECT')
+export const client = url?.startsWith('https://') && key && !key.includes('REPLACE_ME') && !url.includes('YOUR_PROJECT')
   ? createClient(url, key, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
   : null
 export async function identity() {

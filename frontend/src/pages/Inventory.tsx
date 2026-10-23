@@ -2,8 +2,8 @@ import { releaseDetailsSchema, USE_TYPES, type UseType } from '../demo/release'
 import { value, dateText, tomorrow, categoryClass } from '../components/format'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Plus, Search, Package, ShieldAlert, ArrowUpRight, Clock3, RefreshCw, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
-import { useDemo } from '../demo/context'
+import { Plus, Search, Package, ShieldAlert, ArrowUpRight, RefreshCw, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Trash2, History, Pencil, Clock3, X } from 'lucide-react'
+import { useInventory } from '../backend/context'
 import {
   borrowerName,
   canInventory,
@@ -11,46 +11,44 @@ import {
   isOverdue,
   uid,
   visibleIncidents,
+  formatEventDetails,
   type Item,
-} from '../demo/model'
+} from '../backend/model'
 import { Heading, Avatar } from '../components/layout'
-import { Badge, Empty, Modal, Field, TableSkeleton, Pagination, Select } from '../components/ui'
+import { Badge, Empty, Modal, Field, Pagination, Select, ActionMenu } from '../components/ui'
 
 function getScheduleSummary(iso: string) {
   const targetTime = Date.parse(iso)
   if (!Number.isFinite(targetTime)) return { dateStr: 'Invalid date', duration: '' }
-  const diffHours = Math.round((targetTime - Date.now()) / 3600000)
-  const diffDays = Math.round(diffHours / 24)
-  const duration = diffHours < 24 ? `${diffHours} hours from now` : `${diffDays} days from now`
+  const now = new Date()
+  const diffDays = Math.ceil((targetTime - now.getTime()) / 86400000)
+  const duration = diffDays <= 0 ? 'Today' : diffDays === 1 ? '1 day from now' : `${diffDays} days from now`
   const dateStr = new Date(targetTime).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
   })
   return { dateStr, duration }
 }
 
 function parseIsoDate(iso: string) {
-  const [dPart = '2026-10-25', tPart = '17:00'] = iso.split('T')
+  const [dPart = '2026-10-25'] = iso.split('T')
   const [yStr = '2026', mStr = '10', dStr = '25'] = dPart.split('-')
-  const [hStr = '17', minStr = '00'] = tPart.split(':')
   return {
     year: Number(yStr) || 2026,
     month: Math.max(0, (Number(mStr) || 10) - 1),
     day: Number(dStr) || 25,
-    hour: Number(hStr) || 17,
-    minute: Number(minStr) || 0,
   }
 }
 
-function CustomDateTimePicker({
+function CustomDatePickerModal({
   value,
   onChange,
+  onClose,
 }: {
   value: string
   onChange: (iso: string) => void
+  onClose: () => void
 }) {
   const parsed = parseIsoDate(value)
   const [navMonth, setNavMonth] = useState<{ year: number; month: number } | null>(null)
@@ -63,8 +61,8 @@ function CustomDateTimePicker({
 
   const pad = (n: number) => String(n).padStart(2, '0')
 
-  const emit = (year: number, month: number, day: number, hour24: number, minute: number) => {
-    const iso = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hour24)}:${pad(minute)}`
+  const emit = (year: number, month: number, day: number) => {
+    const iso = `${year}-${pad(month + 1)}-${pad(day)}T18:00`
     onChange(iso)
   }
 
@@ -93,104 +91,117 @@ function CustomDateTimePicker({
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
   const blanks = Array.from({ length: firstDayOfWeek }, (_, i) => i)
 
-  const period: 'AM' | 'PM' = parsed.hour >= 12 ? 'PM' : 'AM'
-  const hour12 = parsed.hour % 12 === 0 ? 12 : parsed.hour % 12
-
-  const setHour12 = (h: number) => {
-    const clamped = Math.max(1, Math.min(12, h))
-    const h24 = period === 'AM' ? (clamped === 12 ? 0 : clamped) : (clamped === 12 ? 12 : clamped + 12)
-    emit(parsed.year, parsed.month, parsed.day, h24, parsed.minute)
-  }
-
-  const setMinute = (m: number) => {
-    const clamped = Math.max(0, Math.min(59, m))
-    emit(parsed.year, parsed.month, parsed.day, parsed.hour, clamped)
-  }
-
-  const setPeriod = (p: 'AM' | 'PM') => {
-    const h24 = p === 'AM' ? (hour12 === 12 ? 0 : hour12) : (hour12 === 12 ? 12 : hour12 + 12)
-    emit(parsed.year, parsed.month, parsed.day, h24, parsed.minute)
-  }
-
-  const quickTimes = [
-    { label: '9:00 AM', h: 9, m: 0 },
-    { label: '12:00 PM', h: 12, m: 0 },
-    { label: '5:00 PM', h: 17, m: 0 },
-    { label: '8:00 PM', h: 20, m: 0 },
-  ]
-
   return (
-    <div className="custom-datetime-picker mt-2 flex flex-col gap-3 rounded-2xl border border-line-subtle bg-white/95 p-3.5 shadow-[0_8px_24px_rgba(21,63,50,0.06)] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-      <div className="flex items-center justify-between border-b border-line-subtle pb-2.5">
-        <div className="flex items-center gap-2 text-xs font-medium text-ink">
-          <CalendarIcon size={14} className="text-primary" />
-          <span>Interactive Calendar & Time</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-ink">
-          <button
-            type="button"
-            className="hover:text-primary hover:underline font-medium"
-            onClick={() => {
-              const now = new Date()
-              setNavMonth({ year: now.getFullYear(), month: now.getMonth() })
-              emit(now.getFullYear(), now.getMonth(), now.getDate(), parsed.hour, parsed.minute)
-            }}
-          >
-            Today
-          </button>
-          <span>·</span>
-          <button
-            type="button"
-            className="hover:text-primary hover:underline font-medium"
-            onClick={() => {
-              const tmrw = new Date(Date.now() + 86400000)
-              setNavMonth({ year: tmrw.getFullYear(), month: tmrw.getMonth() })
-              emit(tmrw.getFullYear(), tmrw.getMonth(), tmrw.getDate(), parsed.hour, parsed.minute)
-            }}
-          >
-            Tomorrow
-          </button>
-        </div>
-      </div>
+    <div
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-4 animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Interactive calendar date picker"
+    >
+      {/* Click-outside backdrop */}
+      <div
+        className="fixed inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity"
+        aria-hidden="true"
+        onClick={onClose}
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.25fr_1fr]">
-        {/* Left: Calendar Month */}
-        <div className="calendar-pane flex flex-col gap-2 sm:border-r sm:border-line-subtle sm:pr-3.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[12.5px] font-semibold text-ink">
+      {/* Pop-up Card */}
+      <div className="relative z-10 w-full max-w-[360px] rounded-3xl border border-white/95 bg-white p-5 shadow-[0_24px_64px_rgba(21,63,50,0.28)] backdrop-blur-2xl ring-1 ring-black/5 animate-enter">
+        <div className="flex items-center justify-between border-b border-line-subtle pb-3">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-ink">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-pale text-primary">
+              <CalendarIcon size={15} />
+            </span>
+            <span>Select Return Deadline</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-ink hover:bg-surface hover:text-ink transition-colors cursor-pointer"
+            aria-label="Close calendar"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between text-xs text-muted-ink">
+          <span>Quick jump:</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="font-medium text-primary hover:underline cursor-pointer"
+              onClick={() => {
+                const now = new Date()
+                setNavMonth({ year: now.getFullYear(), month: now.getMonth() })
+                emit(now.getFullYear(), now.getMonth(), now.getDate())
+              }}
+            >
+              Today
+            </button>
+            <span>·</span>
+            <button
+              type="button"
+              className="font-medium text-primary hover:underline cursor-pointer"
+              onClick={() => {
+                const tmrw = new Date(Date.now() + 86400000)
+                setNavMonth({ year: tmrw.getFullYear(), month: tmrw.getMonth() })
+                emit(tmrw.getFullYear(), tmrw.getMonth(), tmrw.getDate())
+              }}
+            >
+              Tomorrow
+            </button>
+            <span>·</span>
+            <button
+              type="button"
+              className="font-medium text-primary hover:underline cursor-pointer"
+              onClick={() => {
+                const wk = new Date(Date.now() + 7 * 86400000)
+                setNavMonth({ year: wk.getFullYear(), month: wk.getMonth() })
+                emit(wk.getFullYear(), wk.getMonth(), wk.getDate())
+              }}
+            >
+              +7 Days
+            </button>
+          </div>
+        </div>
+
+        {/* Calendar Month Header & Grid */}
+        <div className="calendar-pane mt-3 flex flex-col gap-2.5 w-full">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[13.5px] font-semibold text-ink">
               {monthNames[viewMonth.month]} {viewMonth.year}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={prevMonth}
-                className="flex h-6 w-6 items-center justify-center rounded-lg border border-line-subtle bg-surface text-muted-ink transition-colors hover:border-line hover:bg-canvas hover:text-ink"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-line-subtle bg-surface text-muted-ink transition-colors hover:border-line hover:bg-canvas hover:text-ink cursor-pointer"
                 aria-label="Previous month"
               >
-                <ChevronLeft size={13} />
+                <ChevronLeft size={14} />
               </button>
               <button
                 type="button"
                 onClick={nextMonth}
-                className="flex h-6 w-6 items-center justify-center rounded-lg border border-line-subtle bg-surface text-muted-ink transition-colors hover:border-line hover:bg-canvas hover:text-ink"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-line-subtle bg-surface text-muted-ink transition-colors hover:border-line hover:bg-canvas hover:text-ink cursor-pointer"
                 aria-label="Next month"
               >
-                <ChevronRight size={13} />
+                <ChevronRight size={14} />
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center">
+          <div className="grid grid-cols-7 gap-1 text-center py-1">
             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-              <span key={d} className="text-[10px] font-medium text-muted-ink">
+              <span key={d} className="text-[11px] font-medium text-muted-ink">
                 {d}
               </span>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-1 place-items-center">
             {blanks.map((b) => (
-              <div key={`blank-${b}`} className="h-7 w-7 sm:h-7.5 sm:w-7.5" />
+              <div key={`blank-${b}`} className="h-8 w-8 sm:h-9 sm:w-9" />
             ))}
             {days.map((day) => {
               const dateObj = new Date(viewMonth.year, viewMonth.month, day)
@@ -210,10 +221,10 @@ function CustomDateTimePicker({
                   type="button"
                   key={day}
                   disabled={isPast}
-                  onClick={() => emit(viewMonth.year, viewMonth.month, day, parsed.hour, parsed.minute)}
-                  className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-medium transition-all duration-150 sm:h-7.5 sm:w-7.5 ${
+                  onClick={() => emit(viewMonth.year, viewMonth.month, day)}
+                  className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
                     isSelected
-                      ? 'bg-primary text-white shadow-[0_2px_8px_rgba(21,63,50,0.35)] scale-105'
+                      ? 'bg-primary text-white shadow-[0_2px_8px_rgba(21,63,50,0.35)] scale-105 font-semibold'
                       : isPast
                         ? 'text-slate-300 cursor-not-allowed'
                         : isTodayDate
@@ -230,94 +241,15 @@ function CustomDateTimePicker({
           </div>
         </div>
 
-        {/* Right: Time Controls */}
-        <div className="time-pane flex flex-col justify-between gap-3">
-          <div>
-            <span className="mb-1.5 block text-[11px] font-medium tracking-[0.03em] text-muted-ink uppercase">
-              Deadline Time
-            </span>
-
-            {/* Time Controls: Hour, Minute, AM/PM */}
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center rounded-xl border border-line-subtle bg-surface px-2 py-1 focus-within:border-primary focus-within:bg-canvas">
-                <input
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={hour12}
-                  onChange={(e) => setHour12(Number(e.target.value))}
-                  aria-label="Hour"
-                  className="w-7 border-0 bg-transparent text-center font-mono text-xs font-semibold text-ink focus:outline-none"
-                />
-                <span className="font-mono text-xs text-muted-ink">:</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={pad(parsed.minute)}
-                  onChange={(e) => setMinute(Number(e.target.value))}
-                  aria-label="Minute"
-                  className="w-7 border-0 bg-transparent text-center font-mono text-xs font-semibold text-ink focus:outline-none"
-                />
-              </div>
-
-              {/* AM / PM Segmented Control */}
-              <div className="flex rounded-xl border border-line-subtle bg-surface p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setPeriod('AM')}
-                  className={`rounded-lg px-2 py-1 text-xs font-medium transition-all duration-150 ${
-                    period === 'AM'
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-muted-ink hover:text-ink'
-                  }`}
-                >
-                  AM
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPeriod('PM')}
-                  className={`rounded-lg px-2 py-1 text-xs font-medium transition-all duration-150 ${
-                    period === 'PM'
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-muted-ink hover:text-ink'
-                  }`}
-                >
-                  PM
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Time Presets */}
-            <div className="mt-3">
-              <span className="mb-1.5 block text-[10.5px] text-muted-ink">Preset deadlines</span>
-              <div className="grid grid-cols-2 gap-1.5">
-                {quickTimes.map((qt) => {
-                  const isActive =
-                    ((period === 'AM' ? (hour12 === 12 ? 0 : hour12) : (hour12 === 12 ? 12 : hour12 + 12)) === qt.h) &&
-                    parsed.minute === qt.m
-                  return (
-                    <button
-                      type="button"
-                      key={qt.label}
-                      onClick={() => emit(parsed.year, parsed.month, parsed.day, qt.h, qt.m)}
-                      className={`rounded-lg border px-2 py-1 text-center text-[11px] font-medium transition-all duration-150 ${
-                        isActive
-                          ? 'border-primary bg-pale text-primary font-semibold'
-                          : 'border-line-subtle bg-canvas text-ink hover:border-line hover:bg-surface'
-                      }`}
-                    >
-                      {qt.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-primary/20 bg-pale/50 px-2.5 py-1.5 text-center text-[11px] font-medium text-primary">
-            Target: {pad(hour12)}:{pad(parsed.minute)} {period}
-          </div>
+        {/* Footer with confirmation button */}
+        <div className="mt-4 pt-3 border-t border-line-subtle">
+          <button
+            type="button"
+            onClick={onClose}
+            className="primary min-h-[38px] w-full flex items-center justify-center gap-1.5 cursor-pointer text-xs font-semibold"
+          >
+            Confirm date
+          </button>
         </div>
       </div>
     </div>
@@ -328,6 +260,7 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
   const [preset, setPreset] = useState<'today' | 'tomorrow' | 'weekend' | 'week' | 'custom'>('tomorrow')
   const [isoValue, setIsoValue] = useState(() => defaultValue)
   const [summary, setSummary] = useState(() => getScheduleSummary(defaultValue))
+  const [calendarOpen, setCalendarOpen] = useState(false)
 
   const computePreset = (type: 'today' | 'tomorrow' | 'weekend' | 'week') => {
     setPreset(type)
@@ -340,13 +273,13 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
       }
     } else if (type === 'tomorrow') {
       target = new Date(now.getTime() + 24 * 3600000)
-      target.setHours(17, 0, 0, 0)
+      target.setHours(18, 0, 0, 0)
     } else if (type === 'weekend') {
       target = new Date(now.getTime() + 3 * 86400000)
-      target.setHours(17, 0, 0, 0)
+      target.setHours(18, 0, 0, 0)
     } else if (type === 'week') {
       target = new Date(now.getTime() + 7 * 86400000)
-      target.setHours(17, 0, 0, 0)
+      target.setHours(18, 0, 0, 0)
     }
     const tzOffset = target.getTimezoneOffset() * 60000
     const local = new Date(target.getTime() - tzOffset).toISOString().slice(0, 16)
@@ -356,11 +289,12 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
 
   const handleCustomChange = (newIso: string) => {
     setIsoValue(newIso)
+    setPreset('custom')
     setSummary(getScheduleSummary(newIso))
   }
 
   return (
-    <div className="schedule-picker-card">
+    <div className="schedule-picker-card relative z-20">
       <div className="flex items-center justify-between">
         <span className="text-[11.5px] font-medium tracking-[0.03em] text-muted-ink uppercase">
           Quick Return Deadlines
@@ -375,7 +309,7 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
           onClick={() => computePreset('today')}
         >
           <strong>Same Day</strong>
-          <span>End of day · 6 PM</span>
+          <span>Today</span>
         </button>
         <button
           type="button"
@@ -383,7 +317,7 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
           onClick={() => computePreset('tomorrow')}
         >
           <strong>Tomorrow</strong>
-          <span>24h · 5 PM</span>
+          <span>1 Day</span>
         </button>
         <button
           type="button"
@@ -391,7 +325,7 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
           onClick={() => computePreset('weekend')}
         >
           <strong>Weekend</strong>
-          <span>3 Days coverage</span>
+          <span>3 Days</span>
         </button>
         <button
           type="button"
@@ -399,30 +333,31 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
           onClick={() => computePreset('week')}
         >
           <strong>Full Week</strong>
-          <span>7 Days assignment</span>
+          <span>7 Days</span>
         </button>
       </div>
 
       <div className="schedule-summary-badge">
         <div className="flex min-w-0 items-center gap-2">
-          <Clock3 size={15} className="shrink-0" />
+          <CalendarIcon size={15} className="shrink-0 text-primary" />
           <span className="truncate">
             Due: {summary.dateStr} {summary.duration ? `(${summary.duration})` : ''}
           </span>
         </div>
         <button
           type="button"
-          className="shrink-0 text-[11.5px] font-medium text-primary underline hover:text-primary-hover"
-          onClick={() => setPreset((p) => (p === 'custom' ? 'tomorrow' : 'custom'))}
+          className="shrink-0 text-[11.5px] font-medium text-primary underline hover:text-primary-hover cursor-pointer"
+          onClick={() => setCalendarOpen(true)}
         >
-          {preset === 'custom' ? 'Close custom picker' : 'Customize date & time'}
+          {preset === 'custom' ? 'Change custom date' : 'Choose custom date'}
         </button>
       </div>
 
-      {preset === 'custom' && (
-        <CustomDateTimePicker
+      {calendarOpen && (
+        <CustomDatePickerModal
           value={isoValue}
           onChange={handleCustomChange}
+          onClose={() => setCalendarOpen(false)}
         />
       )}
 
@@ -433,7 +368,7 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
 }
 
 export function Inventory() {
-  const { state, person, act, refresh } = useDemo()
+  const { state, person, act, refresh } = useInventory()
   const query = new URLSearchParams(useLocation().search)
   const [useType, setUseType] = useState<UseType>('publication_use')
   const [search, setSearch] = useState('')
@@ -442,7 +377,7 @@ export function Inventory() {
     type: 'item' | 'checkout' | 'return' | 'history'
     id?: string
   } | null>(() => {
-    if (query.get('action') === 'register' && canInventory(person)) return { type: 'item' }
+    if (query.get('action') === 'register' && canInventory(person)) return { type: 'item', id: uid() }
     if (
       (query.get('action') === 'release' || query.get('action') === 'checkout') &&
       canInventory(person)
@@ -460,6 +395,7 @@ export function Inventory() {
   })
 
   const [refreshing, setRefreshing] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Item | null>(null)
   const [page, setPage] = useState(1)
   const pageSize = 10
   const handleRefresh = async () => {
@@ -514,7 +450,7 @@ export function Inventory() {
             <button className="secondary" onClick={() => setModal({ type: 'checkout' })}>
               <ArrowUpRight size={16} /> Release equipment
             </button>
-            <button className="primary" onClick={() => setModal({ type: 'item' })}>
+            <button className="primary" onClick={() => setModal({ type: 'item', id: uid() })}>
               <Plus size={16} /> Register equipment
             </button>
           </>
@@ -596,12 +532,8 @@ export function Inventory() {
           </div>
         </div>
 
-        {refreshing ? (
-          <TableSkeleton rows={5} cols={5} />
-        ) : (
-          <>
-            {/* Mobile Equipment Cards List (Touch-Friendly Card View for Phones & Small Tablets) */}
-            <div className="mobile-equipment-cards flex flex-col gap-3 md:hidden">
+        {/* Mobile Equipment Cards List (Touch-Friendly Card View for Phones & Small Tablets) */}
+        <div className="mobile-equipment-cards flex flex-col gap-3 md:hidden">
               {paginatedItems.map((i, idx) => {
                 const active = state.loans.find((l) => l.itemId === i.id && !l.returned)
                 const canSeeBorrower = active && (manager || active.borrowerId === person.id)
@@ -657,7 +589,7 @@ export function Inventory() {
                           <p className="text-[11.5px] text-muted-ink">
                             {canSeeBorrower ? (
                               <>
-                                In care of <strong className="font-medium text-ink">{borrower?.name}</strong> · Due {dateText(active.due)}
+                                In care of <strong className="font-medium text-ink">{borrower?.name}{borrower?.title ? ` (${borrower.title})` : ''}</strong> · Due {dateText(active.due)}
                               </>
                             ) : (
                               <>Currently in active use · Due {dateText(active.due)}</>
@@ -675,46 +607,67 @@ export function Inventory() {
                       )}
                     </div>
 
-                    {/* Action Buttons with 44px touch targets */}
-                    <div className="flex flex-wrap items-center gap-2 border-t border-line-subtle pt-1">
-                      {manager && isItemAvailable && (
+                    {/* Action Bar: Primary Quick Action + Three-Dots Menu (Prevents stacking) */}
+                    <div className="flex items-center justify-between gap-2 border-t border-line-subtle pt-2">
+                      {manager && isItemAvailable ? (
                         <button
                           type="button"
-                          className="primary-pill flex min-h-[42px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
+                          className="primary-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
                           onClick={() => setModal({ type: 'checkout', id: i.id })}
                         >
-                          <ArrowUpRight size={15} /> Record equipment release
+                          <ArrowUpRight size={14} /> Record release
                         </button>
-                      )}
-
-                      {manager && active && (
+                      ) : manager && active ? (
                         <button
                           type="button"
-                          className="primary-pill flex min-h-[42px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
+                          className="primary-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
                           onClick={() => setModal({ type: 'return', id: active.id })}
                         >
-                          Record return
+                          <Clock3 size={14} /> Record return
                         </button>
-                      )}
-
-                      <button
-                        type="button"
-                        className="action-pill flex min-h-[42px] flex-1 cursor-pointer items-center justify-center text-xs font-medium"
-                        onClick={() => setModal({ type: 'history', id: i.id })}
-                      >
-                        Usage history
-                      </button>
-
-                      {manager && (
+                      ) : (
                         <button
                           type="button"
-                          className="action-pill flex min-h-[42px] cursor-pointer items-center justify-center px-3 text-xs font-medium"
-                          onClick={() => setModal({ type: 'item', id: i.id })}
-                          aria-label={`Edit ${i.name}`}
+                          className="action-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
+                          onClick={() => setModal({ type: 'history', id: i.id })}
                         >
-                          Edit
+                          <History size={14} /> Usage history
                         </button>
                       )}
+
+                      <ActionMenu
+                        triggerLabel={`Actions for ${i.name}`}
+                        className="shrink-0"
+                        items={[
+                          manager && isItemAvailable && {
+                            label: 'Record equipment release',
+                            icon: <ArrowUpRight size={14} className="text-primary" />,
+                            onClick: () => setModal({ type: 'checkout', id: i.id }),
+                          },
+                          manager && active && {
+                            label: 'Record equipment return',
+                            icon: <Clock3 size={14} className="text-primary" />,
+                            onClick: () => setModal({ type: 'return', id: active.id }),
+                          },
+                          {
+                            label: 'View usage history',
+                            icon: <History size={14} className="text-muted-ink" />,
+                            onClick: () => setModal({ type: 'history', id: i.id }),
+                          },
+                          manager && {
+                            label: 'Edit equipment details',
+                            icon: <Pencil size={14} className="text-muted-ink" />,
+                            onClick: () => setModal({ type: 'item', id: i.id }),
+                          },
+                          manager && {
+                            label: 'Delete equipment…',
+                            icon: <Trash2 size={14} className="text-[#963838]" />,
+                            destructive: true,
+                            divider: true,
+                            onClick: () => setDeleteTarget(i),
+                          },
+                        ]}
+                      />
                     </div>
                   </article>
                 )
@@ -740,6 +693,7 @@ export function Inventory() {
                   const borrower = canSeeBorrower
                     ? state.profiles.find((p) => p.id === active.borrowerId)
                     : undefined
+                  const isItemAvailable = available(state, i.id)
                   return (
                     <tr
                       key={i.id}
@@ -776,7 +730,7 @@ export function Inventory() {
                       {active && canSeeBorrower && (
                         <div className="mt-1 flex flex-col gap-1">
                           <small className="font-medium text-ink">
-                            {borrower?.name} · Due {dateText(active.due)}
+                            {borrower?.name}{borrower?.title ? ` (${borrower.title})` : ''} · Due {dateText(active.due)}
                           </small>
                           {(active.event || active.eventCategory) && (
                             <div className="flex flex-wrap items-center gap-1.5">
@@ -796,43 +750,59 @@ export function Inventory() {
                       )}
                     </td>
                     <td>
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          className="action-pill"
-                          onClick={() => setModal({ type: 'history', id: i.id })}
-                        >
-                          Usage history
-                        </button>
-                        {manager && (
-                          <>
-                            <button
-                              type="button"
-                              className="action-pill"
-                              onClick={() => setModal({ type: 'item', id: i.id })}
-                            >
-                              Edit
-                            </button>
-                            {available(state, i.id) && (
-                              <button
-                                type="button"
-                                className="action-pill primary-pill"
-                                onClick={() => setModal({ type: 'checkout', id: i.id })}
-                              >
-                                Record equipment release
-                              </button>
-                            )}
-                            {active && (
-                              <button
-                                type="button"
-                                className="action-pill primary-pill"
-                                onClick={() => setModal({ type: 'return', id: active.id })}
-                              >
-                                Record return
-                              </button>
-                            )}
-                          </>
+                      <div className="row-actions flex items-center justify-end gap-2">
+                        {manager && isItemAvailable && (
+                          <button
+                            type="button"
+                            className="action-pill primary-pill flex items-center gap-1.5"
+                            onClick={() => setModal({ type: 'checkout', id: i.id })}
+                          >
+                            <ArrowUpRight size={13} className="shrink-0" />
+                            <span>Release</span>
+                          </button>
                         )}
+                        {manager && active && (
+                          <button
+                            type="button"
+                            className="action-pill primary-pill flex items-center gap-1.5"
+                            onClick={() => setModal({ type: 'return', id: active.id })}
+                          >
+                            <Clock3 size={13} className="shrink-0" />
+                            <span>Return</span>
+                          </button>
+                        )}
+                        <ActionMenu
+                          triggerLabel={`Actions for ${i.name}`}
+                          items={[
+                            manager && isItemAvailable && {
+                              label: 'Record equipment release',
+                              icon: <ArrowUpRight size={14} className="text-primary" />,
+                              onClick: () => setModal({ type: 'checkout', id: i.id }),
+                            },
+                            manager && active && {
+                              label: 'Record equipment return',
+                              icon: <Clock3 size={14} className="text-primary" />,
+                              onClick: () => setModal({ type: 'return', id: active.id }),
+                            },
+                            {
+                              label: 'View usage history',
+                              icon: <History size={14} className="text-muted-ink" />,
+                              onClick: () => setModal({ type: 'history', id: i.id }),
+                            },
+                            manager && {
+                              label: 'Edit equipment details',
+                              icon: <Pencil size={14} className="text-muted-ink" />,
+                              onClick: () => setModal({ type: 'item', id: i.id }),
+                            },
+                            manager && {
+                              label: 'Delete equipment…',
+                              icon: <Trash2 size={14} className="text-[#963838]" />,
+                              destructive: true,
+                              divider: true,
+                              onClick: () => setDeleteTarget(i),
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -841,8 +811,6 @@ export function Inventory() {
             </tbody>
           </table>
         </div>
-      </>
-    )}
       {!items.length && <Empty text="Try another search or equipment filter." />}
         <Pagination
           page={page}
@@ -879,7 +847,7 @@ export function Inventory() {
               await act({
                 type: 'item',
                 item: {
-                  id: item?.id ?? uid(),
+                  id: item?.id ?? modal.id ?? uid(),
                   name: value(f, 'name'),
                   tag: value(f, 'tag'),
                   category: value(f, 'category'),
@@ -935,9 +903,26 @@ export function Inventory() {
                 </Field>
               )}
               {item && (
-                <p className="hint">
-                  Condition changes are recorded through returns and incident reviews.
-                </p>
+                <>
+                  <p className="hint">
+                    Condition changes are recorded through returns and incident reviews.
+                  </p>
+                  <div className="pt-3 border-t border-line-subtle flex items-center justify-between">
+                    <span className="text-[11.5px] text-muted-ink">Equipment management</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = item
+                        setModal(null)
+                        setDeleteTarget(target)
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-ink hover:text-[#963838] hover:underline cursor-pointer transition-colors"
+                    >
+                      <Trash2 size={13} />
+                      <span>Delete this equipment…</span>
+                    </button>
+                  </div>
+                </>
               )}
             </>
           )}
@@ -954,46 +939,47 @@ export function Inventory() {
                   </Select>
                 </Field>
               )}
-              <Field label="Release type"><select value={useType} onChange={e=>setUseType(e.target.value as UseType)}>{Object.entries(USE_TYPES).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></Field>
-              {useType === 'external_borrowing' ? <>
-                <Field label="Borrower name"><input name="externalName" required maxLength={120}/></Field>
-                <Field label="Organization (optional)"><input name="organization" maxLength={160}/></Field>
-                <Field label="Contact method"><select name="contactMethod"><option value="email">Email</option><option value="phone">Phone</option></select></Field>
-                <Field label="Contact details"><input name="contact" required maxLength={160}/></Field>
-              </> : <Field label="Responsible member">
-                <Select name="borrower" defaultValue={state.profiles.find(p=>!p.status || p.status==='active')?.id}>
-                  {state.profiles.filter(p=>!p.status || p.status==='active').map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+              <Field label="Release type">
+                <Select value={useType} onChange={(e) => setUseType(e.target.value as UseType)}>
+                  {Object.entries(USE_TYPES).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
                     </option>
                   ))}
                 </Select>
               </Field>
-              }<div className="form-grid">
-                <Field label="Type of event coverage (optional)">
-                  <input
-                    name="eventCategory"
-                    placeholder="e.g. Sports Coverage, Campus News, Features, Investigative…"
-                    list="coverage-types"
-                    autoComplete="off"
-                  />
-                  <datalist id="coverage-types">
-                    <option value="Sports Coverage" />
-                    <option value="Campus News & Governance" />
-                    <option value="Features & Culture" />
-                    <option value="Investigative & Fieldwork" />
-                    <option value="Institutional & Academic" />
-                    <option value="Studio & Internal Production" />
-                  </datalist>
+              {useType === 'external_borrowing' ? (
+                <>
+                  <Field label="Borrower name"><input name="externalName" required maxLength={120}/></Field>
+                  <Field label="Organization (optional)"><input name="organization" maxLength={160}/></Field>
+                  <Field label="Contact method">
+                    <Select name="contactMethod" defaultValue="email">
+                      <option value="email">Email</option>
+                      <option value="phone">Phone</option>
+                    </Select>
+                  </Field>
+                  <Field label="Contact details"><input name="contact" required maxLength={160}/></Field>
+                </>
+              ) : (
+                <Field label="Responsible editorial staff / borrower">
+                  <Select name="borrower" defaultValue={state.profiles.find(p=>!p.status || p.status==='active')?.id}>
+                    {state.profiles.filter(p=>!p.status || p.status==='active').map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {p.title || p.role}
+                      </option>
+                    ))}
+                  </Select>
                 </Field>
-                <Field label="Purpose / event name">
-                  <input
-                    name="event" required maxLength={200}
-                    placeholder="e.g. UAAP Men's Basketball Finals, Student Council Forum…"
-                    autoComplete="off"
-                  />
-                </Field>
-              </div>
+              )}
+              <Field label="Purpose / event name">
+                <input
+                  name="event"
+                  required
+                  maxLength={200}
+                  placeholder="e.g. UAAP Men's Basketball Finals, Student Council Forum…"
+                  autoComplete="off"
+                />
+              </Field>
               <Field label="Return Deadline & Duration Window">
                 <SchedulePicker defaultValue={tomorrow()} />
               </Field>
@@ -1112,7 +1098,7 @@ export function Inventory() {
                   .filter((e) => e.entityId === item?.id)
                   .map((e) => (
                     <p key={e.id} className="event-line">
-                      {e.text} · {dateText(e.at)}
+                      {formatEventDetails(e, state)} · {dateText(e.at)}
                     </p>
                   ))}
               {!state.loans.some(
@@ -1122,12 +1108,60 @@ export function Inventory() {
           )}
         </Modal>
       )}
+
+      {deleteTarget && (
+        <Modal
+          title={`Delete ${deleteTarget.name}?`}
+          destructive
+          submit="Delete equipment"
+          onClose={() => setDeleteTarget(null)}
+          onSubmit={async (f) => {
+            const reason = String(f.get('reason') || 'Decommissioned from publication inventory')
+            await act({
+              type: 'archive',
+              itemId: deleteTarget.id,
+              reason,
+            })
+            setDeleteTarget(null)
+          }}
+        >
+          <div className="flex flex-col gap-3.5">
+            <div className="rounded-2xl border border-red-200/90 bg-red-50/80 p-4 text-xs text-red-950">
+              <strong className="block text-sm font-semibold text-red-900">
+                Confirm Equipment Deletion
+              </strong>
+              <p className="mt-1 leading-relaxed">
+                You are about to delete <strong>{deleteTarget.name}</strong> (Tag: <span className="font-mono font-medium">{deleteTarget.tag}</span>, Category: {deleteTarget.category}).
+              </p>
+              <p className="mt-2 text-[11.5px] text-red-800 leading-normal">
+                This item will be permanently removed from the active inventory catalog.
+              </p>
+            </div>
+
+            {state.loans.some((l) => l.itemId === deleteTarget.id && !l.returned) && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="alert">
+                <strong>Attention:</strong> This equipment is currently checked out on loan. Please record its return before deleting.
+              </div>
+            )}
+
+            <Field label="Reason for deletion">
+              <textarea
+                name="reason"
+                required
+                rows={2}
+                defaultValue="Decommissioned from publication inventory"
+                placeholder="e.g., Damaged beyond repair, sold, transferred, or decommissioned"
+              />
+            </Field>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }
 
 export function Incidents() {
-  const { state, person, act } = useDemo()
+  const { state, person, act } = useInventory()
   const [modal, setModal] = useState<string | null>(null)
   const manager = canInventory(person)
   const incidents = visibleIncidents(state, person)

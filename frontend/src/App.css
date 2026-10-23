@@ -2,18 +2,79 @@
 
 /* Creative Floating Glassmorphic Pill Sidebar Dock */
 .floating-pill-rail {
-  @apply fixed top-1/2 z-40 m-0 flex shrink-0 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-white/90 bg-white/72 p-2 backdrop-blur-2xl backdrop-saturate-[180%];
+  @apply fixed top-1/2 z-40 m-0 flex shrink-0 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-white/90 bg-white/72 py-3 px-2 backdrop-blur-2xl backdrop-saturate-[180%];
   left: max(28px, calc((100vw - 1400px) / 2 + 28px));
   box-shadow:
     0 22px 50px -10px rgba(21, 63, 50, 0.13),
     0 2px 8px rgba(21, 63, 50, 0.04),
     0 0 0 1px rgba(21, 63, 50, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.floating-pill-rail:hover {
+  box-shadow:
+    0 28px 65px -12px rgba(21, 63, 50, 0.18),
+    0 4px 12px rgba(21, 63, 50, 0.06),
+    0 0 0 1px rgba(21, 63, 50, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
 }
 
 .rail-pill-item {
-  @apply relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-white/70 bg-white/60 text-[#4c5c53] transition-all duration-150 hover:border-white hover:bg-white hover:text-primary;
+  @apply relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-white/70 bg-white/60 text-[#4c5c53] hover:border-white hover:bg-white hover:text-primary;
   box-shadow: 0 2px 6px rgba(21, 63, 50, 0.03);
+}
+
+/* Apple macOS Dock Magnification Engine */
+.dock-item {
+  transform: translateY(var(--dock-nudge, 0px)) scale(var(--dock-scale, 1));
+  transform-origin: center center;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, color 0.15s ease, border-color 0.2s ease;
+  will-change: transform;
+}
+
+/* While hovered on dock, accelerate transform response to follow cursor fluidly with sub-frame precision */
+.floating-pill-rail:hover .dock-item {
+  transition: transform 0.08s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease, background-color 0.2s ease, color 0.15s ease, border-color 0.2s ease;
+}
+
+.dock-item:hover {
+  z-index: 20;
+  box-shadow:
+    0 12px 28px -4px rgba(21, 63, 50, 0.22),
+    0 4px 10px rgba(21, 63, 50, 0.08);
+}
+
+/* Click press-down feedback */
+.dock-item:active {
+  transform: translateY(var(--dock-nudge, 0px)) scale(calc(var(--dock-scale, 1) * 0.92)) !important;
+}
+
+.dock-item svg {
+  transition: color 0.15s ease;
+  will-change: transform;
+}
+
+/* Tooltip counter-scaling so text remains crisp and 100% true-to-size without magnification blur */
+.dock-item .rail-label {
+  transform: translateY(-50%) scale(calc(1 / var(--dock-scale, 1)));
+  transform-origin: left center;
+}
+
+.dock-item:hover .rail-label,
+.dock-item:focus-visible .rail-label {
+  @apply visible opacity-100;
+  transform: translateY(-50%) scale(calc(1 / var(--dock-scale, 1))) translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-item {
+    transform: none !important;
+    transition: none !important;
+  }
+  .dock-item .rail-label {
+    transform: translateY(-50%) !important;
+  }
 }
 
 .rail-pill-item.active {
@@ -30,7 +91,7 @@
 
 /* Primary Action Buttons at the very top of Sidebar */
 .rail-primary-btn {
-  @apply relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full bg-primary text-white transition-all duration-150 hover:bg-primary-hover;
+  @apply relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover;
   box-shadow:
     0 6px 16px -2px rgba(21, 63, 50, 0.35),
     0 2px 6px rgba(21, 63, 50, 0.12),
@@ -38,10 +99,9 @@
 }
 
 .rail-primary-btn:hover {
-  transform: translateY(-1px);
   box-shadow:
-    0 8px 22px -2px rgba(21, 63, 50, 0.45),
-    0 3px 8px rgba(21, 63, 50, 0.18),
+    0 10px 24px -2px rgba(21, 63, 50, 0.45),
+    0 4px 10px rgba(21, 63, 50, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
@@ -54,7 +114,7 @@
 
 /* Register Action Button in Sidebar (Light Grey background to make it pop) */
 .rail-register-btn {
-  @apply relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-[#cbd8cf] bg-[#eef3f0] text-primary transition-all duration-150 hover:border-primary/50 hover:bg-[#e2eae4] hover:text-primary-hover;
+  @apply relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-[#cbd8cf] bg-[#eef3f0] text-primary hover:border-primary/50 hover:bg-[#e2eae4] hover:text-primary-hover;
   box-shadow:
     0 4px 12px -2px rgba(21, 63, 50, 0.1),
     0 1px 3px rgba(21, 63, 50, 0.05),
@@ -62,10 +122,9 @@
 }
 
 .rail-register-btn:hover {
-  transform: translateY(-1px);
   box-shadow:
-    0 6px 18px -2px rgba(21, 63, 50, 0.16),
-    0 2px 6px rgba(21, 63, 50, 0.08),
+    0 8px 20px -2px rgba(21, 63, 50, 0.18),
+    0 3px 8px rgba(21, 63, 50, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 1);
 }
 
@@ -643,7 +702,12 @@ select {
 
 /* Modern Schedule Picker UI */
 .schedule-picker-card {
-  @apply flex flex-col gap-3 rounded-2xl border border-line-subtle bg-surface p-4;
+  @apply flex flex-col gap-3 rounded-2xl border border-line-subtle bg-surface p-4 relative;
+}
+
+.custom-datetime-picker {
+  z-index: 70 !important;
+  position: relative !important;
 }
 
 .schedule-preset-grid {
@@ -785,7 +849,7 @@ select {
 
 /* Profile Dropdown Popover */
 .profile-dropdown-menu {
-  @apply absolute right-0 top-[calc(100%+8px)] z-[9999] w-72 origin-top-right rounded-2xl border border-white/90 bg-white/92 p-2 shadow-[0_20px_50px_rgba(21,63,50,0.18)] backdrop-blur-2xl backdrop-saturate-[180%];
+  @apply absolute right-0 top-[calc(100%+8px)] z-[99999] w-[295px] origin-top-right rounded-2xl border border-white/90 bg-white/92 p-2 shadow-[0_20px_50px_rgba(21,63,50,0.18)] backdrop-blur-2xl backdrop-saturate-[180%];
   animation: enterFadeUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -794,7 +858,7 @@ select {
 }
 
 .dropdown-item.danger {
-  @apply text-danger-text hover:bg-danger-bg hover:text-danger-text;
+  @apply text-muted-ink hover:bg-surface hover:text-ink;
 }
 
 /* Sidebar Rail Action Button */
@@ -865,7 +929,19 @@ select {
 
 /* Notification Popover Dropdown */
 .notification-dropdown-menu {
-  @apply absolute right-0 top-[calc(100%+10px)] z-[9999] flex w-[320px] max-h-[480px] flex-col overflow-hidden rounded-[24px] border border-white/95 bg-white/95 shadow-[0_16px_40px_rgba(21,63,50,0.18)] backdrop-blur-2xl sm:w-[360px];
+  @apply absolute right-0 top-[calc(100%+10px)] z-[99999] flex w-[320px] max-h-[480px] flex-col overflow-hidden rounded-[24px] border border-white/95 bg-white/95 shadow-[0_16px_40px_rgba(21,63,50,0.18)] backdrop-blur-2xl sm:w-[360px];
+}
+
+/* Elevate table rows containing open dropdowns or action menus */
+tr:has(.is-open),
+tr:has([role="menu"]) {
+  position: relative;
+  z-index: 50;
+}
+
+.table-wrap:has(.is-open),
+.table-wrap:has([role="menu"]) {
+  z-index: 40;
 }
 
 .notification-item {

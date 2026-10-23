@@ -47,16 +47,6 @@ export class ErrorBoundary extends Component<Props, State> {
               >
                 <RefreshCw size={14} /> Reload application
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.setItem('timber_demo_override', 'true')
-                  window.location.href = '/'
-                }}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-2 text-xs font-medium text-muted-ink hover:text-ink hover:bg-slate-50"
-              >
-                Launch demo workspace
-              </button>
             </div>
           </div>
         </div>

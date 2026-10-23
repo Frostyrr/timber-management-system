@@ -201,6 +201,14 @@
     @apply border-primary bg-primary text-white shadow-[0_3px_10px_rgba(21,63,50,0.2)] hover:border-primary-hover hover:bg-primary-hover hover:text-white;
   }
 
+  .action-pill.danger-pill {
+    @apply border-line-subtle bg-white/80 text-muted-ink shadow-xs hover:border-[#e2b8b8] hover:bg-[#fbf4f4] hover:text-[#963838];
+  }
+
+  .danger {
+    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full bg-[#963838] px-4 py-[8.5px] text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-white shadow-[0_2px_8px_rgba(150,56,56,0.18)] transition-all duration-150 hover:bg-[#802c2c] active:scale-[0.98];
+  }
+
   .text-button {
     @apply cursor-pointer bg-transparent text-[12.5px] font-medium whitespace-nowrap text-primary hover:underline;
   }

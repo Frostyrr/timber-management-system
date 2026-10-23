@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Package, ShieldAlert, Clock3, RefreshCw } from 'lucide-react'
 import { dateText } from '../components/format'
-import { useDemo } from '../demo/context'
-import { visibleEvents as scopedEvents } from '../demo/model'
+import { useInventory } from '../backend/context'
+import { visibleEvents as scopedEvents, formatEventDetails } from '../backend/model'
 import { Heading, Avatar } from '../components/layout'
-import { Badge, Empty, TableSkeleton, Pagination, Select } from '../components/ui'
+import { Badge, Empty, Pagination, Select } from '../components/ui'
 
 export function Logs() {
-  const { state, person, refresh } = useDemo()
+  const { state, person, refresh } = useInventory()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
@@ -22,23 +22,60 @@ export function Logs() {
 
   const visibleEvents = scopedEvents(state,person)
 
+  const isLoanEvent = (e: (typeof visibleEvents)[number], details: string) => {
+    const raw = (e.action ?? '').toLowerCase()
+    const text = details.toLowerCase()
+    return (
+      ['checkout', 'return', 'correct', 'releases.insert', 'releases.update', 'releases.delete'].includes(raw) ||
+      text.includes('release') ||
+      text.includes('loan') ||
+      text.includes('checked out') ||
+      text.includes('closed loan') ||
+      text.includes('return')
+    )
+  }
+
+  const isIncidentEvent = (e: (typeof visibleEvents)[number], details: string) => {
+    const raw = (e.action ?? '').toLowerCase()
+    const text = details.toLowerCase()
+    return (
+      raw.startsWith('incidents.') ||
+      ['incident', 'resolve'].includes(raw) ||
+      text.includes('incident') ||
+      text.includes('flagged')
+    )
+  }
+
+  const isEquipmentEvent = (e: (typeof visibleEvents)[number], details: string) => {
+    const raw = (e.action ?? '').toLowerCase()
+    const text = details.toLowerCase()
+    return (
+      raw.startsWith('items.') ||
+      ['item', 'archive'].includes(raw) ||
+      text.includes('equipment') ||
+      text.includes('registered') ||
+      text.includes('saved equipment')
+    )
+  }
+
   const filteredEvents = visibleEvents.filter((e) => {
     const item = state.items.find((i) => i.id === e.entityId)
     const actor = state.profiles.find((p) => p.id === e.actor)
-    const matchesSearch = `${e.text} ${item?.name ?? ''} ${item?.tag ?? ''} ${actor?.name ?? ''}`
+    const actionDetails = formatEventDetails(e, state)
+    const matchesSearch = `${actionDetails} ${item?.name ?? ''} ${item?.tag ?? ''} ${actor?.name ?? ''}`
       .toLowerCase()
       .includes(search.toLowerCase())
 
     if (!matchesSearch) return false
 
     if (filter === 'loans') {
-      return ['checkout','return','releases.insert','releases.update'].includes(e.action ?? '') || e.text.toLowerCase().includes('checked out') || e.text.toLowerCase().includes('closed loan')
+      return isLoanEvent(e, actionDetails)
     }
     if (filter === 'incidents') {
-      return e.text.toLowerCase().includes('incident') || e.text.toLowerCase().includes('flagged')
+      return isIncidentEvent(e, actionDetails)
     }
     if (filter === 'equipment') {
-      return e.text.toLowerCase().includes('saved equipment')
+      return isEquipmentEvent(e, actionDetails)
     }
     return true
   })
@@ -81,9 +118,7 @@ export function Logs() {
           <strong>
             {
               visibleEvents.filter(
-                (e) =>
-                  ['checkout','return','releases.insert','releases.update'].includes(e.action ?? '') || e.text.toLowerCase().includes('checked out') ||
-                  e.text.toLowerCase().includes('closed loan'),
+                (e) => isLoanEvent(e, formatEventDetails(e, state))
               ).length
             }
           </strong>
@@ -98,9 +133,7 @@ export function Logs() {
           <strong>
             {
               visibleEvents.filter(
-                (e) =>
-                  e.text.toLowerCase().includes('incident') ||
-                  e.text.toLowerCase().includes('flagged'),
+                (e) => isIncidentEvent(e, formatEventDetails(e, state))
               ).length
             }
           </strong>
@@ -113,7 +146,7 @@ export function Logs() {
         >
           <span>Equipment updates</span>
           <strong>
-            {visibleEvents.filter((e) => e.text.toLowerCase().includes('saved equipment')).length}
+            {visibleEvents.filter((e) => isEquipmentEvent(e, formatEventDetails(e, state))).length}
           </strong>
         </button>
       </section>
@@ -155,21 +188,16 @@ export function Logs() {
           </div>
         </div>
 
-        {refreshing ? (
-          <TableSkeleton rows={6} cols={5} />
-        ) : (
-          <>
-            {/* Mobile Log Cards List */}
+        <>
+          {/* Mobile Log Cards List */}
             <div className="mobile-logs-cards flex flex-col gap-3 md:hidden">
               {paginatedEvents.map((e, idx) => {
                 const item = state.items.find((i) => i.id === e.entityId)
                 const actor = state.profiles.find((p) => p.id === e.actor)
-                const isIncident =
-                  e.text.toLowerCase().includes('incident') ||
-                  e.text.toLowerCase().includes('flagged')
-                const isLoan =
-                  ['checkout','return','releases.insert','releases.update'].includes(e.action ?? '') || e.text.toLowerCase().includes('checked out') ||
-                  e.text.toLowerCase().includes('closed loan')
+                const actionDetails = formatEventDetails(e, state)
+                const isIncident = isIncidentEvent(e, actionDetails)
+                const isLoan = isLoanEvent(e, actionDetails)
+                const isEquipment = isEquipmentEvent(e, actionDetails)
 
                 return (
                   <article
@@ -182,7 +210,7 @@ export function Logs() {
                         <Clock3 size={13} /> {dateText(e.at)}
                       </span>
                       <Badge>
-                        {isIncident ? 'Incident' : isLoan ? 'Release / Return' : 'Inventory update'}
+                        {isIncident ? 'Incident' : isLoan ? 'Release / Return' : isEquipment ? 'Inventory update' : 'Member access'}
                       </Badge>
                     </div>
 
@@ -194,8 +222,8 @@ export function Logs() {
                       </div>
                     </div>
 
-                    <p className="rounded-xl border border-line-subtle bg-surface/70 p-2.5 text-xs font-medium text-ink">
-                      {e.text}
+                    <p className="rounded-xl border border-line-subtle bg-surface/70 p-2.5 text-xs font-medium text-ink leading-relaxed">
+                      {actionDetails}
                     </p>
 
                     {item && (
@@ -227,12 +255,10 @@ export function Logs() {
                   {paginatedEvents.map((e, idx) => {
                     const item = state.items.find((i) => i.id === e.entityId)
                     const actor = state.profiles.find((p) => p.id === e.actor)
-                    const isIncident =
-                      e.text.toLowerCase().includes('incident') ||
-                      e.text.toLowerCase().includes('flagged')
-                    const isLoan =
-                      ['checkout','return','releases.insert','releases.update'].includes(e.action ?? '') || e.text.toLowerCase().includes('checked out') ||
-                      e.text.toLowerCase().includes('closed loan')
+                    const actionDetails = formatEventDetails(e, state)
+                    const isIncident = isIncidentEvent(e, actionDetails)
+                    const isLoan = isLoanEvent(e, actionDetails)
+                    const isEquipment = isEquipmentEvent(e, actionDetails)
 
                     return (
                       <tr
@@ -258,7 +284,7 @@ export function Logs() {
                           </div>
                         </td>
                         <td className="long-cell">
-                          <p className="font-medium text-ink">{e.text}</p>
+                          <p className="font-medium text-ink leading-relaxed">{actionDetails}</p>
                         </td>
                         <td>
                           {item ? (
@@ -279,7 +305,7 @@ export function Logs() {
                         </td>
                         <td>
                           <Badge>
-                            {isIncident ? 'Incident' : isLoan ? 'Release / Return' : 'Inventory update'}
+                            {isIncident ? 'Incident' : isLoan ? 'Release / Return' : isEquipment ? 'Inventory update' : 'Member access'}
                           </Badge>
                         </td>
                       </tr>
@@ -289,7 +315,6 @@ export function Logs() {
               </table>
             </div>
           </>
-        )}
 
       {!filteredEvents.length && <Empty text="No log entries match your filter criteria." />}
 
@@ -302,7 +327,7 @@ export function Logs() {
         />
         <div className="table-footer">
           <span>{filteredEvents.length} total activity log records</span>
-          <span>Local demo records, not tamper-resistant audit logs.</span>
+          <span>Audit trail recorded with user accountability.</span>
         </div>
       </section>
     </>

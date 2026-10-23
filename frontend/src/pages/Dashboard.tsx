@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Package, ArrowUpRight, Clock3, ShieldAlert, Boxes, RefreshCw } from 'lucide-react'
 import { dateText, categoryClass } from '../components/format'
-import { useDemo } from '../demo/context'
-import { available, canInventory, isOverdue, visibleIncidents } from '../demo/model'
-import { Badge, Empty, CardSkeleton, KpiSkeletonGrid, Skeleton } from '../components/ui'
+import { useInventory } from '../backend/context'
+import { available, canInventory, isOverdue, visibleIncidents, formatEventDetails } from '../backend/model'
+import { Badge, Empty } from '../components/ui'
 
 export function Dashboard() {
-  const { state, person, refresh } = useDemo()
+  const { state, person, refresh } = useInventory()
   const manager = canInventory(person)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -96,32 +96,28 @@ export function Dashboard() {
           </div>
         </div>
 
-        {refreshing ? (
-          <KpiSkeletonGrid />
-        ) : (
-          <div className="hero-kpi-grid" role="region" aria-label="Inventory summary">
-            {cards.map(({ label, count, to, icon: Icon, note }, idx) => (
-              <Link
-                className="hero-stat-card group stagger-item"
-                key={label}
-                to={to}
-                style={{ '--stagger-i': idx } as React.CSSProperties}
-              >
-                <div className="hero-stat-top">
-                  <span className="hero-stat-icon">
-                    <Icon size={14} />
-                  </span>
-                  <span className="hero-stat-label">{label}</span>
-                  <ArrowUpRight size={13} className="hero-stat-arrow" />
-                </div>
-                <div className="hero-stat-value-row">
-                  <strong className="hero-stat-value">{count}</strong>
-                </div>
-                <p className="hero-stat-note">{note}</p>
-              </Link>
-            ))}
-          </div>
-        )}
+        <div className="hero-kpi-grid" role="region" aria-label="Inventory summary">
+          {cards.map(({ label, count, to, icon: Icon, note }, idx) => (
+            <Link
+              className="hero-stat-card group stagger-item"
+              key={label}
+              to={to}
+              style={{ '--stagger-i': idx } as React.CSSProperties}
+            >
+              <div className="hero-stat-top">
+                <span className="hero-stat-icon">
+                  <Icon size={14} />
+                </span>
+                <span className="hero-stat-label">{label}</span>
+                <ArrowUpRight size={13} className="hero-stat-arrow" />
+              </div>
+              <div className="hero-stat-value-row">
+                <strong className="hero-stat-value">{count}</strong>
+              </div>
+              <p className="hero-stat-note">{note}</p>
+            </Link>
+          ))}
+        </div>
       </section>
 
       {/* 2-Column Bento Workspace Grid below the Hero */}
@@ -141,11 +137,8 @@ export function Dashboard() {
                 View all <ArrowUpRight size={14} />
               </Link>
             </div>
-            {refreshing ? (
-              <CardSkeleton count={3} />
-            ) : (
-              <div className="list-body">
-                {loans.slice(0, 6).map((l, idx) => {
+            <div className="list-body">
+              {loans.slice(0, 6).map((l, idx) => {
                   const eq = state.items.find((i) => i.id === l.itemId)
                   const borrower = state.profiles.find((p) => p.id === l.borrowerId)
                   return (
@@ -167,7 +160,7 @@ export function Dashboard() {
                           </div>
                           <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-ink">
                             <span>
-                              {borrower?.name} · Due {dateText(l.due)}
+                              {borrower?.name}{borrower?.title ? ` (${borrower.title})` : ''} · Due {dateText(l.due)}
                             </span>
                             {l.event && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-[#cde0d2] bg-pale px-2 py-0.5 text-[11px] font-medium text-primary">
@@ -203,7 +196,6 @@ export function Dashboard() {
                   <Empty text="No equipment currently in use in your view. Browse the equipment inventory to see what is available." />
                 )}
               </div>
-            )}
           </section>
 
           {/* Bottom Section: Inventory Activity Strip */}
@@ -217,17 +209,7 @@ export function Dashboard() {
                 Inventory <ArrowUpRight size={14} />
               </Link>
             </div>
-            {refreshing ? (
-              <div className="activity-cards-grid">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="activity-card flex flex-col gap-3">
-                    <Skeleton className="h-3.5 w-1/3" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                ))}
-              </div>
-            ) : events.length > 0 ? (
+            {events.length > 0 ? (
               <div className="activity-cards-grid">
                 {events.map((e, idx) => (
                   <article
@@ -242,7 +224,7 @@ export function Dashboard() {
                           <Clock3 size={13} />
                         </span>
                       </div>
-                      <strong>{e.text}</strong>
+                      <strong>{formatEventDetails(e, state)}</strong>
                     </div>
                     <p>{state.profiles.find((p) => p.id === e.actor)?.name}</p>
                   </article>
@@ -251,7 +233,7 @@ export function Dashboard() {
             ) : (
               <Empty text="Equipment activity will appear here as records are updated." />
             )}
-            <p className="history-note">Local demo records, not tamper-resistant audit logs.</p>
+            <p className="history-note">Audit trail recorded with user accountability.</p>
           </section>
         </div>
 
@@ -267,40 +249,36 @@ export function Dashboard() {
                 Review incidents <ArrowUpRight size={14} />
               </Link>
             </div>
-            {refreshing ? (
-              <CardSkeleton count={2} />
-            ) : (
-              <div className="list-body">
-                {incidents.slice(0, 6).map((i, idx) => {
-                  const eq = state.items.find((item) => item.id === i.itemId)
-                  return (
-                    <article
-                      className="priority-card stagger-item"
-                      key={i.id}
-                      style={{ '--stagger-i': idx } as React.CSSProperties}
-                    >
-                      <div className="priority-card-head">
-                        <span className="work-icon icon-amber">
-                          <ShieldAlert size={17} />
-                        </span>
-                        <div className="priority-card-meta">
-                          <strong>{eq?.name}</strong>
-                          <p>Reported {dateText(i.at)}</p>
-                        </div>
-                        <Badge>{i.kind}</Badge>
+            <div className="list-body">
+              {incidents.slice(0, 6).map((i, idx) => {
+                const eq = state.items.find((item) => item.id === i.itemId)
+                return (
+                  <article
+                    className="priority-card stagger-item"
+                    key={i.id}
+                    style={{ '--stagger-i': idx } as React.CSSProperties}
+                  >
+                    <div className="priority-card-head">
+                      <span className="work-icon icon-amber">
+                        <ShieldAlert size={17} />
+                      </span>
+                      <div className="priority-card-meta">
+                        <strong>{eq?.name}</strong>
+                        <p>Reported {dateText(i.at)}</p>
                       </div>
-                      <div className="priority-card-footer">
-                        <span className="muted">{eq?.tag}</span>
-                        <Link className="action-pill primary-pill" to="/incidents">
-                          Inspect review <ArrowUpRight size={13} />
-                        </Link>
-                      </div>
-                    </article>
-                  )
-                })}
-                {!incidents.length && <Empty text="No open incident reviews in your view." />}
-              </div>
-            )}
+                      <Badge>{i.kind}</Badge>
+                    </div>
+                    <div className="priority-card-footer">
+                      <span className="muted">{eq?.tag}</span>
+                      <Link className="action-pill primary-pill" to="/incidents">
+                        Inspect review <ArrowUpRight size={13} />
+                      </Link>
+                    </div>
+                  </article>
+                )
+              })}
+              {!incidents.length && <Empty text="No open incident reviews in your view." />}
+            </div>
           </section>
 
           <div className="forest-callout-card stagger-item" style={{ '--stagger-i': 2 } as React.CSSProperties}>

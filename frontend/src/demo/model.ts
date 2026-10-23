@@ -6,6 +6,7 @@ export const profileSchema = z.object({
   role: z.enum(['Administrator', 'Inventory Custodian', 'Staff']),
   department: z.string(),
   status: z.enum(['pending','active','suspended']).optional(),
+  title: z.string().optional(),
 })
 const itemSchema = z.object({
   id: z.string(),
@@ -88,14 +89,16 @@ export const isOverdue = (due: string) => new Date(due).getTime() < Date.now()
 export function seed(now = new Date()): State {
   const date = (days: number) => new Date(now.getTime() + days * 86400000).toISOString()
   const profiles: Profile[] = [
-    { id: 'admin', name: 'Alex Rivera', role: 'Administrator', department: 'Editorial' },
-    { id: 'editor', name: 'Maya Santos', role: 'Staff', department: 'Editorial' },
-    { id: 'custodian', name: 'Leo Cruz', role: 'Inventory Custodian', department: 'Visuals' },
-    { id: 'staff', name: 'Sam Reyes', role: 'Staff', department: 'Editorial' },
-    { id: 'p5', name: 'Isabel Flores', role: 'Staff', department: 'Visuals' },
-    { id: 'p6', name: 'Noah Garcia', role: 'Staff', department: 'Production' },
-    { id: 'p7', name: 'Bea Ramos', role: 'Staff', department: 'Editorial' },
-    { id: 'p8', name: 'Eli Mendoza', role: 'Staff', department: 'Production' },
+    { id: 'admin', name: 'Marc Elson Rebato', role: 'Administrator', title: 'Multimedia Director', department: 'Multimedia & Visuals' },
+    { id: 'dana-gales', name: 'Dana Paula Gales', role: 'Administrator', title: 'Associate Editor', department: 'Editorial Board' },
+    { id: 'custodian', name: 'Juvie Rose Mosquite', role: 'Inventory Custodian', title: 'Head Photojournalist', department: 'Photojournalism' },
+    { id: 'robert-dedumo', name: 'Robert Kent Dedumo', role: 'Inventory Custodian', title: 'Head Videojournalist', department: 'Videojournalism' },
+    { id: 'staff', name: 'Christian Punay', role: 'Staff', title: 'Head Video Editor', department: 'Video Production' },
+    { id: 'p5', name: 'Zhairo Milan', role: 'Staff', title: 'Head Cartoonist', department: 'Art & Cartoons' },
+    { id: 'jennel-inso', name: 'Jennel Inso', role: 'Staff', title: 'Head Graphics Artist', department: 'Layout & Graphics' },
+    { id: 'editor', name: 'Ryan Ilagan', role: 'Staff', title: 'News Writer', department: 'News Desk' },
+    { id: 'hanna-bonggot', name: 'Hanna Camela Bonggot', role: 'Staff', title: 'News Writer', department: 'News Desk' },
+    { id: 'p8', name: 'Anthony Pormento', role: 'Staff', title: 'Column Writer', department: 'Opinion & Columns' },
   ]
   const names = [
     'Canon EOS 80D',
@@ -180,7 +183,151 @@ export type Action =
   | { type: 'archive'; itemId: string; reason: string }
   | { type: 'correct'; loanId: string; purpose: string; due: string; reason: string }
   | { type: 'membership'; id: string; role: Profile['role']; status: 'active' | 'pending' | 'suspended'; reason: string }
+  | { type: 'add-profile'; name: string; role: Profile['role']; title?: string; department: string; status?: 'active' | 'pending' | 'suspended' }
+  | { type: 'update-profile'; id: string; name?: string; role?: Profile['role']; title?: string; department?: string; status?: 'active' | 'pending' | 'suspended'; reason?: string }
+  | { type: 'delete-profile'; id: string; reason?: string }
 export const displayEvent = (text:string)=>text.replace('Checked out equipment','Released equipment').replace('Closed loan','Recorded return')
+export function formatEventDetails(
+  e: State['events'][number],
+  state: State,
+): string {
+  const item = state.items.find((i) => i.id === e.entityId)
+  const itemName =
+    item?.name ||
+    (e.after?.name as string) ||
+    (e.before?.name as string) ||
+    'Equipment'
+  const borrower = state.profiles.find(
+    (p) =>
+      p.id ===
+      (e.subjectId ||
+        (e.after?.borrower_id as string) ||
+        (e.before?.borrower_id as string)),
+  )
+  const borrowerName =
+    borrower?.name ||
+    (e.after?.external_name as string) ||
+    (e.before?.external_name as string) ||
+    'member'
+
+  const rawAction = (e.action || e.text || '').trim().toLowerCase()
+
+  // 1. Releases / Equipment checkouts
+  if (rawAction === 'releases.insert' || rawAction === 'checkout') {
+    const purpose = (e.after?.purpose as string) || (e.after?.event as string)
+    const purposeText = purpose ? ` for ${purpose}` : ''
+    return `Released ${itemName} to ${borrowerName}${purposeText}`
+  }
+
+  // 2. Returns & Loan updates
+  if (
+    rawAction === 'releases.update' ||
+    rawAction === 'return' ||
+    rawAction === 'correct'
+  ) {
+    const isReturn =
+      Boolean(e.after?.returned_at || e.after?.returned) ||
+      (e.reason && e.reason.toLowerCase().includes('return')) ||
+      (!e.before?.returned_at && Boolean(e.after?.returned_at))
+    if (isReturn) {
+      const condition =
+        (e.after?.condition_after as string) ||
+        (e.after?.after as string) ||
+        (e.after?.condition as string)
+      return `Recorded return for ${itemName}${condition ? ` (${condition} condition)` : ''}`
+    }
+    if (e.reason) {
+      return `Updated loan record: ${e.reason}`
+    }
+    return `Updated loan details for ${itemName}`
+  }
+
+  if (rawAction === 'releases.delete') {
+    return `Cancelled loan record for ${itemName}`
+  }
+
+  // 3. Equipment Updates & Registration
+  if (rawAction === 'items.insert' || (rawAction === 'item' && !e.before)) {
+    const tag = (e.after?.tag as string) || item?.tag
+    return `Registered new equipment: ${itemName}${tag ? ` (${tag})` : ''}`
+  }
+
+  if (rawAction === 'items.update' || rawAction === 'item') {
+    const beforeCond = e.before?.condition as string
+    const afterCond = e.after?.condition as string
+    if (beforeCond && afterCond && beforeCond !== afterCond) {
+      return `Updated condition of ${itemName} (${beforeCond} → ${afterCond})`
+    }
+    if (e.after?.archived) {
+      return `Archived equipment: ${itemName}`
+    }
+    return `Updated equipment details for ${itemName}`
+  }
+
+  if (rawAction === 'items.delete' || rawAction === 'archive') {
+    return `Decommissioned equipment: ${itemName}${e.reason ? ` (${e.reason})` : ''}`
+  }
+
+  // 4. Incident Reports & Resolutions
+  if (rawAction === 'incidents.insert' || rawAction === 'incident') {
+    const kind = (e.after?.kind as string) || 'Adverse condition'
+    const notes = (e.after?.notes as string) || e.reason
+    return `Flagged incident report: ${kind}${notes ? ` (${notes})` : ''}`
+  }
+
+  if (rawAction === 'incidents.update' || rawAction === 'resolve') {
+    const outcome = (e.after?.outcome as string) || e.reason || 'Resolved'
+    return `Resolved incident review: ${outcome}`
+  }
+
+  // 5. Account Management & Memberships
+  if (
+    rawAction === 'memberships.update' ||
+    rawAction === 'profiles.update' ||
+    rawAction === 'membership'
+  ) {
+    const target = state.profiles.find(
+      (p) => p.id === (e.subjectId || (e.after?.id as string)),
+    )
+    const targetName =
+      target?.name || (e.after?.name as string) || 'Staff account'
+    const role = (e.after?.role as string) || target?.role
+    const reasonText = e.reason ? ` — ${e.reason}` : ''
+    return `Updated access permissions for ${targetName}${role ? ` (${role})` : ''}${reasonText}`
+  }
+
+  if (rawAction === 'profiles.delete' || rawAction === 'delete-profile') {
+    const targetName = (e.before?.name as string) || 'Staff account'
+    return `Deleted account for ${targetName}${e.reason ? ` — ${e.reason}` : ''}`
+  }
+
+  // Fallback: If e.text has readable English sentences, format them nicely
+  const technicalKeys = [
+    'items.update',
+    'items.insert',
+    'items.delete',
+    'releases.insert',
+    'releases.update',
+    'releases.delete',
+    'incidents.insert',
+    'incidents.update',
+    'incidents.delete',
+    'profiles.insert',
+    'profiles.update',
+    'profiles.delete',
+    'memberships.update',
+  ]
+  if (e.text && !technicalKeys.includes(e.text.trim().toLowerCase())) {
+    return displayEvent(e.text)
+  }
+
+  // Ultimate fallback formatted gracefully
+  return e.action
+    ? e.action
+        .replace('.', ' ')
+        .replace(/^[a-z]/, (c) => c.toUpperCase())
+    : 'System activity recorded'
+}
 export const borrowerName=(s:State,l:State['loans'][number])=>l.external?.name??s.profiles.find(p=>p.id===l.borrowerId)?.name??'Not recorded'
 export const visibleEvents=(s:State,p:Profile)=>s.events.filter(e=>canInventory(p)||e.actor===p.id||e.subjectId===p.id)
 const requireThat = (ok: unknown, message: string) => {
@@ -282,6 +429,55 @@ export function transition(state: State, actorId: string, action: Action): State
     i!.resolved = now
     s.items.find((x) => x.id === i!.itemId)!.condition = action.condition
     log(`Resolved incident: ${action.outcome}`, i!.itemId)
+  } else if (action.type === 'archive') {
+    requireThat(canInventory(p), 'Only custodians and administrators manage equipment.')
+    const i = s.items.find((x) => x.id === action.itemId)
+    if (!i) throw Error('Equipment not found.')
+    requireThat(!s.loans.some((l) => l.itemId === action.itemId && !l.returned), 'Cannot delete equipment currently checked out on loan.')
+    i.archived = true
+    s.items = s.items.filter((x) => x.id !== action.itemId)
+    log(`Deleted equipment: ${i.name} (${i.tag}) - ${action.reason || 'Decommissioned'}`, i.id)
+  } else if (action.type === 'add-profile') {
+    requireThat(canInventory(p), 'Only custodians and administrators can add members.')
+    requireThat(action.name.trim(), 'Staff member name is required.')
+    requireThat(action.department.trim(), 'Department is required.')
+    const newProfile: Profile = {
+      id: uid(),
+      name: action.name.trim(),
+      role: action.role,
+      title: action.title?.trim() || undefined,
+      department: action.department.trim(),
+      status: action.status || 'active',
+    }
+    s.profiles.push(newProfile)
+    log(`Added staff member: ${newProfile.name} (${newProfile.title || newProfile.role})`, newProfile.id)
+  } else if (action.type === 'update-profile' || action.type === 'membership') {
+    requireThat(canInventory(p), 'Only custodians and administrators can update member accounts.')
+    const target = s.profiles.find((x) => x.id === action.id)
+    if (!target) throw Error('Staff member not found.')
+    if (action.type === 'update-profile') {
+      if (action.name?.trim()) target.name = action.name.trim()
+      if (action.role) target.role = action.role
+      if (action.title !== undefined) target.title = action.title.trim() || undefined
+      if (action.department?.trim()) target.department = action.department.trim()
+      if (action.status) target.status = action.status
+      log(`Updated staff member details for ${target.name} (${target.title || target.role})`, target.id)
+    } else {
+      target.role = action.role
+      target.status = action.status
+      log(`Updated member role for ${target.name} to ${action.role} (${action.status})`, target.id)
+    }
+  } else if (action.type === 'delete-profile') {
+    requireThat(canInventory(p), 'Only custodians and administrators can delete accounts.')
+    if (s.profiles.find((x) => x.id === action.id)?.role === 'Administrator') {
+      requireThat(p.role === 'Administrator', 'Only administrators can delete administrator accounts.')
+    }
+    requireThat(action.id !== actorId, 'You cannot delete your own active administrator account.')
+    const target = s.profiles.find((x) => x.id === action.id)
+    if (!target) throw Error('Account not found.')
+    requireThat(!s.loans.some((l) => l.borrowerId === action.id && !l.returned), 'Cannot remove account with unreturned active equipment loans.')
+    s.profiles = s.profiles.filter((x) => x.id !== action.id)
+    log(`Deleted account for ${target.name} (${target.role}) - ${action.reason || 'Account deleted'}`, action.id)
   }
   return s
 }
@@ -319,6 +515,9 @@ export function load(storage: Pick<Storage, 'getItem'>): { state: State; warning
     const parsed = stateSchema.safeParse(data)
     if (parsed.success) {
       const state = parsed.data
+      if (state.profiles.some((p) => p.name === 'Alex Rivera' || p.name === 'Sam Reyes')) {
+        state.profiles = seed().profiles
+      }
       state.events = state.events.filter((e) => state.items.some((i) => i.id === e.entityId))
       return {
         state,

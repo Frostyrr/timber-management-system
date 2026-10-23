@@ -1,3 +1,7 @@
+# Timber inventory
+
+The application now uses Supabase exclusively. See [backend-only setup and required upgrade](docs/backend-only.md).
+
 # Timber — Student Publication Inventory Management
 
 A focused inventory prototype for the publication's shared equipment. The workspace contains Overview, Equipment, and Incident reviews. Borrower profiles are retained for loan records; assignment tracking, contribution approval, merit scoring, and the staff directory have been removed.

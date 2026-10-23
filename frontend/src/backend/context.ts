@@ -1,19 +1,17 @@
 import { createContext, useContext } from 'react'
 import type { Action, Profile, State } from './model'
-export const DemoContext = createContext<{
+export const InventoryContext = createContext<{
   state: State
   person: Profile
   act: (a: Action) => void | Promise<void>
-  mode?: 'demo' | 'live'
+  mode?: 'live'
   refresh?: () => Promise<void>
   signOut?: () => Promise<void>
-  switchPerson: (id: string) => void
-  reset: () => void
   warning: string
   notice: string
 } | null>(null)
-export const useDemo = () => {
-  const value = useContext(DemoContext)
-  if (!value) throw new Error('Demo provider missing')
+export const useInventory = () => {
+  const value = useContext(InventoryContext)
+  if (!value) throw new Error('Inventory provider missing')
   return value
 }

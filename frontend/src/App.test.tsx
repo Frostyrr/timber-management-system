@@ -2,25 +2,25 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import App from './App'
-import { DemoContext } from './demo/context'
+import { InventoryContext } from './backend/context'
 import { seed } from './demo/model'
 const state = seed()
 function render(path: string, persona = 'admin') {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[path]}>
-      <DemoContext.Provider
+      <InventoryContext.Provider
         value={{
           state,
           person: state.profiles.find((p) => p.id === persona)!,
           act: () => {},
-          switchPerson: () => {},
-          reset: () => {},
+
+
           warning: '',
           notice: '',
         }}
       >
         <App />
-      </DemoContext.Provider>
+      </InventoryContext.Provider>
     </MemoryRouter>,
   )
 }
@@ -30,7 +30,7 @@ describe('inventory-only workspace', () => {
       const html = render(route)
       expect(html).toContain('Timber')
       expect(html).toContain('Skip to content')
-      for (const retired of ['/assignments', '/reviews', '/contributions', '/staff'])
+      for (const retired of ['/assignments', '/reviews', '/contributions'])
         expect(html).not.toContain(`href="${retired}`)
       expect(html).not.toContain('Department Editor')
     })
@@ -83,5 +83,18 @@ describe('inventory-only workspace', () => {
       'Record equipment return',
     )
     expect(render('/inventory?action=return&loan=unknown')).not.toContain('Record equipment return')
+  })
+  it('staff roster is accessible only to inventory custodians and administrators', () => {
+    const adminHtml = render('/')
+    expect(adminHtml).toContain('href="/staff"')
+    const custodianHtml = render('/')
+    expect(custodianHtml).toContain('href="/staff"')
+    const staffHtml = render('/', 'staff')
+    expect(staffHtml).not.toContain('href="/staff"')
+
+    const adminRoster = render('/staff', 'admin')
+    expect(adminRoster).toContain('Staff members &amp; accountability roster')
+    expect(adminRoster).toContain('Add staff member')
+    expect(adminRoster).toContain('Dana Paula Gales')
   })
 })
