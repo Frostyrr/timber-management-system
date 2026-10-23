@@ -32,9 +32,10 @@ function LiveProvider({ children }: { children: ReactNode }) {
   }
   useEffect(() => {
     if (!client) return
+    const gen = generation
     let disposed = false
     const { data } = client.auth.onAuthStateChange((_event, session) => {
-      const token = ++generation.current
+      const token = ++gen.current
       pending.current.clear()
       setState(null); setPerson(null); setError(''); setSignedIn(!!session); setLoading(!!session)
       if (session) {
@@ -43,14 +44,14 @@ function LiveProvider({ children }: { children: ReactNode }) {
           try {
             const p = await identity()
             const s = p.status === 'active' ? await snapshot() : null
-            if (!disposed && token === generation.current) { setPerson(p); setState(s) }
+            if (!disposed && token === gen.current) { setPerson(p); setState(s) }
           } catch (e) {
-            if (!disposed && token === generation.current) setError(e instanceof Error ? e.message : 'Unable to load membership. Apply the backend migration first.')
-          } finally { if (!disposed && token === generation.current) setLoading(false) }
+            if (!disposed && token === gen.current) setError(e instanceof Error ? e.message : 'Unable to load membership. Apply the backend migration first.')
+          } finally { if (!disposed && token === gen.current) setLoading(false) }
         })()
       }
     })
-    return () => { disposed = true; generation.current++; data.subscription.unsubscribe() }
+    return () => { disposed = true; gen.current++; data.subscription.unsubscribe() }
   }, [])
   const signOut = async () => {
     const { error: failure } = await client!.auth.signOut()
