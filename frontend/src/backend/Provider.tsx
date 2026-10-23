@@ -3,11 +3,14 @@ import { DemoProvider } from '../demo/Provider'
 import { DemoContext } from '../demo/context'
 import { type Action, type Profile, type State } from '../demo/model'
 import { client, demoMode, identity, mutate, snapshot } from './client'
+import { Navigate, useLocation } from 'react-router-dom'
+import { Login } from '../pages/Login'
 
 export function DataProvider({ children }: { children: ReactNode }) {
   return demoMode ? <DemoProvider>{children}</DemoProvider> : <LiveProvider>{children}</LiveProvider>
 }
 function LiveProvider({ children }: { children: ReactNode }) {
+  const location = useLocation()
   const [person, setPerson] = useState<Profile | null>(null)
   const [state, setState] = useState<State | null>(null)
   const [loading, setLoading] = useState(!!client)
@@ -65,8 +68,13 @@ function LiveProvider({ children }: { children: ReactNode }) {
     setNotice('Saved to Supabase. The server recorded the change in audit history.')
     await refresh()
   }
+  if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
   if (state && person) return <DemoContext.Provider value={{ state, person, act, mode: 'live', refresh, signOut,
     switchPerson: () => { throw Error('Persona switching is available only in demo mode.') }, reset: () => { throw Error('Live records cannot be reset.') }, warning: error, notice }}>{children}</DemoContext.Provider>
+  if (!signedIn) return <>
+    {!loading && location.pathname !== '/login' && <Navigate to="/login" replace />}
+    <main className="min-h-screen bg-workspace flex items-center justify-center p-6"><Login checkingSession={loading} /></main>
+  </>
   return <main className="min-h-screen bg-workspace flex items-center justify-center p-6"><section className="bg-white rounded-3xl p-8 max-w-lg space-y-5 shadow-lg">
     <img src="/logo.png" alt="Timber publication" className="h-14" />
     <h1 className="text-2xl font-semibold">Timber inventory</h1>

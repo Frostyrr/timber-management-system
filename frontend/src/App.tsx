@@ -298,7 +298,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="mb-4 rounded-xl bg-pale px-4 py-2 text-sm" role="status">{mode === 'live' ? 'Connected to Supabase · approved membership required' : 'Demo — sample data stored in this browser. Persona switching is not authorization.'}</div>
+        {mode !== 'live' && <div className="mb-4 rounded-xl bg-pale px-4 py-2 text-sm" role="status">Demo — sample data stored in this browser. Persona switching is not authorization.</div>}
         {warning && (
           <div role="alert" className="warning mb-4">
             {warning}
