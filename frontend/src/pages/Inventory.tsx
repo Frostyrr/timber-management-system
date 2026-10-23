@@ -491,14 +491,14 @@ export function Inventory() {
           {modal.type === 'item' && (
             <>
               <Field label="Equipment name">
-                <input name="name" required defaultValue={item?.name} />
+                <input name="name" required defaultValue={item?.name} placeholder="e.g. Sony Alpha a6400 Mirrorless Camera, DJI Ronin Gimbal…" />
               </Field>
               <div className="form-grid">
                 <Field label="Unique asset tag">
-                  <input name="tag" required defaultValue={item?.tag} />
+                  <input name="tag" required defaultValue={item?.tag} placeholder="e.g. TP-CAM-001, TP-AUD-004…" />
                 </Field>
                 <Field label="Category">
-                  <input name="category" required defaultValue={item?.category ?? 'Camera'} />
+                  <input name="category" required defaultValue={item?.category ?? 'Camera'} placeholder="e.g. Camera, Audio, Lighting, Computer, Accessory…" />
                 </Field>
               </div>
               <Field label="Storage location">
@@ -506,6 +506,7 @@ export function Inventory() {
                   name="location"
                   required
                   defaultValue={item?.location ?? 'Equipment cabinet'}
+                  placeholder="e.g. Cabinet B Shelf 2, Studio Desk, Layout Room Locker…"
                 />
               </Field>
               {!item && (
@@ -574,7 +575,7 @@ export function Inventory() {
                 <SchedulePicker defaultValue={tomorrow()} />
               </Field>
               <Field label="Condition before release">
-                <textarea name="condition" required defaultValue={item?.condition ?? 'Good'} />
+                <textarea name="condition" required defaultValue={item?.condition ?? 'Good'} placeholder="e.g. Fully functional, clean lens optics, 100% battery, SD card formatted…" />
               </Field>
             </>
           )}
@@ -842,13 +843,13 @@ export function Incidents() {
                 </select>
               </Field>
               <Field label="What happened? Include facts and context.">
-                <textarea name="notes" required />
+                <textarea name="notes" required placeholder="Describe what occurred during assignment: e.g. Dropped during coverage; autofocus ring sticking or loose screw…" />
               </Field>
             </>
           ) : (
             <>
               <Field label="Documented outcome">
-                <textarea name="outcome" required />
+                <textarea name="outcome" required placeholder="Document the resolution: e.g. Replaced filter ring at authorized center. Verified full operability and restocked in cabinet." />
               </Field>
               <Field label="Condition after review">
                 <select name="condition">

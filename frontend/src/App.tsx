@@ -73,36 +73,14 @@ export default function App() {
                 alt="Timber publication logo"
                 className="brand-logo block h-9 w-auto object-contain"
               />
-              <div className="brand-text">
-                <strong className="block text-[15px] leading-[1.15] font-medium tracking-[-0.025em] text-ink">
-                  Timber
-                </strong>
-                <span className="mt-px block text-[11px] font-normal text-muted-ink">
-                  Publication Inventory
-                </span>
-              </div>
+              <h1 className="text-[17px] leading-tight font-semibold tracking-[-0.025em] text-ink">
+                The Timberland
+              </h1>
             </Link>
           </div>
 
           {/* Right Floating Header Controls */}
           <div className="topbar-right flex items-center gap-3">
-            {/* Google OAuth Status / Connect Button */}
-            <button
-              type="button"
-              onClick={() => setAuthModalOpen(true)}
-              className="google-auth-btn"
-              title="Google Workspace OAuth SSO"
-              aria-label="Google Workspace Single Sign-On"
-            >
-              <GoogleIcon size={16} />
-              <span className="hidden sm:inline font-medium">
-                {googleConnected ? 'Google Linked' : 'Google SSO'}
-              </span>
-              {googleConnected && (
-                <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
-              )}
-            </button>
-
             {/* Profile Dropdown */}
             <div className="relative">
               <button
@@ -237,6 +215,34 @@ export default function App() {
                 aria-label="Main navigation"
                 className="rail-links flex w-full flex-col items-center gap-2"
               >
+                {/* Primary Action Buttons at the very top of Sidebar: Use equipment & Register equipment */}
+                {manager && (
+                  <>
+                    <Link
+                      to="/inventory?action=release"
+                      aria-label="Use equipment"
+                      className={`rail-primary-btn ${location.pathname === '/inventory' && location.search.includes('action=release') ? 'active' : ''}`}
+                      onClick={() => setMenu(false)}
+                    >
+                      <span className="icon-shiny-wrapper relative inline-flex items-center justify-center">
+                        <ArrowUpRight size={19} className="text-white" />
+                      </span>
+                      <span className="rail-label">Use equipment</span>
+                    </Link>
+                    <Link
+                      to="/inventory?action=register"
+                      aria-label="Register equipment"
+                      className={`rail-primary-btn ${location.pathname === '/inventory' && location.search.includes('action=register') ? 'active' : ''}`}
+                      onClick={() => setMenu(false)}
+                    >
+                      <span className="relative inline-flex items-center justify-center text-white">
+                        <Plus size={19} />
+                      </span>
+                      <span className="rail-label">Register equipment</span>
+                    </Link>
+                    <div className="my-1 h-px w-6 bg-line" aria-hidden="true" />
+                  </>
+                )}
                 {links.map(({ to, name, icon: Icon }) => {
                   const badge = to === '/incidents' ? openIncidentCount : 0
                   return (
@@ -265,34 +271,6 @@ export default function App() {
                     </NavLink>
                   )
                 })}
-                {/* Direct quick action buttons in Sidebar requested by user: Use equipment & Register equipment */}
-                {manager && (
-                  <>
-                    <div className="my-1.5 h-px w-6 bg-line" aria-hidden="true" />
-                    <Link
-                      to="/inventory?action=release"
-                      aria-label="Use equipment"
-                      className={`rail-pill-item ${location.pathname === '/inventory' && location.search.includes('action=release') ? 'active' : ''}`}
-                      onClick={() => setMenu(false)}
-                    >
-                      <span className="relative inline-flex items-center justify-center">
-                        <ArrowUpRight size={19} className="text-supporting" />
-                      </span>
-                      <span className="rail-label">Use equipment</span>
-                    </Link>
-                    <Link
-                      to="/inventory?action=register"
-                      aria-label="Register equipment"
-                      className={`rail-pill-item ${location.pathname === '/inventory' && location.search.includes('action=register') ? 'active' : ''}`}
-                      onClick={() => setMenu(false)}
-                    >
-                      <span className="relative inline-flex items-center justify-center text-primary">
-                        <Plus size={19} />
-                      </span>
-                      <span className="rail-label">Register equipment</span>
-                    </Link>
-                  </>
-                )}
               </nav>
 
 </div>
