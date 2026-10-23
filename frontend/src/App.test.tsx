@@ -40,7 +40,7 @@ describe('inventory-only workspace', () => {
     for (const label of [
       'Inventory overview',
       'Available equipment',
-      'Active loans',
+      'Equipment in use',
       'Overdue returns',
       'Open incident reviews',
       'Inventory activity',
@@ -60,8 +60,8 @@ describe('inventory-only workspace', () => {
     expect(html).not.toContain('/inventory?action=return')
     expect(html).toContain('/inventory?action=history')
     const inventory = render('/inventory', 'staff')
-    expect(inventory).toContain('History')
-    expect(inventory).not.toContain('Check out')
+    expect(inventory).toContain('Usage history')
+    expect(inventory).not.toContain('Record equipment release')
   })
   it('filters available and overdue equipment', () => {
     const available = render('/inventory?status=available')
@@ -73,7 +73,7 @@ describe('inventory-only workspace', () => {
   })
   it('custodian retains equipment management and staff have useful empty views', () => {
     expect(render('/', 'custodian')).toContain('Register equipment')
-    expect(render('/', 'p8')).toContain('No active loans in your view.')
+    expect(render('/', 'p8')).toContain('No equipment currently in use in your view.')
     expect(render('/incidents', 'p8')).not.toContain('Light flickers')
   })
   it('direct links open the right inventory action only for authorized personas', () => {

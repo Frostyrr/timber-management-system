@@ -12,21 +12,15 @@ export function Heading({
   children?: ReactNode
 }) {
   return (
-    <div className="page-heading mb-6 flex flex-col items-start justify-between gap-3 md:flex-row md:items-end md:gap-5">
+    <div className="page-heading hero-banner-card mb-5 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end md:gap-5">
       <div className="page-heading-text">
-        {eyebrow && (
-          <p className="eyebrow mb-[5px] text-[10.5px] font-medium tracking-[0.08em] text-supporting uppercase">
-            {eyebrow}
-          </p>
-        )}
-        <h1 className="text-[25px] leading-[1.22] font-medium tracking-[-0.03em] text-ink">
-          {title}
-        </h1>
-        <p className="page-subtitle mt-[5px] text-[13.5px] font-normal text-muted-ink">
-          {description}
-        </p>
+        {eyebrow && <p className="hero-eyebrow">{eyebrow}</p>}
+        <h1 className="hero-title">{title}</h1>
+        <p className="hero-subtitle">{description}</p>
       </div>
-      {children && <div className="page-actions flex flex-wrap items-center gap-2.5">{children}</div>}
+      {children && (
+        <div className="page-actions flex flex-wrap items-center gap-2.5">{children}</div>
+      )}
     </div>
   )
 }
@@ -34,7 +28,7 @@ export function Heading({
 export function Avatar({ name }: { name: string }) {
   return (
     <span
-      className="avatar inline-flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-full border border-[#d2e1d6] bg-pale text-[11px] font-medium tracking-[-0.01em] text-primary"
+      className="avatar inline-flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full border border-white/80 bg-primary text-[11px] font-medium tracking-[-0.01em] text-white shadow-[0_2px_6px_rgba(21,63,50,0.18)]"
       aria-hidden="true"
     >
       {name

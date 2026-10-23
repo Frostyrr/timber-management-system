@@ -17,8 +17,8 @@
   --color-ink: #18221d;
   --color-muted-ink: #66736b;
   --color-canvas: #ffffff;
-  --color-workspace: #f2f4f1;
-  --color-surface: #f8faf8;
+  --color-workspace: #eef2ee;
+  --color-surface: #f7f9f7;
   --color-line: #e2e7e1;
   --color-line-subtle: #edf1ec;
   --color-warning-bg: #fef6ea;
@@ -34,7 +34,7 @@
     font-family: var(--font-sans);
     font-weight: 400;
     color: var(--color-ink);
-    background: var(--color-workspace);
+    background-color: var(--color-workspace);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -49,6 +49,13 @@
 
   body {
     @apply m-0 bg-workspace font-sans font-normal text-ink;
+    background-image:
+      radial-gradient(circle at 12% 14%, rgba(82, 122, 99, 0.16), transparent 42%),
+      radial-gradient(circle at 86% 12%, rgba(234, 179, 8, 0.12), transparent 38%),
+      radial-gradient(circle at 80% 68%, rgba(245, 208, 107, 0.14), transparent 42%),
+      radial-gradient(circle at 35% 88%, rgba(21, 63, 50, 0.11), transparent 45%),
+      linear-gradient(155deg, #f1f5f1 0%, #f7f9ee 50%, #f1f4f0 100%);
+    background-attachment: fixed;
   }
 
   button,
@@ -93,11 +100,11 @@
   }
 
   h1 {
-    @apply text-[25px] leading-[1.22] font-medium tracking-[-0.03em] text-ink;
+    @apply text-[26px] leading-[1.2] font-medium tracking-[-0.03em] text-ink;
   }
 
   h2 {
-    @apply text-[15px] font-medium tracking-[-0.018em] text-ink;
+    @apply text-[15.5px] font-medium tracking-[-0.02em] text-ink;
   }
 
   h3 {
@@ -115,7 +122,7 @@
   input,
   select,
   textarea {
-    @apply max-w-full rounded-[10px] border border-line bg-canvas px-3 py-[8.5px] font-normal text-ink transition-colors duration-150 hover:border-[#c6d0c6];
+    @apply max-w-full rounded-xl border border-line bg-canvas px-3.5 py-[8.5px] font-normal text-ink transition-colors duration-150 hover:border-[#c6d0c6];
   }
 
   textarea {
@@ -147,23 +154,31 @@
   }
 
   .primary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full bg-primary px-4 py-[8.5px] text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap text-white transition-colors duration-150 hover:bg-primary-hover;
+    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full bg-primary px-4 py-[8.5px] text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-white shadow-[0_4px_14px_rgba(21,63,50,0.22)] transition-all duration-150 hover:bg-primary-hover;
   }
 
   .secondary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full border border-line bg-canvas px-4 py-[8.5px] text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap text-ink transition-colors duration-150 hover:border-[#cbd8cd] hover:bg-pale hover:text-primary;
+    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full border border-white/90 bg-white/85 px-4 py-[8.5px] text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-ink shadow-[0_2px_8px_rgba(21,63,50,0.05)] backdrop-blur-md transition-all duration-150 hover:border-[#cbd8cd] hover:bg-white hover:text-primary;
+  }
+
+  .hero-btn-primary {
+    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full bg-white px-4 py-[8.5px] text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-primary shadow-[0_6px_18px_rgba(0,0,0,0.16)] transition-all duration-150 hover:bg-pale;
+  }
+
+  .hero-btn-secondary {
+    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full border border-white/22 bg-white/10 px-4 py-[8.5px] text-[12.5px] font-normal tracking-[-0.01em] whitespace-nowrap text-white backdrop-blur-md transition-all duration-150 hover:border-white/35 hover:bg-white/18;
   }
 
   .icon-button {
-    @apply inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line bg-workspace text-muted-ink transition-colors duration-150 hover:bg-pale hover:text-primary;
+    @apply inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/85 bg-white/80 text-muted-ink shadow-[0_2px_8px_rgba(21,63,50,0.05)] backdrop-blur-md transition-colors duration-150 hover:bg-pale hover:text-primary;
   }
 
   .action-pill {
-    @apply inline-flex cursor-pointer items-center justify-center gap-[5px] rounded-full border border-line bg-canvas px-3 py-[5.5px] text-xs font-[450] whitespace-nowrap text-ink transition-colors duration-150 hover:border-[#c5d5c9] hover:bg-pale hover:text-primary;
+    @apply inline-flex cursor-pointer items-center justify-center gap-[5px] rounded-full border border-line bg-canvas px-3.5 py-[6px] text-xs font-[450] whitespace-nowrap text-ink shadow-[0_1px_3px_rgba(21,63,50,0.03)] transition-all duration-150 hover:border-[#c5d5c9] hover:bg-pale hover:text-primary;
   }
 
   .action-pill.primary-pill {
-    @apply border-primary bg-primary text-white hover:border-primary-hover hover:bg-primary-hover hover:text-white;
+    @apply border-primary bg-primary text-white shadow-[0_3px_10px_rgba(21,63,50,0.2)] hover:border-primary-hover hover:bg-primary-hover hover:text-white;
   }
 
   .text-button {

@@ -13,6 +13,18 @@ const itemSchema = z.object({
   location: z.string(),
   condition: z.enum(['Good', 'Fair', 'Damaged', 'Missing']),
 })
+export const EVENT_CATEGORIES = [
+  'Sports Coverage',
+  'Campus News & Governance',
+  'Features & Culture',
+  'Investigative & Fieldwork',
+  'Institutional & Academic',
+  'Studio & Internal Production',
+  'General Assignment',
+] as const
+
+export type EventCategory = (typeof EVENT_CATEGORIES)[number]
+
 const loanSchema = z.object({
   id: z.string(),
   itemId: z.string(),
@@ -20,6 +32,8 @@ const loanSchema = z.object({
   out: z.string(),
   due: z.string(),
   before: z.string(),
+  event: z.string().optional(),
+  eventCategory: z.string().optional(),
   returned: z.string().optional(),
   after: z.string().optional(),
 })
@@ -89,8 +103,26 @@ export function seed(now = new Date()): State {
 
     items,
     loans: [
-      { id: 'l0', itemId: 'i0', borrowerId: 'staff', out: date(-4), due: date(-1), before: 'Good' },
-      { id: 'l1', itemId: 'i2', borrowerId: 'p5', out: date(-1), due: date(2), before: 'Good' },
+      {
+        id: 'l0',
+        itemId: 'i0',
+        borrowerId: 'staff',
+        out: date(-4),
+        due: date(-1),
+        before: 'Good',
+        event: 'University Games Coverage',
+        eventCategory: 'Sports Coverage',
+      },
+      {
+        id: 'l1',
+        itemId: 'i2',
+        borrowerId: 'p5',
+        out: date(-1),
+        due: date(2),
+        before: 'Good',
+        event: 'Student Council Election Forum',
+        eventCategory: 'Campus News & Governance',
+      },
     ],
     incidents: [
       {
@@ -121,7 +153,15 @@ export const available = (s: State, id: string) =>
   ['Good', 'Fair'].includes(s.items.find((i) => i.id === id)?.condition ?? '')
 export type Action =
   | { type: 'item'; item: Item }
-  | { type: 'checkout'; itemId: string; borrowerId: string; due: string; condition: string }
+  | {
+      type: 'checkout'
+      itemId: string
+      borrowerId: string
+      due: string
+      condition: string
+      event?: string
+      eventCategory?: string
+    }
   | { type: 'return'; loanId: string; condition: Item['condition'] }
   | { type: 'incident'; itemId: string; kind: 'Damaged' | 'Missing'; notes: string }
   | { type: 'resolve'; id: string; outcome: string; condition: Item['condition'] }
@@ -182,8 +222,13 @@ export function transition(state: State, actorId: string, action: Action): State
       out: now,
       due: action.due,
       before: action.condition,
+      event: action.event?.trim() || undefined,
+      eventCategory: action.eventCategory?.trim() || undefined,
     })
-    log('Checked out equipment', action.itemId)
+    const eventSuffix = action.event?.trim() ? ` for ${action.event.trim()}` : ''
+    const categorySuffix = action.eventCategory?.trim() ? ` [${action.eventCategory.trim()}]` : ''
+    const borrowerName = s.profiles.find((p) => p.id === action.borrowerId)?.name ?? 'staff'
+    log(`Released equipment to ${borrowerName}${eventSuffix}${categorySuffix}`, action.itemId)
   } else if (action.type === 'return') {
     requireThat(canInventory(p), 'Only custodians and administrators record returns.')
     const l = s.loans.find((l) => l.id === action.loanId)

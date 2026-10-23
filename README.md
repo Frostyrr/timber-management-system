@@ -5,3 +5,6 @@ A focused inventory prototype for the publication's shared equipment. The worksp
 See [frontend/README.md](frontend/README.md) for setup, inventory workflows, demo limitations, and deployment configuration.
 
 Current stack: React, TypeScript, Tailwind CSS, Vite, and browser-local storage. Supabase authentication and database persistence remain future work.
+
+Implementation roadmap: [Inventory implementation plan](docs/implementation-plan.md).
+

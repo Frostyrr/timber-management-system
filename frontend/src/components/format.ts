@@ -6,3 +6,13 @@ export const tomorrow = () => {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
   return d.toISOString().slice(0, 16)
 }
+
+export function categoryClass(category?: string) {
+  if (!category) return 'category-institutional'
+  if (category.includes('Sports')) return 'category-sports'
+  if (category.includes('News')) return 'category-news'
+  if (category.includes('Features')) return 'category-features'
+  if (category.includes('Investigative')) return 'category-investigative'
+  if (category.includes('Studio')) return 'category-studio'
+  return 'category-institutional'
+}
