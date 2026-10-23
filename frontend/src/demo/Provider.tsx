@@ -40,7 +40,6 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         act,
         switchPerson: (id) => {
           setPersona(id)
-          setNotice('Demo persona changed. This is not authentication.')
         },
         reset: () => {
           persist(seed())

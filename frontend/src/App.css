@@ -52,6 +52,34 @@
     inset 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
+/* Register Action Button in Sidebar (Light Grey background to make it pop) */
+.rail-register-btn {
+  @apply relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-[#cbd8cf] bg-[#eef3f0] text-primary transition-all duration-150 hover:border-primary/50 hover:bg-[#e2eae4] hover:text-primary-hover;
+  box-shadow:
+    0 4px 12px -2px rgba(21, 63, 50, 0.1),
+    0 1px 3px rgba(21, 63, 50, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.rail-register-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 18px -2px rgba(21, 63, 50, 0.16),
+    0 2px 6px rgba(21, 63, 50, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.rail-register-btn.active {
+  @apply border-transparent bg-primary text-white ring-2 ring-primary ring-offset-2 ring-offset-workspace;
+  box-shadow:
+    0 10px 24px -2px rgba(21, 63, 50, 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.rail-register-btn.active svg {
+  color: #ffffff !important;
+}
+
 /* Shiny effect on Use Equipment icon */
 @keyframes iconShine {
   0% {
@@ -114,40 +142,90 @@
 
 @media (max-width: 767px) {
   .floating-pill-rail {
-    @apply fixed top-3 bottom-3 left-3 z-50 m-0 w-64 -translate-x-[calc(100%+24px)] items-stretch justify-start rounded-[24px] bg-white/90 px-4 py-6 shadow-none transition-transform duration-200;
+    @apply fixed top-3 bottom-3 left-3 z-50 m-0 w-[285px] -translate-x-[calc(100%+24px)] items-stretch justify-start rounded-[26px] border border-white/90 bg-white/95 p-4 shadow-[0_20px_50px_rgba(21,63,50,0.22)] backdrop-blur-2xl transition-transform duration-250 ease-out;
   }
 
   .floating-pill-rail.open {
     @apply translate-x-0;
-    box-shadow:
-      0 20px 48px rgba(21, 63, 50, 0.18),
-      0 0 0 1px rgba(21, 63, 50, 0.08);
   }
 
   .floating-pill-rail .pill-rail-inner {
-    @apply w-full items-stretch p-0;
+    @apply flex h-full w-full flex-col items-stretch p-0;
   }
 
   .rail-pill-item {
-    @apply h-[44px] w-full justify-start gap-3 px-4;
+    @apply h-[46px] w-full justify-start gap-3.5 rounded-xl px-3.5 text-ink;
   }
 
   .rail-primary-btn {
-    @apply h-[44px] w-full justify-start gap-3 px-4 text-white;
+    @apply h-[46px] w-full justify-start gap-3.5 rounded-xl px-3.5 text-white;
   }
 
   .rail-primary-btn .rail-label {
-    @apply pointer-events-auto visible static translate-x-0 translate-y-0 bg-transparent p-0 text-[13.5px] text-white opacity-100 shadow-none;
+    @apply pointer-events-auto visible static translate-x-0 translate-y-0 bg-transparent p-0 text-[13.5px] font-medium text-white opacity-100 shadow-none;
+  }
+
+  .rail-register-btn {
+    @apply h-[46px] w-full justify-start gap-3.5 rounded-xl border border-[#cbd8cf] bg-[#eef3f0] px-3.5 text-primary;
+  }
+
+  .rail-register-btn .rail-label {
+    @apply pointer-events-auto visible static translate-x-0 translate-y-0 bg-transparent p-0 text-[13.5px] font-medium text-inherit opacity-100 shadow-none;
+  }
+
+  .rail-register-btn.active {
+    @apply bg-primary text-white;
+  }
+
+  .rail-register-btn.active .rail-label {
+    @apply text-white;
   }
 
   .rail-label {
-    @apply pointer-events-auto visible static translate-x-0 translate-y-0 bg-transparent p-0 text-[13.5px] text-inherit opacity-100 shadow-none;
+    @apply pointer-events-auto visible static translate-x-0 translate-y-0 bg-transparent p-0 text-[13.5px] font-medium text-inherit opacity-100 shadow-none;
   }
 
   .rail-pill-item:hover .rail-label,
   .rail-pill-item:focus-visible .rail-label {
     @apply translate-x-0 translate-y-0;
   }
+}
+
+/* Mobile Floating Bottom Dock for quick one-thumb navigation */
+.mobile-bottom-dock {
+  backdrop-filter: blur(24px) saturate(180%);
+}
+
+.mobile-dock-btn {
+  @apply flex min-h-[46px] min-w-[52px] flex-col items-center justify-center gap-1 rounded-xl text-muted-ink transition-all active:scale-95;
+}
+
+.mobile-dock-btn span {
+  @apply text-[10px] leading-none font-medium;
+}
+
+.mobile-dock-btn.active {
+  @apply bg-pale/80 font-semibold text-primary;
+}
+
+.mobile-dock-btn.active svg {
+  @apply text-primary;
+}
+
+.mobile-dock-action-btn {
+  @apply relative -mt-5 flex h-[48px] w-[48px] flex-col items-center justify-center rounded-full bg-primary text-white transition-all active:scale-90;
+  box-shadow:
+    0 8px 20px -2px rgba(21, 63, 50, 0.45),
+    0 2px 6px rgba(21, 63, 50, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.mobile-dock-action-btn:hover {
+  @apply bg-primary-hover;
+}
+
+.mobile-dock-badge {
+  @apply absolute top-1 right-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#b7791f] px-1 font-mono text-[9px] font-semibold text-white;
 }
 
 /* Notices & Alerts */
@@ -183,7 +261,7 @@
 
 /* Solid Dark Green Hero Banner Card (Matches Nav Active Tab #153F32) */
 .hero-banner-card {
-  @apply relative overflow-hidden rounded-[26px] border border-primary/40 bg-primary p-6 text-white md:p-7;
+  @apply relative overflow-hidden rounded-[22px] border border-primary/40 bg-primary p-4 text-white sm:rounded-[26px] sm:p-6 md:p-7;
   box-shadow:
     0 16px 36px -10px rgba(21, 63, 50, 0.22),
     0 2px 8px rgba(21, 63, 50, 0.08),
@@ -191,7 +269,7 @@
 }
 
 .hero-header-row {
-  @apply mb-6 flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end;
+  @apply mb-5 flex flex-col items-start justify-between gap-3 sm:mb-6 sm:gap-4 lg:flex-row lg:items-end;
 }
 
 .hero-eyebrow {
@@ -199,11 +277,11 @@
 }
 
 .hero-title {
-  @apply text-[28px] leading-[1.15] font-normal tracking-[-0.03em] text-white;
+  @apply text-[22px] leading-[1.15] font-normal tracking-[-0.03em] text-white sm:text-[28px];
 }
 
 .hero-subtitle {
-  @apply mt-1.5 max-w-[540px] text-[13.5px] font-normal text-white/75;
+  @apply mt-1 max-w-[540px] text-[12.5px] font-normal text-white/75 sm:mt-1.5 sm:text-[13.5px];
 }
 
 .hero-actions {
@@ -220,7 +298,11 @@
 
 /* Embedded Frosted Glass KPI Tiles inside Hero Banner */
 .hero-kpi-grid {
-  @apply grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5;
+  @apply grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-3.5 md:grid-cols-3 xl:grid-cols-5;
+}
+
+.hero-kpi-grid > *:last-child:nth-child(odd) {
+  @apply col-span-2 sm:col-span-1;
 }
 
 .hero-stat-card {
@@ -267,7 +349,7 @@
 
 /* Frosted Translucent Outer Containers (Nextstep Reference Style) */
 .panel {
-  @apply flex flex-col overflow-hidden rounded-[26px] border border-white/85 bg-white/70 p-5 backdrop-blur-2xl backdrop-saturate-[180%];
+  @apply flex flex-col overflow-hidden rounded-[20px] border border-white/85 bg-white/70 p-3.5 backdrop-blur-2xl backdrop-saturate-[180%] sm:rounded-[26px] sm:p-5;
   box-shadow:
     0 16px 36px -10px rgba(21, 63, 50, 0.08),
     0 2px 6px rgba(21, 63, 50, 0.03),
@@ -468,11 +550,11 @@
 
 /* Mini Metrics Strip (Equipment Page) */
 .mini-metrics {
-  @apply mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4;
+  @apply mb-4 grid grid-cols-2 gap-2.5 sm:mb-5 sm:gap-3.5 lg:grid-cols-4;
 }
 
 .mini-metric {
-  @apply flex cursor-pointer flex-col justify-between rounded-[20px] border border-white/90 bg-white/75 px-5 py-4 text-left shadow-[0_6px_20px_-6px_rgba(21,63,50,0.06)] backdrop-blur-xl transition-all duration-150 hover:border-white hover:bg-white/95;
+  @apply flex cursor-pointer flex-col justify-between rounded-[18px] border border-white/90 bg-white/75 p-3.5 text-left shadow-[0_6px_20px_-6px_rgba(21,63,50,0.06)] backdrop-blur-xl transition-all duration-150 hover:border-white hover:bg-white/95 sm:rounded-[20px] sm:px-5 sm:py-4;
 }
 
 .mini-metric.active {
@@ -481,7 +563,7 @@
 }
 
 .mini-metric span {
-  @apply block text-xs font-normal text-muted-ink;
+  @apply block text-[11.5px] font-normal text-muted-ink sm:text-xs;
 }
 
 .mini-metric.active span {
@@ -489,7 +571,7 @@
 }
 
 .mini-metric strong {
-  @apply mt-1.5 block text-[26px] leading-[1.1] font-normal tracking-[-0.03em] text-ink tabular-nums;
+  @apply mt-1 block text-[22px] leading-[1.1] font-normal tracking-[-0.03em] text-ink tabular-nums sm:mt-1.5 sm:text-[26px];
 }
 
 .mini-metric.active strong {

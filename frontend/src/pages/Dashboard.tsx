@@ -154,30 +154,39 @@ export function Dashboard() {
                       key={l.id}
                       style={{ '--stagger-i': idx } as React.CSSProperties}
                     >
-                      <span className="work-icon">
-                        <Package size={17} />
-                      </span>
-                      <div className="work-info">
-                        <strong>{eq?.name}</strong>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                          <span>
-                            {borrower?.name} · Due {dateText(l.due)}
-                          </span>
-                          {l.event && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[#cde0d2] bg-pale px-2 py-0.5 text-[11px] font-medium text-primary">
-                              {l.event}
+                      <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+                        <span className="work-icon shrink-0">
+                          <Package size={17} />
+                        </span>
+                        <div className="work-info min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2 sm:block">
+                            <strong className="truncate">{eq?.name}</strong>
+                            <div className="shrink-0 sm:hidden">
+                              <Badge>{isOverdue(l.due) ? 'Overdue' : 'In use'}</Badge>
+                            </div>
+                          </div>
+                          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-ink">
+                            <span>
+                              {borrower?.name} · Due {dateText(l.due)}
                             </span>
-                          )}
-                          {!l.event && l.eventCategory && (
-                            <span className={`category-pill ${categoryClass(l.eventCategory)}`}>
-                              {l.eventCategory}
-                            </span>
-                          )}
-                        </p>
+                            {l.event && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[#cde0d2] bg-pale px-2 py-0.5 text-[11px] font-medium text-primary">
+                                {l.event}
+                              </span>
+                            )}
+                            {!l.event && l.eventCategory && (
+                              <span className={`category-pill ${categoryClass(l.eventCategory)}`}>
+                                {l.eventCategory}
+                              </span>
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <Badge>{isOverdue(l.due) ? 'Overdue' : 'In use'}</Badge>
+                      <div className="hidden shrink-0 sm:inline-flex">
+                        <Badge>{isOverdue(l.due) ? 'Overdue' : 'In use'}</Badge>
+                      </div>
                       <Link
-                        className="action-pill primary-pill"
+                        className="action-pill primary-pill flex min-h-[40px] w-full items-center justify-center shrink-0 sm:min-h-0 sm:w-auto"
                         aria-label={`${manager ? 'Record return for' : 'View usage history for'} ${eq?.name}`}
                         to={
                           manager

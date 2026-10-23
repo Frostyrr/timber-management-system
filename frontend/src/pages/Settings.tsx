@@ -81,13 +81,15 @@ export function Settings() {
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-white/90 bg-white/85 p-5">
-              <div className="flex items-center gap-4">
-                <Avatar name={person.name} />
-                <div className="min-w-0 flex-1">
-                  <strong className="block text-[15px] font-medium text-ink">{person.name}</strong>
-                  <span className="block text-xs text-muted-ink">{person.role}</span>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex items-center gap-3">
+                  <Avatar name={person.name} />
+                  <div className="min-w-0 flex-1">
+                    <strong className="block text-[15px] font-medium text-ink">{person.name}</strong>
+                    <span className="block text-xs text-muted-ink">{person.role}</span>
+                  </div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cde0d2] bg-pale px-2.5 py-1 text-[11px] font-medium text-primary">
+                <span className="inline-flex self-start items-center gap-1.5 rounded-full border border-[#cde0d2] bg-pale px-2.5 py-1 text-[11px] font-medium text-primary sm:self-auto sm:ml-auto">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                   Active Newsroom Staff
                 </span>
@@ -122,16 +124,16 @@ export function Settings() {
             </div>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-white/90 bg-white/85 p-5">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-line bg-surface shadow-xs">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface shadow-xs">
                     <GoogleIcon size={20} />
                   </span>
-                  <div>
-                    <strong className="block text-[13.5px] font-medium text-ink">
+                  <div className="min-w-0 flex-1">
+                    <strong className="block truncate text-[13.5px] font-medium text-ink">
                       Google Single Sign-On
                     </strong>
-                    <span className="block text-xs text-muted-ink">
+                    <span className="block truncate text-xs text-muted-ink">
                       {googleLinked ? `Connected as ${userEmail}` : 'Not currently linked'}
                     </span>
                   </div>
@@ -139,7 +141,7 @@ export function Settings() {
                 <button
                   type="button"
                   onClick={handleToggleGoogle}
-                  className={`action-pill ${googleLinked ? '' : 'primary-pill'}`}
+                  className={`action-pill min-h-[40px] w-full sm:w-auto ${googleLinked ? '' : 'primary-pill'}`}
                 >
                   {googleLinked ? 'Unlink account' : 'Connect Google SSO'}
                 </button>

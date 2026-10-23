@@ -75,23 +75,23 @@ export function Modal({
       ref={ref}
       onCancel={onClose}
       aria-labelledby={titleId}
-      className="m-auto max-h-[90vh] w-[min(540px,calc(100vw-32px))] rounded-2xl border border-line bg-canvas p-0 text-ink shadow-[0_20px_56px_rgba(24,34,29,0.16)] backdrop:bg-[rgba(24,34,29,0.4)] backdrop:backdrop-blur-[2px]"
+      className="m-auto max-h-[92vh] w-[calc(100vw-24px)] max-w-[540px] rounded-2xl border border-line bg-canvas p-0 text-ink shadow-[0_20px_56px_rgba(24,34,29,0.16)] backdrop:bg-[rgba(24,34,29,0.4)] backdrop:backdrop-blur-[2px]"
     >
-      <form onSubmit={handle}>
-        <div className="dialog-heading flex items-center justify-between border-b border-line-subtle px-6 py-[18px]">
+      <form onSubmit={handle} className="flex max-h-[92vh] flex-col">
+        <div className="dialog-heading flex items-center justify-between border-b border-line-subtle px-4 py-3.5 sm:px-6 sm:py-[18px]">
           <h2 id={titleId} className="text-[15px] font-medium text-ink">
             {title}
           </h2>
           <button
             type="button"
-            className="icon-button"
+            className="icon-button flex h-9 w-9 items-center justify-center rounded-full"
             aria-label="Close dialog"
             onClick={onClose}
           >
             <X size={18} />
           </button>
         </div>
-        <div className="dialog-body flex flex-col gap-4 px-6 py-5">
+        <div className="dialog-body flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {children}
           {error && (
             <p role="alert" className="error">
@@ -99,11 +99,11 @@ export function Modal({
             </p>
           )}
         </div>
-        <div className="dialog-footer flex justify-end gap-2.5 border-t border-line-subtle bg-surface px-6 py-3.5">
-          <button type="button" className="secondary" onClick={onClose}>
+        <div className="dialog-footer flex flex-col-reverse justify-end gap-2 border-t border-line-subtle bg-surface px-4 py-3 sm:flex-row sm:gap-2.5 sm:px-6 sm:py-3.5">
+          <button type="button" className="secondary min-h-[42px] w-full sm:min-h-0 sm:w-auto" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="primary">
+          <button type="submit" className="primary min-h-[42px] w-full sm:min-h-0 sm:w-auto">
             {submit}
           </button>
         </div>

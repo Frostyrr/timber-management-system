@@ -306,7 +306,130 @@ export function Inventory() {
         {refreshing ? (
           <TableSkeleton rows={5} cols={5} />
         ) : (
-          <div className="table-wrap">
+          <>
+            {/* Mobile Equipment Cards List (Touch-Friendly Card View for Phones & Small Tablets) */}
+            <div className="mobile-equipment-cards flex flex-col gap-3 md:hidden">
+              {paginatedItems.map((i, idx) => {
+                const active = state.loans.find((l) => l.itemId === i.id && !l.returned)
+                const canSeeBorrower = active && (manager || active.borrowerId === person.id)
+                const borrower = canSeeBorrower
+                  ? state.profiles.find((p) => p.id === active.borrowerId)
+                  : undefined
+                const isItemAvailable = available(state, i.id)
+
+                return (
+                  <article
+                    key={`m-${i.id}`}
+                    className="equipment-mobile-card stagger-item flex flex-col gap-3 rounded-[20px] border border-white/90 bg-white/85 p-3.5 shadow-[0_4px_16px_rgba(21,63,50,0.05)] backdrop-blur-md"
+                    style={{ '--stagger-i': idx } as React.CSSProperties}
+                  >
+                    {/* Card Top: Icon, Title, Asset code, Category & Condition */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="equipment-icon shrink-0" aria-hidden="true">
+                          <Package size={18} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <strong className="block truncate text-[14px] font-medium text-ink">{i.name}</strong>
+                          <small className="block text-[11.5px] text-muted-ink">
+                            <span className="asset-code">{i.tag}</span> · {i.category}
+                          </small>
+                        </div>
+                      </div>
+                      <Badge>{i.condition}</Badge>
+                    </div>
+
+                    {/* Location & Status Info Box */}
+                    <div className="flex flex-col gap-1.5 rounded-xl border border-line-subtle bg-surface/70 p-2.5 text-xs">
+                      <div className="flex items-center justify-between text-muted-ink">
+                        <span>Storage Location</span>
+                        <span className="font-medium text-ink">{i.location}</span>
+                      </div>
+
+                      {active ? (
+                        <div className="mt-1 border-t border-line-subtle pt-1.5">
+                          <div className="mb-1 flex items-center justify-between gap-1.5">
+                            <Badge>{isOverdue(active.due) ? 'Overdue' : 'In use'}</Badge>
+                            {active.event && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[#cde0d2] bg-pale px-2 py-0.5 text-[10.5px] font-medium text-primary">
+                                {active.event}
+                              </span>
+                            )}
+                            {!active.event && active.eventCategory && (
+                              <span className={`category-pill ${categoryClass(active.eventCategory)}`}>
+                                {active.eventCategory}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11.5px] text-muted-ink">
+                            {canSeeBorrower ? (
+                              <>
+                                In care of <strong className="font-medium text-ink">{borrower?.name}</strong> · Due {dateText(active.due)}
+                              </>
+                            ) : (
+                              <>Currently in active use · Due {dateText(active.due)}</>
+                            )}
+                          </p>
+                        </div>
+                      ) : isItemAvailable ? (
+                        <div className="mt-1 flex items-center gap-1.5 border-t border-line-subtle pt-1.5 text-[11.5px] font-medium text-primary">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" /> Available for release
+                        </div>
+                      ) : (
+                        <div className="mt-1 flex items-center gap-1.5 border-t border-line-subtle pt-1.5 text-[11.5px] font-medium text-warning-text">
+                          <ShieldAlert size={14} /> Under review / maintenance
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons with 44px touch targets */}
+                    <div className="flex flex-wrap items-center gap-2 border-t border-line-subtle pt-1">
+                      {manager && isItemAvailable && (
+                        <button
+                          type="button"
+                          className="primary-pill flex min-h-[42px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
+                          onClick={() => setModal({ type: 'checkout', id: i.id })}
+                        >
+                          <ArrowUpRight size={15} /> Record equipment release
+                        </button>
+                      )}
+
+                      {manager && active && (
+                        <button
+                          type="button"
+                          className="primary-pill flex min-h-[42px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
+                          onClick={() => setModal({ type: 'return', id: active.id })}
+                        >
+                          Record return
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        className="action-pill flex min-h-[42px] flex-1 cursor-pointer items-center justify-center text-xs font-medium"
+                        onClick={() => setModal({ type: 'history', id: i.id })}
+                      >
+                        Usage history
+                      </button>
+
+                      {manager && (
+                        <button
+                          type="button"
+                          className="action-pill flex min-h-[42px] cursor-pointer items-center justify-center px-3 text-xs font-medium"
+                          onClick={() => setModal({ type: 'item', id: i.id })}
+                          aria-label={`Edit ${i.name}`}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+
+            {/* Desktop High-Density Table */}
+            <div className="table-wrap hidden md:block">
             <table>
               <thead>
                 <tr>
@@ -425,7 +548,8 @@ export function Inventory() {
             </tbody>
           </table>
         </div>
-      )}
+      </>
+    )}
       {!items.length && <Empty text="Try another search or equipment filter." />}
         <Pagination
           page={page}
@@ -738,7 +862,55 @@ export function Incidents() {
       </div>
 
       <section className="panel animate-enter">
-        <div className="table-wrap">
+        {/* Mobile Incident Cards List */}
+        <div className="mobile-incidents-cards flex flex-col gap-3 md:hidden">
+          {incidents.map((i, idx) => {
+            const eq = state.items.find((x) => x.id === i.itemId)
+            return (
+              <article
+                key={`m-inc-${i.id}`}
+                className="incident-mobile-card stagger-item flex flex-col gap-2.5 rounded-[20px] border border-white/90 bg-white/85 p-3.5 shadow-[0_4px_16px_rgba(21,63,50,0.05)] backdrop-blur-md"
+                style={{ '--stagger-i': idx } as React.CSSProperties}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <strong className="block truncate text-[14px] font-medium text-ink">{eq?.name}</strong>
+                    <small className="block text-[11.5px] text-muted-ink">
+                      {eq?.tag} · Reported {dateText(i.at)}
+                    </small>
+                  </div>
+                  <Badge>{i.kind}</Badge>
+                </div>
+
+                <div className="rounded-xl border border-line-subtle bg-surface/70 p-2.5 text-xs">
+                  <p className="leading-relaxed text-ink">{i.notes}</p>
+                  {i.outcome && (
+                    <div className="mt-2 border-t border-line-subtle pt-1.5 text-primary">
+                      <strong>Outcome: </strong>
+                      <span>{i.outcome}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between border-t border-line-subtle pt-1">
+                  <Badge>{i.resolved ? 'Resolved' : 'Under review'}</Badge>
+                  {manager && !i.resolved && (
+                    <button
+                      type="button"
+                      className="primary-pill flex min-h-[40px] cursor-pointer items-center justify-center px-4 text-xs font-medium"
+                      onClick={() => setModal(i.id)}
+                    >
+                      Resolve
+                    </button>
+                  )}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+
+        {/* Desktop Incidents Table */}
+        <div className="table-wrap hidden md:block">
           <table>
             <thead>
               <tr>
