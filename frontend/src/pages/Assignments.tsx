@@ -1,28 +1,37 @@
 import { value, dateText, tomorrow } from '../components/format'
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { Plus, Search, ArrowUpRight } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { Plus, Search, ArrowUpRight, X } from 'lucide-react'
 import { useDemo } from '../demo/context'
 import { canEdit, visibleAssignments, isOverdue, criteria, uid } from '../demo/model'
-import { Heading } from '../components/layout'
+import { Avatar, Heading } from '../components/layout'
 import { Badge, Empty, Modal, Field } from '../components/ui'
+
 export function Assignments({ review = false }: { review?: boolean }) {
-  const { state, person, act } = useDemo(),
-    location = useLocation(),
-    params = new URLSearchParams(location.search),
-    [search, setSearch] = useState(''),
-    [filter, setFilter] = useState(params.get('status') ?? 'all'),
-    [modal, setModal] = useState<{ type: string; id?: string } | null>(null),
-    [department, setDepartment] = useState(person.department),
-    [taskType, setTaskType] = useState('Article')
-  const editor = person.role === 'Administrator' || person.role === 'Department Editor',
-    a = state.assignments.find((a) => a.id === modal?.id)
-  const assignments = visibleAssignments(state, person).filter(
+  const { state, person, act } = useDemo()
+  const location = useLocation()
+  const params = new URLSearchParams(location.search)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState(params.get('status') ?? 'all')
+  const [modal, setModal] = useState<{ type: string; id?: string } | null>(null)
+  const [department, setDepartment] = useState(person.department)
+  const [taskType, setTaskType] = useState('Article')
+
+  const editor = person.role === 'Administrator' || person.role === 'Department Editor'
+  const a = state.assignments.find((a) => a.id === modal?.id)
+  const scoped = visibleAssignments(state, person)
+  const personFilter = params.get('person')
+  const assignmentFilter = params.get('assignment')
+  const filteredPerson = personFilter
+    ? state.profiles.find((p) => p.id === personFilter)
+    : undefined
+
+  const assignments = scoped.filter(
     (a) =>
       (!review || ['Submitted', 'Excuse requested'].includes(a.status)) &&
-      (!params.get('person') || a.assignee === params.get('person')) &&
-      (!params.get('assignment') || a.id === params.get('assignment')) &&
-      a.title.toLowerCase().includes(search.toLowerCase()) &&
+      (!personFilter || a.assignee === personFilter) &&
+      (!assignmentFilter || a.id === assignmentFilter) &&
+      `${a.title} ${a.department} ${a.type}`.toLowerCase().includes(search.toLowerCase()) &&
       (filter === 'all' ||
         (filter === 'open' && ['Pending', 'In progress'].includes(a.status)) ||
         (filter === 'review' && ['Submitted', 'Excuse requested'].includes(a.status)) ||
@@ -31,6 +40,7 @@ export function Assignments({ review = false }: { review?: boolean }) {
           isOverdue(a.due)) ||
         a.status === filter),
   )
+
   return (
     <>
       <Heading
@@ -51,36 +61,113 @@ export function Assignments({ review = false }: { review?: boolean }) {
               setModal({ type: 'create' })
             }}
           >
-            <Plus size={17} /> Create assignment
+            <Plus size={16} /> Create assignment
           </button>
         )}
       </Heading>
+
+      {!review && (
+        <section className="mini-metrics" aria-label="Assignment summary filters">
+          <button
+            type="button"
+            className={`mini-metric ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => setFilter('all')}
+          >
+            <span>All in scope</span>
+            <strong>{scoped.length}</strong>
+          </button>
+          <button
+            type="button"
+            className={`mini-metric ${filter === 'open' ? 'active' : ''}`}
+            onClick={() => setFilter('open')}
+          >
+            <span>Open work</span>
+            <strong>
+              {scoped.filter((x) => ['Pending', 'In progress'].includes(x.status)).length}
+            </strong>
+          </button>
+          <button
+            type="button"
+            className={`mini-metric ${filter === 'review' ? 'active' : ''}`}
+            onClick={() => setFilter('review')}
+          >
+            <span>Awaiting review</span>
+            <strong>
+              {scoped.filter((x) => ['Submitted', 'Excuse requested'].includes(x.status)).length}
+            </strong>
+          </button>
+          <button
+            type="button"
+            className={`mini-metric ${filter === 'overdue' ? 'active' : ''}`}
+            onClick={() => setFilter('overdue')}
+          >
+            <span>Overdue</span>
+            <strong>
+              {
+                scoped.filter(
+                  (x) => ['Pending', 'In progress'].includes(x.status) && isOverdue(x.due),
+                ).length
+              }
+            </strong>
+          </button>
+          <button
+            type="button"
+            className={`mini-metric ${filter === 'Completed' ? 'active' : ''}`}
+            onClick={() => setFilter('Completed')}
+          >
+            <span>Completed</span>
+            <strong>{scoped.filter((x) => x.status === 'Completed').length}</strong>
+          </button>
+        </section>
+      )}
+
+      {(filteredPerson || assignmentFilter) && (
+        <div className="active-filter-banner">
+          <span>
+            Showing records filtered for{' '}
+            <strong>
+              {filteredPerson ? filteredPerson.name : 'selected assignment'}
+            </strong>
+          </span>
+          <Link to="/assignments" className="action-pill">
+            <X size={13} /> Clear filter
+          </Link>
+        </div>
+      )}
+
       <section className="panel">
         <div className="toolbar">
           <label className="search">
-            <Search size={17} />
+            <Search size={16} />
             <input
               aria-label="Search assignments"
-              placeholder="Search assignments…"
+              placeholder="Search assignments, department, or type…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
           {!review && (
-            <select
-              aria-label="Assignment status"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            >
-              <option value="all">All statuses</option>
-              <option value="open">Open work</option>
-              <option value="review">Awaiting review</option>
-              <option value="overdue">Overdue</option>
-              <option>Completed</option>
-              <option>Excused</option>
-            </select>
+            <div className="toolbar-controls">
+              <select
+                aria-label="Assignment status"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="all">All statuses</option>
+                <option value="open">Open work</option>
+                <option value="review">Awaiting review</option>
+                <option value="overdue">Overdue</option>
+                <option value="Pending">Pending</option>
+                <option value="In progress">In progress</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Excuse requested">Excuse requested</option>
+                <option value="Completed">Completed</option>
+                <option value="Excused">Excused</option>
+              </select>
+            </div>
           )}
         </div>
+
         <div className="table-wrap">
           <table>
             <thead>
@@ -93,53 +180,80 @@ export function Assignments({ review = false }: { review?: boolean }) {
               </tr>
             </thead>
             <tbody>
-              {assignments.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <strong>{a.title}</strong>
-                    <small>
-                      {a.department} · {a.type} · {a.points} agreed points
-                    </small>
-                  </td>
-                  <td>{state.profiles.find((p) => p.id === a.assignee)?.name}</td>
-                  <td>
-                    {dateText(a.due)}
-                    <small>{a.hours} estimated hours</small>
-                  </td>
-                  <td>
-                    <Badge>
-                      {['Pending', 'In progress'].includes(a.status) && isOverdue(a.due)
-                        ? 'Overdue'
-                        : a.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    <div className="row-actions">
-                      <button onClick={() => setModal({ type: 'detail', id: a.id })}>
-                        Details
-                      </button>
-                      {a.assignee === person.id &&
-                        ['Pending', 'In progress'].includes(a.status) && (
-                          <>
-                            <button onClick={() => setModal({ type: 'submit', id: a.id })}>
-                              Submit
+              {assignments.map((a) => {
+                const assigneeProfile = state.profiles.find((p) => p.id === a.assignee)
+                return (
+                  <tr key={a.id}>
+                    <td>
+                      <strong>{a.title}</strong>
+                      <small>
+                        {a.department} · {a.type} · {a.points} agreed points
+                      </small>
+                    </td>
+                    <td>
+                      <div className="cell-title">
+                        <Avatar name={assigneeProfile?.name ?? 'Staff'} />
+                        <div>
+                          <strong>{assigneeProfile?.name}</strong>
+                          <small>{assigneeProfile?.role}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <strong>{dateText(a.due)}</strong>
+                      <small>{a.hours} estimated hours</small>
+                    </td>
+                    <td>
+                      <Badge>
+                        {['Pending', 'In progress'].includes(a.status) && isOverdue(a.due)
+                          ? 'Overdue'
+                          : a.status}
+                      </Badge>
+                    </td>
+                    <td>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="action-pill"
+                          onClick={() => setModal({ type: 'detail', id: a.id })}
+                        >
+                          Details
+                        </button>
+                        {a.assignee === person.id &&
+                          ['Pending', 'In progress'].includes(a.status) && (
+                            <>
+                              <button
+                                type="button"
+                                className="action-pill primary-pill"
+                                onClick={() => setModal({ type: 'submit', id: a.id })}
+                              >
+                                Submit
+                              </button>
+                              <button
+                                type="button"
+                                className="action-pill"
+                                onClick={() => setModal({ type: 'excuse', id: a.id })}
+                              >
+                                Request excuse
+                              </button>
+                            </>
+                          )}
+                        {canEdit(person, a.department) &&
+                          a.assignee !== person.id &&
+                          ['Submitted', 'Excuse requested'].includes(a.status) && (
+                            <button
+                              type="button"
+                              className="action-pill primary-pill"
+                              onClick={() => setModal({ type: 'review', id: a.id })}
+                            >
+                              Review
                             </button>
-                            <button onClick={() => setModal({ type: 'excuse', id: a.id })}>
-                              Request excuse
-                            </button>
-                          </>
-                        )}
-                      {canEdit(person, a.department) &&
-                        a.assignee !== person.id &&
-                        ['Submitted', 'Excuse requested'].includes(a.status) && (
-                          <button onClick={() => setModal({ type: 'review', id: a.id })}>
-                            Review
-                          </button>
-                        )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                          )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -147,10 +261,11 @@ export function Assignments({ review = false }: { review?: boolean }) {
           <Empty text="No assignments match this view. No assignments recorded is not a measure of inactivity." />
         )}
         <div className="table-footer">
-          {assignments.length} assignments
+          <span>{assignments.length} assignments shown</span>
           <span>Excused work and pending reviews are considered separately.</span>
         </div>
       </section>
+
       {modal && (
         <Modal
           title={
@@ -307,7 +422,10 @@ export function Assignments({ review = false }: { review?: boolean }) {
                 <strong>{a?.title}</strong>
               </p>
               {a?.status === 'Excuse requested' ? (
-                <p>Staff's reason: {a.reason}</p>
+                <div className="history-card">
+                  <strong>Staff excuse request</strong>
+                  <p>{a.reason}</p>
+                </div>
               ) : (
                 state.submissions
                   .filter((s) => s.assignmentId === a?.id)
@@ -342,14 +460,22 @@ export function Assignments({ review = false }: { review?: boolean }) {
           )}
           {modal.type === 'detail' && (
             <>
-              <Badge>{a?.status}</Badge>
+              <div className="detail-meta-row">
+                <Badge>{a?.status}</Badge>
+                <span className="muted">
+                  {a?.department} · {a?.type} · Due {a ? dateText(a.due) : ''}
+                </span>
+              </div>
               <p>{a?.description}</p>
-              <p>
-                <strong>Deliverable:</strong> {a?.deliverable}
-              </p>
-              <p>
-                {a?.hours} estimated hours · {a?.points} agreed points
-              </p>
+              <div className="history-card">
+                <p>
+                  <strong>Deliverable:</strong> {a?.deliverable}
+                </p>
+                <p>
+                  <strong>Workload & credit:</strong> {a?.hours} estimated hours · {a?.points}{' '}
+                  agreed points
+                </p>
+              </div>
               {a?.reason && (
                 <p>
                   <strong>Excuse context:</strong> {a.reason}
@@ -374,7 +500,7 @@ export function Assignments({ review = false }: { review?: boolean }) {
                 .map((s) => (
                   <article className="history-card" key={s.id}>
                     <a href={s.url} target="_blank" rel="noreferrer">
-                      Submitted output
+                      Submitted output <ArrowUpRight size={13} />
                     </a>
                     <p>{s.notes}</p>
                     <small>
@@ -382,11 +508,14 @@ export function Assignments({ review = false }: { review?: boolean }) {
                     </small>
                   </article>
                 ))}
+              {!state.submissions.some((s) => s.assignmentId === a?.id) && (
+                <p className="muted">No submissions recorded yet.</p>
+              )}
               <h3>Local activity history</h3>
               {state.events
                 .filter((e) => e.entityId === a?.id)
                 .map((e) => (
-                  <p key={e.id}>
+                  <p key={e.id} className="event-line">
                     {e.text} · {state.profiles.find((p) => p.id === e.actor)?.name} ·{' '}
                     {dateText(e.at)}
                   </p>

@@ -1,23 +1,32 @@
 import { value, dateText, tomorrow } from '../components/format'
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { Plus, Search, Package, ShieldAlert } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { Plus, Search, Package, ShieldAlert, ArrowUpRight } from 'lucide-react'
 import { useDemo } from '../demo/context'
 import { canInventory, available, isOverdue, uid, type Item } from '../demo/model'
 import { Heading } from '../components/layout'
 import { Badge, Empty, Modal, Field } from '../components/ui'
+
 export function Inventory() {
   const { state, person, act } = useDemo()
   const query = new URLSearchParams(useLocation().search)
-  const [search, setSearch] = useState(''),
-    [filter, setFilter] = useState(query.get('status') ?? 'all'),
-    [modal, setModal] = useState<{
-      type: 'item' | 'checkout' | 'return' | 'history'
-      id?: string
-    } | null>(null)
-  const manager = canInventory(person),
-    item = state.items.find((i) => i.id === modal?.id),
-    loan = state.loans.find((l) => l.id === modal?.id)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState(query.get('status') ?? 'all')
+  const [modal, setModal] = useState<{
+    type: 'item' | 'checkout' | 'return' | 'history'
+    id?: string
+  } | null>(null)
+
+  const manager = canInventory(person)
+  const item = state.items.find((i) => i.id === modal?.id)
+  const loan = state.loans.find((l) => l.id === modal?.id)
+
+  const visibleLoans = state.loans.filter(
+    (l) => !l.returned && (manager || l.borrowerId === person.id),
+  )
+  const overdueLoans = visibleLoans.filter((l) => isOverdue(l.due))
+  const availableItemsCount = state.items.filter((i) => available(state, i.id)).length
+
   const items = state.items.filter(
     (i) =>
       `${i.name} ${i.tag} ${i.category}`.toLowerCase().includes(search.toLowerCase()) &&
@@ -36,41 +45,84 @@ export function Inventory() {
               (manager || l.borrowerId === person.id),
           ))),
   )
+
   return (
     <>
       <Heading
         eyebrow="RESOURCES & RESPONSIBILITY"
         title="Equipment"
-        description="The tools behind every story. Know where they are and how they're doing."
+        description="Shared tools behind every story. Track availability, active loans, and condition records."
       >
+        <Link to="/incidents" className="secondary">
+          <ShieldAlert size={16} /> Incident reviews
+        </Link>
         {manager && (
           <button className="primary" onClick={() => setModal({ type: 'item' })}>
-            <Plus size={17} /> Register equipment
+            <Plus size={16} /> Register equipment
           </button>
         )}
       </Heading>
+
+      <section className="mini-metrics" aria-label="Equipment summary">
+        <button
+          type="button"
+          className={`mini-metric ${filter === 'all' ? 'active' : ''}`}
+          onClick={() => setFilter('all')}
+        >
+          <span>Total catalog</span>
+          <strong>{state.items.length}</strong>
+        </button>
+        <button
+          type="button"
+          className={`mini-metric ${filter === 'available' ? 'active' : ''}`}
+          onClick={() => setFilter('available')}
+        >
+          <span>Available now</span>
+          <strong>{availableItemsCount}</strong>
+        </button>
+        <button
+          type="button"
+          className={`mini-metric ${filter === 'loans' ? 'active' : ''}`}
+          onClick={() => setFilter('loans')}
+        >
+          <span>Active loans</span>
+          <strong>{visibleLoans.length}</strong>
+        </button>
+        <button
+          type="button"
+          className={`mini-metric ${filter === 'overdue' ? 'active' : ''}`}
+          onClick={() => setFilter('overdue')}
+        >
+          <span>Overdue returns</span>
+          <strong>{overdueLoans.length}</strong>
+        </button>
+      </section>
+
       <section className="panel">
         <div className="toolbar">
           <label className="search">
-            <Search size={17} />
+            <Search size={16} />
             <input
               aria-label="Search equipment"
-              placeholder="Search equipment or asset tag…"
+              placeholder="Search equipment, category, or asset tag…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
-          <select
-            aria-label="Equipment status"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="all">All equipment</option>
-            <option value="available">Available</option>
-            <option value="loans">Active loans</option>
-            <option value="overdue">Overdue loans</option>
-          </select>
+          <div className="toolbar-controls">
+            <select
+              aria-label="Equipment status"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            >
+              <option value="all">All equipment</option>
+              <option value="available">Available</option>
+              <option value="loans">Active loans</option>
+              <option value="overdue">Overdue loans</option>
+            </select>
+          </div>
         </div>
+
         <div className="table-wrap">
           <table>
             <thead>
@@ -78,24 +130,28 @@ export function Inventory() {
                 <th>Equipment / asset</th>
                 <th>Location</th>
                 <th>Condition</th>
-                <th>Status</th>
+                <th>Status & loan context</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {items.map((i) => {
                 const active = state.loans.find((l) => l.itemId === i.id && !l.returned)
+                const canSeeBorrower = active && (manager || active.borrowerId === person.id)
+                const borrower = canSeeBorrower
+                  ? state.profiles.find((p) => p.id === active.borrowerId)
+                  : undefined
                 return (
                   <tr key={i.id}>
                     <td>
                       <div className="cell-title">
-                        <span className="equipment-icon">
-                          <Package size={20} />
+                        <span className="equipment-icon" aria-hidden="true">
+                          <Package size={18} />
                         </span>
                         <div>
                           <strong>{i.name}</strong>
                           <small>
-                            {i.tag} · {i.category}
+                            <span className="asset-code">{i.tag}</span> · {i.category}
                           </small>
                         </div>
                       </div>
@@ -114,24 +170,45 @@ export function Inventory() {
                             ? 'Available'
                             : 'Under review'}
                       </Badge>
+                      {active && canSeeBorrower && (
+                        <small>
+                          {borrower?.name} · Due {dateText(active.due)}
+                        </small>
+                      )}
                     </td>
                     <td>
                       <div className="row-actions">
-                        <button onClick={() => setModal({ type: 'history', id: i.id })}>
+                        <button
+                          type="button"
+                          className="action-pill"
+                          onClick={() => setModal({ type: 'history', id: i.id })}
+                        >
                           History
                         </button>
                         {manager && (
                           <>
-                            <button onClick={() => setModal({ type: 'item', id: i.id })}>
+                            <button
+                              type="button"
+                              className="action-pill"
+                              onClick={() => setModal({ type: 'item', id: i.id })}
+                            >
                               Edit
                             </button>
                             {available(state, i.id) && (
-                              <button onClick={() => setModal({ type: 'checkout', id: i.id })}>
+                              <button
+                                type="button"
+                                className="action-pill primary-pill"
+                                onClick={() => setModal({ type: 'checkout', id: i.id })}
+                              >
                                 Check out
                               </button>
                             )}
                             {active && (
-                              <button onClick={() => setModal({ type: 'return', id: active.id })}>
+                              <button
+                                type="button"
+                                className="action-pill primary-pill"
+                                onClick={() => setModal({ type: 'return', id: active.id })}
+                              >
                                 Return
                               </button>
                             )}
@@ -147,10 +224,11 @@ export function Inventory() {
         </div>
         {!items.length && <Empty text="Try another search or equipment filter." />}
         <div className="table-footer">
-          {items.length} equipment records{' '}
-          <span>Individual assets · quantities and supplies coming later</span>
+          <span>{items.length} equipment records shown</span>
+          <span>Individual assets · quantities and bulk supplies deferred</span>
         </div>
       </section>
+
       {modal && (
         <Modal
           title={
@@ -252,8 +330,8 @@ export function Inventory() {
           {modal.type === 'return' && (
             <>
               <p>
-                Returning {state.items.find((i) => i.id === loan?.itemId)?.name}. An adverse
-                condition opens an incident review without assigning blame.
+                Returning <strong>{state.items.find((i) => i.id === loan?.itemId)?.name}</strong>. An
+                adverse condition opens an incident review without assigning blame.
               </p>
               <Field label="Condition after borrowing">
                 <select name="condition">
@@ -290,7 +368,7 @@ export function Inventory() {
                 state.events
                   .filter((e) => e.entityId === item?.id)
                   .map((e) => (
-                    <p key={e.id}>
+                    <p key={e.id} className="event-line">
                       {e.text} · {dateText(e.at)}
                     </p>
                   ))}
@@ -304,21 +382,23 @@ export function Inventory() {
     </>
   )
 }
+
 export function Incidents() {
-  const { state, person, act } = useDemo(),
-    [modal, setModal] = useState<string | null>(null)
-  const manager = canInventory(person),
-    incidents = state.incidents.filter(
-      (i) =>
-        manager ||
-        i.reporter === person.id ||
-        state.loans.some((l) => l.itemId === i.itemId && l.borrowerId === person.id),
-    ),
-    reportable = state.items.filter(
-      (i) =>
-        manager ||
-        state.loans.some((l) => l.itemId === i.id && l.borrowerId === person.id && !l.returned),
-    )
+  const { state, person, act } = useDemo()
+  const [modal, setModal] = useState<string | null>(null)
+  const manager = canInventory(person)
+  const incidents = state.incidents.filter(
+    (i) =>
+      manager ||
+      i.reporter === person.id ||
+      state.loans.some((l) => l.itemId === i.itemId && l.borrowerId === person.id),
+  )
+  const reportable = state.items.filter(
+    (i) =>
+      manager ||
+      state.loans.some((l) => l.itemId === i.id && l.borrowerId === person.id && !l.returned),
+  )
+
   return (
     <>
       <Heading
@@ -326,19 +406,29 @@ export function Incidents() {
         title="Incident reviews"
         description="Document what happened, consider the context, and record a fair resolution."
       >
+        <Link to="/inventory" className="secondary">
+          Equipment catalog <ArrowUpRight size={15} />
+        </Link>
         {!!reportable.length && (
           <button className="primary" onClick={() => setModal('new')}>
-            <Plus size={17} /> Report an incident
+            <Plus size={16} /> Report an incident
           </button>
         )}
       </Heading>
+
       <div className="fairness compact">
-        <ShieldAlert size={22} />
-        <p>
-          An incident is a request for review. It does not establish fault or imply that a borrower
-          stole an item.
-        </p>
+        <span className="fairness-icon" aria-hidden="true">
+          <ShieldAlert size={18} />
+        </span>
+        <div>
+          <strong>Review without presumption of fault</strong>
+          <p>
+            An incident is a request for review. It does not establish fault or imply that a
+            borrower stole or intentionally damaged an item.
+          </p>
+        </div>
       </div>
+
       <section className="panel">
         <div className="table-wrap">
           <table>
@@ -352,42 +442,56 @@ export function Incidents() {
               </tr>
             </thead>
             <tbody>
-              {incidents.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    <strong>{state.items.find((x) => x.id === i.itemId)?.name}</strong>
-                    <small>{dateText(i.at)}</small>
-                  </td>
-                  <td>
-                    <Badge>{i.kind}</Badge>
-                  </td>
-                  <td className="long-cell">
-                    {i.notes}
-                    {i.outcome && (
-                      <p>
-                        <strong>Outcome:</strong> {i.outcome}
-                      </p>
-                    )}
-                  </td>
-                  <td>
-                    <Badge>{i.resolved ? 'Resolved' : 'Under review'}</Badge>
-                  </td>
-                  <td>
-                    {manager && !i.resolved ? (
-                      <button className="text-button" onClick={() => setModal(i.id)}>
-                        Resolve
-                      </button>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {incidents.map((i) => {
+                const eq = state.items.find((x) => x.id === i.itemId)
+                return (
+                  <tr key={i.id}>
+                    <td>
+                      <strong>{eq?.name}</strong>
+                      <small>
+                        {eq?.tag} · Reported {dateText(i.at)}
+                      </small>
+                    </td>
+                    <td>
+                      <Badge>{i.kind}</Badge>
+                    </td>
+                    <td className="long-cell">
+                      {i.notes}
+                      {i.outcome && (
+                        <p>
+                          <strong>Outcome:</strong> {i.outcome}
+                        </p>
+                      )}
+                    </td>
+                    <td>
+                      <Badge>{i.resolved ? 'Resolved' : 'Under review'}</Badge>
+                    </td>
+                    <td>
+                      {manager && !i.resolved ? (
+                        <button
+                          type="button"
+                          className="action-pill primary-pill"
+                          onClick={() => setModal(i.id)}
+                        >
+                          Resolve
+                        </button>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
         {!incidents.length && <Empty text="No incident reviews are visible to this persona." />}
+        <div className="table-footer">
+          <span>{incidents.length} incident records in scope</span>
+          <span>Documented outcomes update equipment availability automatically</span>
+        </div>
       </section>
+
       {modal && (
         <Modal
           title={modal === 'new' ? 'Report an equipment incident' : 'Resolve incident review'}
