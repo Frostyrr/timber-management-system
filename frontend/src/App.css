@@ -986,3 +986,36 @@ tr:has([role="menu"]) {
 .slick-scroll::-webkit-scrollbar-thumb:active {
   background: #0d2e24;
 }
+
+/* Modern Sleek Dark Green Scrollbar (Deep Timberland Forest Green) */
+.slick-scroll-dark-green {
+  scrollbar-width: thin;
+  scrollbar-color: #153f32 rgba(21, 63, 50, 0.08);
+}
+
+.slick-scroll-dark-green::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.slick-scroll-dark-green::-webkit-scrollbar-track {
+  background: rgba(21, 63, 50, 0.05);
+  border-radius: 9999px;
+  margin: 4px 2px;
+}
+
+.slick-scroll-dark-green::-webkit-scrollbar-thumb {
+  background: #153f32;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 3px rgba(21, 63, 50, 0.25);
+  transition: background-color 0.18s ease;
+}
+
+.slick-scroll-dark-green::-webkit-scrollbar-thumb:hover {
+  background: #0d2e24;
+}
+
+.slick-scroll-dark-green::-webkit-scrollbar-thumb:active {
+  background: #071a13;
+}

@@ -189,14 +189,15 @@ export function Staff() {
             <Select
               name="title"
               required
-              placeholder="Select a position"
+              placeholder="Select a publication position"
+              searchable
               defaultValue={
                 publicationPositions.includes(editing.title)
                   ? editing.title
                   : ''
               }
               maxVisibleOptions={5}
-              menuClassName="slick-scroll-green"
+              menuClassName="slick-scroll-dark-green"
               options={publicationPositions.map((position) => ({
                 value: position,
                 label: position,
