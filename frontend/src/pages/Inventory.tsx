@@ -683,7 +683,7 @@ export function Inventory() {
                   <th>Location</th>
                   <th>Condition</th>
                   <th>Status & usage details</th>
-                  <th>Actions</th>
+                  <th className="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -749,8 +749,8 @@ export function Inventory() {
                         </div>
                       )}
                     </td>
-                    <td>
-                      <div className="row-actions flex items-center justify-end gap-2">
+                    <td className="text-center">
+                      <div className="row-actions flex items-center justify-center gap-2">
                         {manager && isItemAvailable && (
                           <button
                             type="button"
@@ -1258,7 +1258,7 @@ export function Incidents() {
                 <th>Reported condition</th>
                 <th>Details & outcome</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th className="text-center">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -1290,11 +1290,11 @@ export function Incidents() {
                     <td>
                       <Badge>{i.resolved ? 'Resolved' : 'Under review'}</Badge>
                     </td>
-                    <td>
+                    <td className="text-center">
                       {manager && !i.resolved ? (
                         <button
                           type="button"
-                          className="action-pill primary-pill"
+                          className="action-pill primary-pill mx-auto flex items-center justify-center"
                           onClick={() => setModal(i.id)}
                         >
                           Resolve

@@ -349,7 +349,7 @@ export function Staff() {
                 <th>Department / Desk</th>
                 <th>Access Role</th>
                 <th>Equipment Accountability</th>
-                <th className="text-right">Actions</th>
+                <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -430,8 +430,8 @@ export function Staff() {
                       </div>
                     </td>
 
-                    <td>
-                      <div className="flex items-center justify-end gap-1.5">
+                    <td className="text-center">
+                      <div className="flex items-center justify-center gap-1.5">
                         <ActionMenu
                           triggerLabel={`Options for ${p.name}`}
                           items={[
