@@ -5,6 +5,7 @@ import {
   Package,
   ShieldAlert,
   ShieldCheck,
+  KeyRound,
   ScrollText,
   Users,
   Menu,
@@ -49,7 +50,7 @@ export default function App() {
     { to: '/logs', name: 'Logs', icon: ScrollText },
     ...(manager ? [{ to: '/staff', name: 'Staff directory', icon: Users }] : []),
     { to: '/security', name: 'Cybersecurity', icon: ShieldCheck },
-    ...(person.role === 'Administrator' ? [{to:'/access', name:'System access', icon:ShieldCheck}] : []),
+    ...(person.role === 'Administrator' ? [{to:'/access', name:'System access', icon:KeyRound}] : []),
     { to: '/settings', name: 'My account', icon: SettingsIcon },
   ]
 

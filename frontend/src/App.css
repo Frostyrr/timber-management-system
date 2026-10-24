@@ -947,3 +947,42 @@ tr:has([role="menu"]) {
 .notification-item {
   @apply flex items-start gap-2.5 rounded-2xl p-2.5 transition-colors hover:bg-surface/80;
 }
+
+/* Modern Slick Green Scrollbar (Emerald / Timberland theme) */
+.slick-scroll-green,
+.slick-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #527a63 rgba(234, 241, 235, 0.45);
+}
+
+.slick-scroll-green::-webkit-scrollbar,
+.slick-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.slick-scroll-green::-webkit-scrollbar-track,
+.slick-scroll::-webkit-scrollbar-track {
+  background: rgba(234, 241, 235, 0.4);
+  border-radius: 9999px;
+  margin: 3px 0;
+}
+
+.slick-scroll-green::-webkit-scrollbar-thumb,
+.slick-scroll::-webkit-scrollbar-thumb {
+  background: #527a63;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 2px rgba(21, 63, 50, 0.15);
+  transition: background-color 0.2s ease;
+}
+
+.slick-scroll-green::-webkit-scrollbar-thumb:hover,
+.slick-scroll::-webkit-scrollbar-thumb:hover {
+  background: #153f32;
+}
+
+.slick-scroll-green::-webkit-scrollbar-thumb:active,
+.slick-scroll::-webkit-scrollbar-thumb:active {
+  background: #0d2e24;
+}

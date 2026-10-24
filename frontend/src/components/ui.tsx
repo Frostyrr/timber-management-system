@@ -333,6 +333,7 @@ export function Select({
   placeholder = 'Select an option',
   disabled = false,
   required = false,
+  maxVisibleOptions,
   className = '',
   buttonClassName = '',
   menuClassName = '',
@@ -347,6 +348,7 @@ export function Select({
   placeholder?: string
   disabled?: boolean
   required?: boolean
+  maxVisibleOptions?: number
   className?: string
   buttonClassName?: string
   menuClassName?: string
@@ -379,12 +381,18 @@ export function Select({
 
   const isControlled = value !== undefined
   const [uncontrolledValue, setUncontrolledValue] = useState<string>(() => {
-    return defaultValue !== undefined ? defaultValue : (parsedOptions[0]?.value ?? '')
+    return defaultValue !== undefined
+      ? defaultValue
+      : placeholder
+        ? ''
+        : (parsedOptions[0]?.value ?? '')
   })
 
-  const currentValue = isControlled ? value : (uncontrolledValue || parsedOptions[0]?.value || '')
-  const selectedOption = parsedOptions.find((o) => o.value === currentValue)
-  const displayLabel = selectedOption ? selectedOption.label : (placeholder || currentValue)
+  const currentValue = isControlled
+    ? (value ?? '')
+    : (uncontrolledValue !== undefined ? uncontrolledValue : (placeholder ? '' : (parsedOptions[0]?.value || '')))
+  const selectedOption = parsedOptions.find((o) => o.value === currentValue && o.value !== '')
+  const displayLabel = selectedOption ? selectedOption.label : (placeholder || currentValue || 'Select an option')
 
   const [isOpen, setIsOpen] = useState(false)
   const [coords, setCoords] = useState<{
@@ -504,10 +512,10 @@ export function Select({
         bottom: coords.opensUpward && coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
         left: `${coords.left}px`,
         width: `${coords.width}px`,
-        maxHeight: '260px',
+        maxHeight: maxVisibleOptions ? `${maxVisibleOptions * 36 + 12}px` : '260px',
         zIndex: 999999,
       }}
-      className={`fixed z-[999999] overflow-y-auto rounded-xl border border-white/90 bg-white/98 p-1.5 shadow-[0_20px_50px_rgba(24,34,29,0.28)] backdrop-blur-2xl ring-1 ring-black/10 animate-in fade-in zoom-in-95 duration-100 ${menuClassName}`}
+      className={`fixed z-[999999] overflow-y-auto rounded-xl border border-white/90 bg-white/98 p-1.5 shadow-[0_20px_50px_rgba(24,34,29,0.28)] backdrop-blur-2xl ring-1 ring-black/10 animate-in fade-in zoom-in-95 duration-100 slick-scroll-green ${menuClassName}`}
     >
       {parsedOptions.length === 0 ? (
         <div className="px-3 py-2 text-xs text-muted-ink">No options available</div>
@@ -569,7 +577,7 @@ export function Select({
           isOpen ? 'border-primary ring-2 ring-primary/20' : ''
         } ${buttonClassName}`}
       >
-        <span className="truncate pr-1 text-ink">{displayLabel}</span>
+        <span className={`truncate pr-1 ${selectedOption ? "text-ink font-medium" : "text-muted-ink font-normal"}`}>{displayLabel}</span>
         <ChevronDown
           size={15}
           className={`shrink-0 text-muted-ink transition-transform duration-200 group-hover:text-primary ${
