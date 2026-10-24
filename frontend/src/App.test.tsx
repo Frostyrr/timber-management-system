@@ -107,3 +107,15 @@ it('separates directory from administrator access management',()=>{
  expect(render('/','custodian')).not.toContain('href="/access"')
  expect(render('/settings')).not.toContain('Review access')
 })
+it('shows archived equipment only through the archive filter and retains history actions',()=>{
+ state.items[1].archived=true
+ try {
+  expect(render('/inventory')).not.toContain('Sony a6400')
+  const html=render('/inventory?status=archived')
+  expect(html).toContain('Sony a6400')
+  expect(html).toContain('Archived')
+  expect(html).toContain('Usage history')
+  expect(html).not.toContain('Edit equipment details')
+  expect(html).not.toContain('Archive equipment…')
+ } finally { state.items[1].archived=false }
+})

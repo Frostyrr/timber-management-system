@@ -85,6 +85,8 @@ function LiveProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState('')
   const [signedIn, setSignedIn] = useState(false)
   const generation = useRef(0)
+  const userId = useRef<string | null>(null)
+  const requestSequence = useRef(0)
   const pending = useRef(new Map<string, string>())
   const noticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -94,39 +96,53 @@ function LiveProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const refresh = async () => {
-    const token = generation.current
+  const loadWorkspace = async (token: number, sequence: number) => {
     try {
       const p = await identity()
-      const next = p.status === 'active' && ['Administrator','Inventory Custodian'].includes(p.role) ? await snapshot() : null
-      if (token !== generation.current) return
+      const permitted = p.status === 'active' && ['Administrator','Inventory Custodian'].includes(p.role)
+      const next = permitted ? await snapshot() : null
+      if (token !== generation.current || sequence !== requestSequence.current) return false
       setPerson(p); setState(next); setError('')
+      return true
     } catch (e) {
-      if (token === generation.current) { setState(null); setError(e instanceof Error ? e.message : 'Could not load inventory. Check your connection and backend setup.') }
+      if (token !== generation.current || sequence !== requestSequence.current) return false
+      const message = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String(e.message) : 'Unable to load inventory. Check your connection and retry.'
+      if (/Approved .* required|permission denied/i.test(message)) setState(null)
+      setError(message)
+      return false
     }
   }
+  const refresh = async () => { await loadWorkspace(generation.current, ++requestSequence.current) }
   useEffect(() => {
     if (!client) return
     const gen = generation
+    const sequence = requestSequence
+    const currentUser = userId
     let disposed = false
     const { data } = client.auth.onAuthStateChange((_event, session) => {
-      const token = ++gen.current
-      pending.current.clear()
-      setState(null); setPerson(null); setError(''); setSignedIn(!!session); setLoading(!!session)
-      if (session) {
-        // Do not await Supabase operations inside its auth callback.
-        void (async () => {
-          try {
-            const p = await identity()
-            const s = p.status === 'active' && ['Administrator','Inventory Custodian'].includes(p.role) ? await snapshot() : null
-            if (!disposed && token === gen.current) { setPerson(p); setState(s) }
-          } catch (e) {
-            if (!disposed && token === gen.current) setError(e instanceof Error ? e.message : 'Unable to load membership. Apply the backend migration first.')
-          } finally { if (!disposed && token === gen.current) setLoading(false) }
-        })()
+      const nextUser = session?.user.id ?? null
+      const changed = nextUser !== currentUser.current
+      if (changed) {
+        currentUser.current = nextUser
+        gen.current++
+        pending.current.clear()
+        setState(null); setPerson(null); setError(''); setNotice('')
       }
+      setSignedIn(!!session)
+      if (!session) { sequence.current++; setLoading(false); return }
+      if (changed) setLoading(true)
+      const token = gen.current
+      const loadId = ++sequence.current
+      // Start API calls after the auth notification finishes to avoid auth-lock contention.
+      queueMicrotask(() => {
+        if (disposed) return
+        void loadWorkspace(token, loadId).finally(() => {
+          if (!disposed && token === gen.current && loadId === sequence.current) setLoading(false)
+        })
+      })
     })
-    return () => { disposed = true; gen.current++; data.subscription.unsubscribe() }
+    return () => { disposed = true; gen.current++; sequence.current++; currentUser.current = null; data.subscription.unsubscribe() }
+    // loadWorkspace only uses stable setters/refs; session subscription is mounted once.
   }, [])
   const signOut = async () => {
     const { error: failure } = await client!.auth.signOut()
@@ -145,13 +161,14 @@ function LiveProvider({ children }: { children: ReactNode }) {
     setNotice(msg)
     if (noticeTimeout.current) clearTimeout(noticeTimeout.current)
     noticeTimeout.current = setTimeout(() => setNotice(''), 6000)
-    await refresh()
+    const loaded = await loadWorkspace(generation.current, ++requestSequence.current)
+    if (!loaded && token === generation.current) setNotice('Saved, but the latest data could not be loaded. Refresh to retry; do not submit the change again.')
   }
   if (loading) return <div className="app-backdrop min-h-screen bg-workspace" />
 
   if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
   if (state && person) return <InventoryContext.Provider value={{ state, person, act, mode: 'live', refresh, signOut,
-    warning: error, notice }}>{children}</InventoryContext.Provider>
+    warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '', notice }}>{children}</InventoryContext.Provider>
   if (!signedIn) return <>
     {location.pathname !== '/login' && <Navigate to="/login" replace />}
     <main className="min-h-screen bg-workspace flex items-center justify-center p-4"><Login checkingSession={false} /></main>
@@ -160,10 +177,10 @@ function LiveProvider({ children }: { children: ReactNode }) {
     <div className="w-full max-w-[440px] rounded-[32px] border border-white/90 bg-white/85 p-8 shadow-[0_24px_64px_rgba(21,63,50,0.12)] backdrop-blur-2xl text-center animate-enter">
       <img src="/logo.png" alt="The Timberland logo" className="h-16 w-auto mx-auto mb-4 object-contain" />
       <h1 className="text-[24px] font-semibold tracking-[-0.03em] text-ink">
-        {person?.status === 'suspended' ? 'Access Suspended' : 'Membership Approval Required'}
+        {error ? (/migration|upgrade/i.test(error) ? 'Database upgrade required' : 'Unable to load inventory') : person?.status === 'suspended' ? 'Access suspended' : person?.status === 'active' ? 'Operator access required' : 'Membership approval required'}
       </h1>
       <p className="mt-2 text-[13px] leading-relaxed text-muted-ink">
-        {person?.status === 'suspended'
+        {error ? 'Your account approval has not been changed. Retry loading or contact the administrator with the error below.' : person?.status === 'suspended'
           ? 'Your publication equipment access has been suspended. Please contact the administrator.'
           : 'Your Google account has been authenticated, but requires role authorization from a publication administrator.'}
       </p>
@@ -173,7 +190,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
           onClick={() => void refresh()}
           className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-[13px] font-medium text-white shadow-sm transition hover:bg-forest-deep"
         >
-          Check access status
+          {error ? 'Retry loading' : 'Check access status'}
         </button>
         <button
           type="button"

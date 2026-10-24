@@ -30,7 +30,7 @@ export function Dashboard() {
   const cards = [
     {
       label: 'Total equipment',
-      count: state.items.length,
+      count: state.items.filter(i=>!i.archived).length,
       to: '/inventory',
       icon: Boxes,
       note: 'Individually tracked assets',

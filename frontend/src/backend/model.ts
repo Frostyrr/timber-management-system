@@ -60,6 +60,7 @@ const incidentSchema = z.object({
 const eventSchema = z.object({
   id: z.string(),
   actor: z.string(),
+  actorName: z.string().optional(),
   at: z.string(),
   text: z.string(),
   entityId: z.string(),
@@ -119,7 +120,7 @@ export function formatEventDetails(
     (e.after?.name as string) ||
     (e.before?.name as string) ||
     'Equipment'
-  const borrower = state.profiles.find(
+  const borrower = state.people?.find(
     (p) =>
       p.id ===
       (e.subjectId ||
@@ -133,6 +134,10 @@ export function formatEventDetails(
     'member'
 
   const rawAction = (e.action || e.text || '').trim().toLowerCase()
+  if (rawAction.startsWith('people.')) {
+    const name = String(e.after?.name ?? e.before?.name ?? state.people?.find(p=>p.id===e.entityId)?.name ?? 'Directory member')
+    return `${rawAction === 'people.insert' ? 'Added directory member' : e.after?.archived ? 'Archived directory member' : 'Updated directory member'}: ${name}`
+  }
 
   // 1. Releases / Equipment checkouts
   if (rawAction === 'releases.insert' || rawAction === 'checkout') {
@@ -265,3 +270,6 @@ export const visibleIncidents = (s: State, p: Profile) =>
           (!l.returned || Date.parse(l.returned) >= Date.parse(i.at)),
       ),
   )
+
+export const auditActorName = (e: State['events'][number], s: State) => e.actorName ?? s.profiles.find(p=>p.id===e.actor)?.name ?? (e.actor === 'system' ? 'System' : 'Unknown operator')
+export const equipmentStatus = (s: State, i: Item) => i.archived ? 'Archived' : s.loans.some(l=>l.itemId===i.id&&!l.returned) ? (s.loans.some(l=>l.itemId===i.id&&!l.returned&&isOverdue(l.due)) ? 'Overdue' : 'In use') : s.incidents.some(n=>n.itemId===i.id&&!n.resolved) ? 'Under review' : available(s,i.id) ? 'Available' : 'Unavailable'

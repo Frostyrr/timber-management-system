@@ -6,6 +6,7 @@ import { Plus, Search, Package, ShieldAlert, ArrowUpRight, RefreshCw, ChevronLef
 import { useInventory } from '../backend/context'
 import {
   borrowerName,
+  equipmentStatus,
   canInventory,
   available,
   isOverdue,
@@ -417,7 +418,8 @@ export function Inventory() {
   const items = state.items.filter(
     (i) =>
       `${i.name} ${i.tag} ${i.category}`.toLowerCase().includes(search.toLowerCase()) &&
-      (filter === 'all' ||
+      (filter === 'archived' ? !!i.archived : !i.archived) &&
+      (filter === 'archived' || filter === 'all' ||
         (filter === 'available' && available(state, i.id)) ||
         (filter === 'loans' &&
           state.loans.some(
@@ -465,7 +467,7 @@ export function Inventory() {
           onClick={() => { setFilter('all'); setPage(1); }}
         >
           <span>Total inventory</span>
-          <strong>{state.items.length}</strong>
+          <strong>{state.items.filter(i=>!i.archived).length}</strong>
         </button>
         <button
           type="button"
@@ -524,7 +526,7 @@ export function Inventory() {
               className="w-auto min-w-[160px]"
               buttonClassName="h-9 py-1 px-3 text-xs"
             >
-              <option value="all">All equipment</option>
+              <option value="all">Active equipment</option><option value="archived">Archived equipment</option>
               <option value="available">Available</option>
               <option value="loans">Equipment in use</option>
               <option value="overdue">Overdue returns</option>
@@ -602,7 +604,7 @@ export function Inventory() {
                         </div>
                       ) : (
                         <div className="mt-1 flex items-center gap-1.5 border-t border-line-subtle pt-1.5 text-[11.5px] font-medium text-warning-text">
-                          <ShieldAlert size={14} /> Under review / maintenance
+                          <ShieldAlert size={14} /> {equipmentStatus(state,i)}
                         </div>
                       )}
                     </div>
@@ -654,13 +656,13 @@ export function Inventory() {
                             icon: <History size={14} className="text-muted-ink" />,
                             onClick: () => setModal({ type: 'history', id: i.id }),
                           },
-                          manager && {
+                          manager && !i.archived && {
                             label: 'Edit equipment details',
                             icon: <Pencil size={14} className="text-muted-ink" />,
                             onClick: () => setModal({ type: 'item', id: i.id }),
                           },
-                          manager && {
-                            label: 'Delete equipment…',
+                          manager && !i.archived && {
+                            label: 'Archive equipment…',
                             icon: <Trash2 size={14} className="text-[#963838]" />,
                             destructive: true,
                             divider: true,
@@ -719,13 +721,7 @@ export function Inventory() {
                     </td>
                     <td>
                       <Badge>
-                        {active
-                          ? isOverdue(active.due)
-                            ? 'Overdue'
-                            : 'In use'
-                          : available(state, i.id)
-                            ? 'Available'
-                            : 'Under review'}
+                        {equipmentStatus(state,i)}
                       </Badge>
                       {active && canSeeBorrower && (
                         <div className="mt-1 flex flex-col gap-1">
@@ -789,13 +785,13 @@ export function Inventory() {
                               icon: <History size={14} className="text-muted-ink" />,
                               onClick: () => setModal({ type: 'history', id: i.id }),
                             },
-                            manager && {
+                            manager && !i.archived && {
                               label: 'Edit equipment details',
                               icon: <Pencil size={14} className="text-muted-ink" />,
                               onClick: () => setModal({ type: 'item', id: i.id }),
                             },
-                            manager && {
-                              label: 'Delete equipment…',
+                            manager && !i.archived && {
+                              label: 'Archive equipment…',
                               icon: <Trash2 size={14} className="text-[#963838]" />,
                               destructive: true,
                               divider: true,

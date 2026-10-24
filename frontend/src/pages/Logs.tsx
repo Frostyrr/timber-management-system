@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Search, Package, ShieldAlert, Clock3, RefreshCw } from 'lucide-react'
 import { dateText } from '../components/format'
 import { useInventory } from '../backend/context'
-import { visibleEvents as scopedEvents, formatEventDetails } from '../backend/model'
+import { visibleEvents as scopedEvents, formatEventDetails, auditActorName } from '../backend/model'
 import { Heading, Avatar } from '../components/layout'
 import { Badge, Empty, Pagination, Select } from '../components/ui'
 
@@ -60,7 +60,7 @@ export function Logs() {
 
   const filteredEvents = visibleEvents.filter((e) => {
     const item = state.items.find((i) => i.id === e.entityId)
-    const actor = state.profiles.find((p) => p.id === e.actor)
+    const actor = {name:auditActorName(e,state),role:e.actorRole}
     const actionDetails = formatEventDetails(e, state)
     const matchesSearch = `${actionDetails} ${item?.name ?? ''} ${item?.tag ?? ''} ${actor?.name ?? ''}`
       .toLowerCase()
@@ -193,7 +193,7 @@ export function Logs() {
             <div className="mobile-logs-cards flex flex-col gap-3 md:hidden">
               {paginatedEvents.map((e, idx) => {
                 const item = state.items.find((i) => i.id === e.entityId)
-                const actor = state.profiles.find((p) => p.id === e.actor)
+                const actor = {name:auditActorName(e,state),role:e.actorRole}
                 const actionDetails = formatEventDetails(e, state)
                 const isIncident = isIncidentEvent(e, actionDetails)
                 const isLoan = isLoanEvent(e, actionDetails)
@@ -210,7 +210,7 @@ export function Logs() {
                         <Clock3 size={13} /> {dateText(e.at)}
                       </span>
                       <Badge>
-                        {isIncident ? 'Incident' : isLoan ? 'Release / Return' : isEquipment ? 'Inventory update' : 'Member access'}
+                        {isIncident ? 'Incident' : isLoan ? 'Release / Return' : isEquipment ? 'Inventory update' : e.action?.startsWith('people.') ? 'Staff directory' : 'Member access'}
                       </Badge>
                     </div>
 
@@ -254,7 +254,7 @@ export function Logs() {
                 <tbody>
                   {paginatedEvents.map((e, idx) => {
                     const item = state.items.find((i) => i.id === e.entityId)
-                    const actor = state.profiles.find((p) => p.id === e.actor)
+                    const actor = {name:auditActorName(e,state),role:e.actorRole}
                     const actionDetails = formatEventDetails(e, state)
                     const isIncident = isIncidentEvent(e, actionDetails)
                     const isLoan = isLoanEvent(e, actionDetails)
@@ -305,7 +305,7 @@ export function Logs() {
                         </td>
                         <td>
                           <Badge>
-                            {isIncident ? 'Incident' : isLoan ? 'Release / Return' : isEquipment ? 'Inventory update' : 'Member access'}
+                            {isIncident ? 'Incident' : isLoan ? 'Release / Return' : isEquipment ? 'Inventory update' : e.action?.startsWith('people.') ? 'Staff directory' : 'Member access'}
                           </Badge>
                         </td>
                       </tr>
