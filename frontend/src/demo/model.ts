@@ -212,6 +212,27 @@ export function formatEventDetails(
 
   const rawAction = (e.action || e.text || '').trim().toLowerCase()
 
+  // Staff Directory Changes (Human-readable descriptions, never leak technical keys)
+  if (rawAction.startsWith('people.') || rawAction === 'person-save' || rawAction === 'person-archive') {
+    const peopleList = 'people' in state && Array.isArray((state as unknown as { people?: { id: string; name: string; title?: string }[] }).people)
+      ? (state as unknown as { people?: { id: string; name: string; title?: string }[] }).people
+      : undefined
+    const personObj = peopleList?.find((p) => p.id === e.entityId || p.id === e.subjectId)
+    const rawName = (e.after?.name as string) || (e.before?.name as string) || personObj?.name
+    const name = rawName && rawName !== 'Directory member' && rawName !== 'undefined' ? rawName : ''
+    const nameSuffix = name ? `: ${name}` : ''
+    const position = (e.after?.title as string) || personObj?.title
+    const positionSuffix = position ? ` (${position})` : ''
+
+    if (rawAction === 'people.insert' || (rawAction === 'person-save' && !e.before)) {
+      return `Added directory member${nameSuffix}${positionSuffix}`
+    }
+    if (e.after?.archived || rawAction === 'people.delete' || rawAction === 'person-archive') {
+      return `Archived directory member${nameSuffix}`
+    }
+    return `Updated directory member${nameSuffix}${positionSuffix}`
+  }
+
   // 1. Releases / Equipment checkouts
   if (rawAction === 'releases.insert' || rawAction === 'checkout') {
     const purpose = (e.after?.purpose as string) || (e.after?.event as string)
@@ -316,9 +337,33 @@ export function formatEventDetails(
     'profiles.update',
     'profiles.delete',
     'memberships.update',
+    'people.insert',
+    'people.update',
+    'people.delete',
   ]
-  if (e.text && !technicalKeys.includes(e.text.trim().toLowerCase())) {
+  if (e.text && !technicalKeys.includes(e.text.trim().toLowerCase()) && !e.text.includes('.')) {
     return displayEvent(e.text)
+  }
+
+  // Safe fallback for technical dot-syntax action keys (never show technical specifics like people.insert)
+  if (rawAction.includes('.')) {
+    const [domain, op] = rawAction.split('.')
+    const domainMap: Record<string, string> = {
+      people: 'Staff directory',
+      items: 'Equipment',
+      releases: 'Equipment loan',
+      incidents: 'Incident review',
+      profiles: 'System access',
+      memberships: 'Permissions',
+    }
+    const opMap: Record<string, string> = {
+      insert: 'registered',
+      update: 'updated',
+      delete: 'archived',
+    }
+    const cleanDomain = domainMap[domain] || domain
+    const cleanOp = opMap[op] || op
+    return `${cleanDomain} ${cleanOp}`
   }
 
   // Ultimate fallback formatted gracefully

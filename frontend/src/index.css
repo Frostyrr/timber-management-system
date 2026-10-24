@@ -50,6 +50,35 @@
     --color-danger-border: #f3caca;
   }
 
+  html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+    max-width: 100vw;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #527a63 rgba(234, 241, 235, 0.45);
+  }
+
+  /* Custom modern slim browser scrollbar */
+  html::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  html::-webkit-scrollbar-track {
+    background: rgba(234, 241, 235, 0.35);
+  }
+
+  html::-webkit-scrollbar-thumb {
+    background: #527a63;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+  }
+
+  html::-webkit-scrollbar-thumb:hover {
+    background: #153f32;
+  }
+
   :root {
     font-family: var(--font-sans);
     font-weight: 400;
