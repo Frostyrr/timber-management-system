@@ -2,6 +2,7 @@
 begin;
 insert into auth.users values ('00000000-0000-0000-0000-000000000001','{"full_name":"Test admin"}'),('00000000-0000-0000-0000-000000000002','{"full_name":"Test staff"}');
 update timber.profiles set status='active',role=case when id='00000000-0000-0000-0000-000000000001' then 'Administrator' else 'Staff' end;
+insert into timber.people(id,name,department,title) select id,name,department,title from timber.profiles on conflict do nothing;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 select public.inventory_mutate('{"type":"item","item":{"id":"00000000-0000-0000-0000-000000000003","name":"Camera","tag":"TEST-01","category":"Camera","location":"Office","condition":"Good"}}','00000000-0000-0000-0000-000000000004');
@@ -25,6 +26,6 @@ do $$begin
 end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
 do $$begin
- begin perform public.inventory_mutate('{"type":"item"}',gen_random_uuid()); raise exception 'Staff mutation accepted'; exception when others then if sqlerrm<>'Custodian or administrator required.' then raise; end if; end;
+ begin perform public.inventory_mutate('{"type":"item"}',gen_random_uuid()); raise exception 'Staff mutation accepted'; exception when others then if sqlerrm<>'Approved operator access required.' then raise; end if; end;
 end$$;
 rollback;

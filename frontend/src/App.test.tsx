@@ -4,7 +4,8 @@ import { MemoryRouter } from 'react-router-dom'
 import App from './App'
 import { InventoryContext } from './backend/context'
 import { seed } from './demo/model'
-const state = seed()
+const initial = seed()
+const state = {...initial,people:initial.profiles.map(p=>({id:p.id,name:p.name,department:p.department,title:'Member',archived:false}))}
 function render(path: string, persona = 'admin') {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[path]}>
@@ -93,8 +94,16 @@ describe('inventory-only workspace', () => {
     expect(staffHtml).not.toContain('href="/staff"')
 
     const adminRoster = render('/staff', 'admin')
-    expect(adminRoster).toContain('Staff members &amp; accountability roster')
+    expect(adminRoster).toContain('Staff directory')
     expect(adminRoster).toContain('Add staff member')
     expect(adminRoster).toContain('Dana Paula Gales')
   })
+})
+
+it('separates directory from administrator access management',()=>{
+ expect(render('/staff')).not.toContain('Review access')
+ expect(render('/access')).toContain('System access')
+ expect(render('/access')).toContain('Review access')
+ expect(render('/','custodian')).not.toContain('href="/access"')
+ expect(render('/settings')).not.toContain('Review access')
 })

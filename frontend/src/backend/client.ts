@@ -16,6 +16,7 @@ export async function snapshot() {
   if (!client) throw Error('Supabase is not configured.')
   const { data, error } = await client.rpc('inventory_snapshot')
   if (error) throw error
+  if (!Array.isArray(data?.people)) throw Error('The staff directory database upgrade is required. Apply migration 202610240003_people_directory.sql in Supabase.')
   return stateSchema.parse(data)
 }
 export async function mutate(action: unknown, requestId: string) {

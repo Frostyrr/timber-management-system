@@ -73,9 +73,12 @@ const eventSchema = z.object({
   reason: z.string().optional(),
   useType: z.string().nullable().optional(),
 })
+export const directorySchema = z.object({ id:z.string(), name:z.string(), department:z.string(), title:z.string(), archived:z.boolean() })
+export type DirectoryPerson = z.infer<typeof directorySchema>
 export const stateSchema = z.object({
   version: z.literal(3),
   profiles: z.array(profileSchema).min(1),
+  people: z.array(directorySchema).optional(),
   items: z.array(itemSchema),
   loans: z.array(loanSchema),
   incidents: z.array(incidentSchema),
@@ -93,6 +96,8 @@ export const available = (s: State, id: string) =>
   !s.incidents.some((i) => i.itemId === id && !i.resolved) &&
   ['Good', 'Fair'].includes(s.items.find((i) => i.id === id)?.condition ?? '')
 export type Action =
+  | { type:'person-save'; id:string; name:string; department:string; title:string }
+  | { type:'person-archive'; id:string; reason:string }
   | { type: 'item'; item: Item }
   | ({ type:'checkout';itemId:string;due:string;condition:string;event?:string;eventCategory?:string } & ReleaseDetails)
   | { type: 'return'; loanId: string; condition: Item['condition'] }
@@ -245,7 +250,7 @@ export function formatEventDetails(
         .replace(/^[a-z]/, (c) => c.toUpperCase())
     : 'System activity recorded'
 }
-export const borrowerName=(s:State,l:State['loans'][number])=>l.external?.name??s.profiles.find(p=>p.id===l.borrowerId)?.name??'Not recorded'
+export const borrowerName=(s:State,l:State['loans'][number])=>l.external?.name??s.people?.find(p=>p.id===l.borrowerId)?.name??'Not recorded'
 export const visibleEvents=(s:State,p:Profile)=>s.events.filter(e=>canInventory(p)||e.actor===p.id||e.subjectId===p.id)
 export const visibleIncidents = (s: State, p: Profile) =>
   s.incidents.filter(

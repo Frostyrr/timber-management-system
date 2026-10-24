@@ -538,7 +538,7 @@ export function Inventory() {
                 const active = state.loans.find((l) => l.itemId === i.id && !l.returned)
                 const canSeeBorrower = active && (manager || active.borrowerId === person.id)
                 const borrower = canSeeBorrower
-                  ? state.profiles.find((p) => p.id === active.borrowerId)
+                  ? (state.people ?? []).find((p) => p.id === active.borrowerId)
                   : undefined
                 const isItemAvailable = available(state, i.id)
 
@@ -691,7 +691,7 @@ export function Inventory() {
                   const active = state.loans.find((l) => l.itemId === i.id && !l.returned)
                   const canSeeBorrower = active && (manager || active.borrowerId === person.id)
                   const borrower = canSeeBorrower
-                    ? state.profiles.find((p) => p.id === active.borrowerId)
+                    ? (state.people ?? []).find((p) => p.id === active.borrowerId)
                     : undefined
                   const isItemAvailable = available(state, i.id)
                   return (
@@ -962,10 +962,10 @@ export function Inventory() {
                 </>
               ) : (
                 <Field label="Responsible editorial staff / borrower">
-                  <Select name="borrower" defaultValue={state.profiles.find(p=>!p.status || p.status==='active')?.id}>
-                    {state.profiles.filter(p=>!p.status || p.status==='active').map((p) => (
+                  <Select name="borrower" defaultValue={state.people?.find(p=>!p.archived)?.id}>
+                    {(state.people ?? []).filter(p=>!p.archived).map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} — {p.title || p.role}
+                        {p.name} — {p.title || 'Member'}
                       </option>
                     ))}
                   </Select>
@@ -1028,7 +1028,7 @@ export function Inventory() {
                             {borrowerName(state,l)}
                           </strong>
                           <span className="block text-[11px] text-muted-ink">
-                            {state.profiles.find((p) => p.id === l.borrowerId)?.role}
+                            {(state.people ?? []).find((p) => p.id === l.borrowerId)?.title}
                           </span>
                         </div>
                       </div>
@@ -1382,3 +1382,4 @@ export function Incidents() {
     </>
   )
 }
+

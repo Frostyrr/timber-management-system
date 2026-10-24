@@ -140,7 +140,7 @@ export function Dashboard() {
             <div className="list-body">
               {loans.slice(0, 6).map((l, idx) => {
                   const eq = state.items.find((i) => i.id === l.itemId)
-                  const borrower = state.profiles.find((p) => p.id === l.borrowerId)
+                  const borrower = (state.people ?? []).find((p) => p.id === l.borrowerId)
                   return (
                     <div
                       className="work-row stagger-item"

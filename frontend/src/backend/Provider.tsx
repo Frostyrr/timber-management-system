@@ -7,6 +7,8 @@ import { Login } from '../pages/Login'
 
 function getActionSuccessMessage(action: Action, state: State | null): string {
   switch (action.type) {
+    case 'person-save': return 'Staff directory entry saved.'
+    case 'person-archive': return 'Staff directory entry archived. Usage history retained.'
     case 'checkout': {
       const item = state?.items.find((i) => i.id === action.itemId)
       return item
@@ -96,7 +98,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
     const token = generation.current
     try {
       const p = await identity()
-      const next = p.status === 'active' ? await snapshot() : null
+      const next = p.status === 'active' && ['Administrator','Inventory Custodian'].includes(p.role) ? await snapshot() : null
       if (token !== generation.current) return
       setPerson(p); setState(next); setError('')
     } catch (e) {
@@ -116,7 +118,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
         void (async () => {
           try {
             const p = await identity()
-            const s = p.status === 'active' ? await snapshot() : null
+            const s = p.status === 'active' && ['Administrator','Inventory Custodian'].includes(p.role) ? await snapshot() : null
             if (!disposed && token === gen.current) { setPerson(p); setState(s) }
           } catch (e) {
             if (!disposed && token === gen.current) setError(e instanceof Error ? e.message : 'Unable to load membership. Apply the backend migration first.')

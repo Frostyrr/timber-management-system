@@ -26,6 +26,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Inventory, Incidents } from './pages/Inventory'
 import { Logs } from './pages/Logs'
 import { Staff } from './pages/Staff'
+import { Access } from './pages/Access'
 import { Login } from './pages/Login'
 import { Settings } from './pages/Settings'
 import { Security } from './pages/Security'
@@ -46,9 +47,10 @@ export default function App() {
     { to: '/inventory', name: 'Inventory', icon: Package },
     { to: '/incidents', name: 'Incident reviews', icon: ShieldAlert },
     { to: '/logs', name: 'Logs', icon: ScrollText },
-    ...(manager ? [{ to: '/staff', name: 'Staff roster', icon: Users }] : []),
+    ...(manager ? [{ to: '/staff', name: 'Staff directory', icon: Users }] : []),
     { to: '/security', name: 'Cybersecurity', icon: ShieldCheck },
-    { to: '/settings', name: 'Account settings', icon: SettingsIcon },
+    ...(person.role === 'Administrator' ? [{to:'/access', name:'System access', icon:ShieldCheck}] : []),
+    { to: '/settings', name: 'My account', icon: SettingsIcon },
   ]
 
   const openIncidentCount = visibleIncidents(state, person).filter((i) => !i.resolved).length
@@ -212,7 +214,7 @@ export default function App() {
                     <div className="flex max-h-[360px] flex-col gap-1 overflow-y-auto p-2">
                       {overdueLoans.map((l) => {
                         const item = state.items.find((i) => i.id === l.itemId)
-                        const borrower = state.profiles.find((p) => p.id === l.borrowerId)
+                        const borrower = (state.people ?? []).find((p) => p.id === l.borrowerId)
                         return (
                           <Link
                             key={`notif-overdue-${l.id}`}
@@ -337,7 +339,7 @@ export default function App() {
                         className="dropdown-item"
                       >
                         <SettingsIcon size={15} />
-                        <span>Account settings</span>
+                        <span>My account</span>
                       </Link>
                     </div>
 
@@ -459,6 +461,7 @@ export default function App() {
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/logs" element={<Logs />} />
                 <Route path="/staff" element={<Staff />} />
+                  <Route path="/access" element={<Access />} />
                 <Route path="/security" element={<Security />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/login" element={<Login />} />

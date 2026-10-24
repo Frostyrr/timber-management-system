@@ -19,11 +19,8 @@ do $$declare a jsonb; s jsonb; begin
  if (s->'events')::text like '%fictional@example.invalid%' then raise exception 'Audit leaked contact'; end if;
 end$$;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',true);
-do $$declare s jsonb; begin
- s:=public.inventory_snapshot();
- if jsonb_array_length(s->'loans')<>0 then raise exception 'Unrelated staff can read external releases'; end if;
- if jsonb_array_length(s->'events')<>0 then raise exception 'Unrelated staff can read audit records'; end if;
- if not (s->'items'->0->>'unavailable')::boolean then raise exception 'Hidden release incorrectly appears available'; end if;
+do $$begin
+ begin perform public.inventory_snapshot(); raise exception 'Staff workspace access accepted'; exception when others then if sqlerrm<>'Approved membership required.' then raise; end if; end;
 end$$;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',true);
 do $$begin

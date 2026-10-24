@@ -18,6 +18,6 @@ end$$;
 select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000002',true);
 do $$begin
  begin perform public.inventory_snapshot(); raise exception 'Suspended access accepted'; exception when others then if sqlerrm<>'Approved membership required.' then raise; end if; end;
- begin perform public.inventory_mutate('{"type":"update-profile"}',gen_random_uuid()); raise exception 'Suspended edit accepted'; exception when others then if sqlerrm<>'Active administrator required.' then raise; end if; end;
+ begin perform public.inventory_mutate('{"type":"update-profile"}',gen_random_uuid()); raise exception 'Suspended edit accepted'; exception when others then if sqlerrm<>'Approved operator access required.' then raise; end if; end;
 end$$;
 rollback;
