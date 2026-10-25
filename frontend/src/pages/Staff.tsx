@@ -5,7 +5,7 @@ import { publicationPositions, staffCategories, staffCategory } from '../backend
 import { PositionCombobox } from '../components/ui/PositionCombobox'
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { History, Pencil, Archive, AlertTriangle } from 'lucide-react'
+import { History, Pencil, Archive, AlertTriangle, RotateCcw } from 'lucide-react'
 import { useInventory } from '../backend/context'
 import { canInventory, uid, type DirectoryPerson } from '../backend/model'
 import { Heading } from '../components/layout/Heading'
@@ -65,9 +65,9 @@ export function Staff() {
   return (
     <>
       <Heading
-        eyebrow="PUBLICATION PEOPLE"
+        eyebrow="EDITORIAL ROSTER & BORROWERS"
         title="Staff directory"
-        description="Record publication members, advisers, PICO staff, and external personnel. Directory entries do not grant sign-in access."
+        description="Record publication members, writers, photojournalists, and borrowers. Directory entries do not grant system sign-in access."
       >
         <ExportButton filename="staff" sheets={() => [staffSheet(state, people)]} />
         <button
@@ -180,6 +180,16 @@ export function Staff() {
                               label: 'View equipment history',
                               icon: <History size={14} className="text-muted-ink" />,
                               onClick: () => setHistory(p),
+                            },
+                            p.archived && {
+                              label: 'Restore staff member',
+                              icon: <RotateCcw size={14} className="text-forest" />,
+                              onClick: async () => {
+                                await act({
+                                  type: 'person-unarchive',
+                                  id: p.id,
+                                })
+                              },
                             },
                             !p.archived && {
                               label: 'Edit details & position',
@@ -383,9 +393,8 @@ export function Staff() {
               </p>
             )}
             <p className="hint">
-              This creates a directory entry only. No Google account is required.
-              For outside borrowers, record the release as External borrowing and
-              include the request-letter reference in its purpose.
+              This creates an editorial directory entry only. No login or Google account is created.
+              To manage operator permissions for custodians or administrators, configure permissions under System access.
             </p>
           </Modal>
         )
