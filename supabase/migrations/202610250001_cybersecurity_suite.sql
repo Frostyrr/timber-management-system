@@ -55,6 +55,9 @@ create table if not exists timber.security_threats (
 alter table timber.security_threats enable row level security;
 revoke all on timber.security_threats from public, anon, authenticated;
 
+-- Purge mock seed threats if previously inserted
+delete from timber.security_threats where id in ('thr-01', 'thr-02', 'thr-03');
+
 -- 4. Security Policies Table
 create table if not exists timber.security_policies (
   id text primary key default 'primary',
@@ -81,7 +84,11 @@ values (
   true,
   true
 )
-on conflict(id) do nothing;
+on conflict(id) do update set
+  whitelisted_emails = case
+    when timber.security_policies.whitelisted_emails::text like '%adviser.external@gmail.com%' then '[]'::jsonb
+    else timber.security_policies.whitelisted_emails
+  end;
 
 -- 5. Security Suspensions Table
 create table if not exists timber.security_suspensions (
