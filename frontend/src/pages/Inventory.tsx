@@ -5,7 +5,22 @@ import { releaseDetailsSchema, USE_TYPES, type UseType } from '../demo/release'
 import { value, dateText, tomorrow, categoryClass } from '../components/format'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Plus, Search, Package, ShieldAlert, ArrowUpRight, RefreshCw, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Trash2, History, Pencil, Clock3, X } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  Package,
+  ShieldAlert,
+  ArrowUpRight,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+  Trash2,
+  History,
+  Pencil,
+  Clock3,
+  X,
+} from 'lucide-react'
 import { useInventory } from '../backend/context'
 import {
   borrowerName,
@@ -33,7 +48,8 @@ function getScheduleSummary(iso: string) {
   if (!Number.isFinite(targetTime)) return { dateStr: 'Invalid date', duration: '' }
   const now = new Date()
   const diffDays = Math.ceil((targetTime - now.getTime()) / 86400000)
-  const duration = diffDays <= 0 ? 'Today' : diffDays === 1 ? '1 day from now' : `${diffDays} days from now`
+  const duration =
+    diffDays <= 0 ? 'Today' : diffDays === 1 ? '1 day from now' : `${diffDays} days from now`
   const dateStr = new Date(targetTime).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -92,8 +108,18 @@ function CustomDatePickerModal({
   }
 
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ]
 
   const daysInMonth = new Date(viewMonth.year, viewMonth.month + 1, 0).getDate()
@@ -268,7 +294,9 @@ function CustomDatePickerModal({
 }
 
 function SchedulePicker({ defaultValue }: { defaultValue: string }) {
-  const [preset, setPreset] = useState<'today' | 'tomorrow' | 'weekend' | 'week' | 'custom'>('tomorrow')
+  const [preset, setPreset] = useState<'today' | 'tomorrow' | 'weekend' | 'week' | 'custom'>(
+    'tomorrow',
+  )
   const [isoValue, setIsoValue] = useState(() => defaultValue)
   const [summary, setSummary] = useState(() => getScheduleSummary(defaultValue))
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -388,7 +416,8 @@ export function Inventory() {
     type: 'item' | 'checkout' | 'return' | 'history'
     id?: string
   } | null>(() => {
-    if (query.get('action') === 'register' && canInventory(person)) return { type: 'item', id: uid() }
+    if (query.get('action') === 'register' && canInventory(person))
+      return { type: 'item', id: uid() }
     if (
       (query.get('action') === 'release' || query.get('action') === 'checkout') &&
       canInventory(person)
@@ -411,7 +440,11 @@ export function Inventory() {
   const pageSize = 10
   const handleRefresh = async () => {
     setRefreshing(true)
-    try { await refresh?.() } finally { setRefreshing(false) }
+    try {
+      await refresh?.()
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const manager = canInventory(person)
@@ -429,7 +462,8 @@ export function Inventory() {
     (i) =>
       `${i.name} ${i.tag} ${i.category}`.toLowerCase().includes(search.toLowerCase()) &&
       (filter === 'archived' ? !!i.archived : !i.archived) &&
-      (filter === 'archived' || filter === 'all' ||
+      (filter === 'archived' ||
+        filter === 'all' ||
         (filter === 'available' && available(state, i.id)) ||
         (filter === 'loans' &&
           state.loans.some(
@@ -467,8 +501,26 @@ export function Inventory() {
             </button>
           </>
         )}
-        {manager && <ExportButton filename="inventory" sheets={() => [equipmentSheet(state, items)]} />}
-        {manager && <ExportButton filename="releases" label="Export releases" sheets={() => [releaseSheet(state, state.loans.filter(l => items.some(i => i.id === l.itemId) && (filter !== 'loans' && filter !== 'overdue' || !l.returned) && (filter !== 'overdue' || isOverdue(l.due))))]} />}
+        {manager && (
+          <ExportButton filename="inventory" sheets={() => [equipmentSheet(state, items)]} />
+        )}
+        {manager && (
+          <ExportButton
+            filename="releases"
+            label="Export releases"
+            sheets={() => [
+              releaseSheet(
+                state,
+                state.loans.filter(
+                  (l) =>
+                    items.some((i) => i.id === l.itemId) &&
+                    ((filter !== 'loans' && filter !== 'overdue') || !l.returned) &&
+                    (filter !== 'overdue' || isOverdue(l.due)),
+                ),
+              ),
+            ]}
+          />
+        )}
       </Heading>
 
       <section className="mini-metrics" aria-label="Equipment summary">
@@ -476,16 +528,22 @@ export function Inventory() {
           type="button"
           className={`mini-metric stagger-item ${filter === 'all' ? 'active' : ''}`}
           style={{ '--stagger-i': 0 } as React.CSSProperties}
-          onClick={() => { setFilter('all'); setPage(1); }}
+          onClick={() => {
+            setFilter('all')
+            setPage(1)
+          }}
         >
           <span>Total inventory</span>
-          <strong>{state.items.filter(i=>!i.archived).length}</strong>
+          <strong>{state.items.filter((i) => !i.archived).length}</strong>
         </button>
         <button
           type="button"
           className={`mini-metric stagger-item ${filter === 'available' ? 'active' : ''}`}
           style={{ '--stagger-i': 1 } as React.CSSProperties}
-          onClick={() => { setFilter('available'); setPage(1); }}
+          onClick={() => {
+            setFilter('available')
+            setPage(1)
+          }}
         >
           <span>Available now</span>
           <strong>{availableItemsCount}</strong>
@@ -494,7 +552,10 @@ export function Inventory() {
           type="button"
           className={`mini-metric stagger-item ${filter === 'loans' ? 'active' : ''}`}
           style={{ '--stagger-i': 2 } as React.CSSProperties}
-          onClick={() => { setFilter('loans'); setPage(1); }}
+          onClick={() => {
+            setFilter('loans')
+            setPage(1)
+          }}
         >
           <span>Equipment in use</span>
           <strong>{visibleLoans.length}</strong>
@@ -503,7 +564,10 @@ export function Inventory() {
           type="button"
           className={`mini-metric stagger-item ${filter === 'overdue' ? 'active' : ''}`}
           style={{ '--stagger-i': 3 } as React.CSSProperties}
-          onClick={() => { setFilter('overdue'); setPage(1); }}
+          onClick={() => {
+            setFilter('overdue')
+            setPage(1)
+          }}
         >
           <span>Overdue returns</span>
           <strong>{overdueLoans.length}</strong>
@@ -518,7 +582,10 @@ export function Inventory() {
               aria-label="Search equipment"
               placeholder="Search equipment, category, or asset tag…"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
             />
           </label>
           <div className="toolbar-controls">
@@ -534,11 +601,15 @@ export function Inventory() {
             <Select
               aria-label="Equipment status"
               value={filter}
-              onChange={(e) => { setFilter(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setFilter(e.target.value)
+                setPage(1)
+              }}
               className="w-auto min-w-[160px]"
               buttonClassName="h-9 py-1 px-3 text-xs"
             >
-              <option value="all">Active equipment</option><option value="archived">Archived equipment</option>
+              <option value="all">Active equipment</option>
+              <option value="archived">Archived equipment</option>
               <option value="available">Available</option>
               <option value="loans">Equipment in use</option>
               <option value="overdue">Overdue returns</option>
@@ -548,6 +619,170 @@ export function Inventory() {
 
         {/* Mobile Equipment Cards List (Touch-Friendly Card View for Phones & Small Tablets) */}
         <div className="mobile-equipment-cards flex flex-col gap-3 md:hidden">
+          {paginatedItems.map((i, idx) => {
+            const active = state.loans.find((l) => l.itemId === i.id && !l.returned)
+            const canSeeBorrower = active && (manager || active.borrowerId === person.id)
+            const borrower = canSeeBorrower
+              ? (state.people ?? []).find((p) => p.id === active.borrowerId)
+              : undefined
+            const isItemAvailable = available(state, i.id)
+
+            return (
+              <article
+                key={`m-${i.id}`}
+                className="equipment-mobile-card stagger-item flex flex-col gap-3 rounded-[20px] border border-white/90 bg-white/85 p-3.5 shadow-[0_4px_16px_rgba(21,63,50,0.05)] backdrop-blur-md"
+                style={{ '--stagger-i': idx } as React.CSSProperties}
+              >
+                {/* Card Top: Icon, Title, Asset code, Category & Condition */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="equipment-icon shrink-0" aria-hidden="true">
+                      <Package size={18} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <strong className="block truncate text-[14px] font-medium text-ink">
+                        {i.name}
+                      </strong>
+                      <small className="block text-[11.5px] text-muted-ink">
+                        <span className="asset-code">{i.tag}</span> · {i.category}
+                      </small>
+                    </div>
+                  </div>
+                  <Badge>{i.condition}</Badge>
+                </div>
+
+                {/* Location & Status Info Box */}
+                <div className="flex flex-col gap-1.5 rounded-xl border border-line-subtle bg-surface/70 p-2.5 text-xs">
+                  <div className="flex items-center justify-between text-muted-ink">
+                    <span>Storage Location</span>
+                    <span className="font-medium text-ink">{i.location}</span>
+                  </div>
+
+                  {active ? (
+                    <div className="mt-1 border-t border-line-subtle pt-1.5">
+                      <div className="mb-1 flex items-center justify-between gap-1.5">
+                        <Badge>{isOverdue(active.due) ? 'Overdue' : 'In use'}</Badge>
+                        {active.event && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-[#cde0d2] bg-pale px-2 py-0.5 text-[10.5px] font-medium text-primary">
+                            {active.event}
+                          </span>
+                        )}
+                        {!active.event && active.eventCategory && (
+                          <span className={`category-pill ${categoryClass(active.eventCategory)}`}>
+                            {active.eventCategory}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11.5px] text-muted-ink">
+                        {canSeeBorrower ? (
+                          <>
+                            In care of{' '}
+                            <strong className="font-medium text-ink">
+                              {borrower?.name}
+                              {borrower?.title ? ` (${borrower.title})` : ''}
+                            </strong>{' '}
+                            · Due {dateText(active.due)}
+                          </>
+                        ) : (
+                          <>Currently in active use · Due {dateText(active.due)}</>
+                        )}
+                      </p>
+                    </div>
+                  ) : isItemAvailable ? (
+                    <div className="mt-1 flex items-center gap-1.5 border-t border-line-subtle pt-1.5 text-[11.5px] font-medium text-primary">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" /> Available for release
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex items-center gap-1.5 border-t border-line-subtle pt-1.5 text-[11.5px] font-medium text-warning-text">
+                      <ShieldAlert size={14} /> {equipmentStatus(state, i)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Bar: Primary Quick Action + Three-Dots Menu (Prevents stacking) */}
+                <div className="flex items-center justify-between gap-2 border-t border-line-subtle pt-2">
+                  {manager && isItemAvailable ? (
+                    <button
+                      type="button"
+                      className="primary-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
+                      onClick={() => setModal({ type: 'checkout', id: i.id })}
+                    >
+                      <ArrowUpRight size={14} /> Record release
+                    </button>
+                  ) : manager && active ? (
+                    <button
+                      type="button"
+                      className="primary-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
+                      onClick={() => setModal({ type: 'return', id: active.id })}
+                    >
+                      <Clock3 size={14} /> Record return
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="action-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
+                      onClick={() => setModal({ type: 'history', id: i.id })}
+                    >
+                      <History size={14} /> Usage history
+                    </button>
+                  )}
+
+                  <ActionMenu
+                    triggerLabel={`Actions for ${i.name}`}
+                    className="shrink-0"
+                    items={[
+                      manager &&
+                        isItemAvailable && {
+                          label: 'Record equipment release',
+                          icon: <ArrowUpRight size={14} className="text-primary" />,
+                          onClick: () => setModal({ type: 'checkout', id: i.id }),
+                        },
+                      manager &&
+                        active && {
+                          label: 'Record equipment return',
+                          icon: <Clock3 size={14} className="text-primary" />,
+                          onClick: () => setModal({ type: 'return', id: active.id }),
+                        },
+                      {
+                        label: 'View usage history',
+                        icon: <History size={14} className="text-muted-ink" />,
+                        onClick: () => setModal({ type: 'history', id: i.id }),
+                      },
+                      manager &&
+                        !i.archived && {
+                          label: 'Edit equipment details',
+                          icon: <Pencil size={14} className="text-muted-ink" />,
+                          onClick: () => setModal({ type: 'item', id: i.id }),
+                        },
+                      manager &&
+                        !i.archived && {
+                          label: 'Archive equipment…',
+                          icon: <Trash2 size={14} className="text-[#963838]" />,
+                          destructive: true,
+                          divider: true,
+                          onClick: () => setDeleteTarget(i),
+                        },
+                    ]}
+                  />
+                </div>
+              </article>
+            )
+          })}
+        </div>
+
+        {/* Desktop High-Density Table */}
+        <div className="table-wrap hidden md:block">
+          <table>
+            <thead>
+              <tr>
+                <th>Equipment / asset</th>
+                <th>Location</th>
+                <th>Condition</th>
+                <th>Status & usage details</th>
+                <th className="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {paginatedItems.map((i, idx) => {
                 const active = state.loans.find((l) => l.itemId === i.id && !l.returned)
                 const canSeeBorrower = active && (manager || active.borrowerId === person.id)
@@ -555,165 +790,12 @@ export function Inventory() {
                   ? (state.people ?? []).find((p) => p.id === active.borrowerId)
                   : undefined
                 const isItemAvailable = available(state, i.id)
-
                 return (
-                  <article
-                    key={`m-${i.id}`}
-                    className="equipment-mobile-card stagger-item flex flex-col gap-3 rounded-[20px] border border-white/90 bg-white/85 p-3.5 shadow-[0_4px_16px_rgba(21,63,50,0.05)] backdrop-blur-md"
+                  <tr
+                    key={i.id}
+                    className="stagger-item"
                     style={{ '--stagger-i': idx } as React.CSSProperties}
                   >
-                    {/* Card Top: Icon, Title, Asset code, Category & Condition */}
-                    <div className="flex items-start justify-between gap-2.5">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span className="equipment-icon shrink-0" aria-hidden="true">
-                          <Package size={18} />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <strong className="block truncate text-[14px] font-medium text-ink">{i.name}</strong>
-                          <small className="block text-[11.5px] text-muted-ink">
-                            <span className="asset-code">{i.tag}</span> · {i.category}
-                          </small>
-                        </div>
-                      </div>
-                      <Badge>{i.condition}</Badge>
-                    </div>
-
-                    {/* Location & Status Info Box */}
-                    <div className="flex flex-col gap-1.5 rounded-xl border border-line-subtle bg-surface/70 p-2.5 text-xs">
-                      <div className="flex items-center justify-between text-muted-ink">
-                        <span>Storage Location</span>
-                        <span className="font-medium text-ink">{i.location}</span>
-                      </div>
-
-                      {active ? (
-                        <div className="mt-1 border-t border-line-subtle pt-1.5">
-                          <div className="mb-1 flex items-center justify-between gap-1.5">
-                            <Badge>{isOverdue(active.due) ? 'Overdue' : 'In use'}</Badge>
-                            {active.event && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-[#cde0d2] bg-pale px-2 py-0.5 text-[10.5px] font-medium text-primary">
-                                {active.event}
-                              </span>
-                            )}
-                            {!active.event && active.eventCategory && (
-                              <span className={`category-pill ${categoryClass(active.eventCategory)}`}>
-                                {active.eventCategory}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11.5px] text-muted-ink">
-                            {canSeeBorrower ? (
-                              <>
-                                In care of <strong className="font-medium text-ink">{borrower?.name}{borrower?.title ? ` (${borrower.title})` : ''}</strong> · Due {dateText(active.due)}
-                              </>
-                            ) : (
-                              <>Currently in active use · Due {dateText(active.due)}</>
-                            )}
-                          </p>
-                        </div>
-                      ) : isItemAvailable ? (
-                        <div className="mt-1 flex items-center gap-1.5 border-t border-line-subtle pt-1.5 text-[11.5px] font-medium text-primary">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500" /> Available for release
-                        </div>
-                      ) : (
-                        <div className="mt-1 flex items-center gap-1.5 border-t border-line-subtle pt-1.5 text-[11.5px] font-medium text-warning-text">
-                          <ShieldAlert size={14} /> {equipmentStatus(state,i)}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Bar: Primary Quick Action + Three-Dots Menu (Prevents stacking) */}
-                    <div className="flex items-center justify-between gap-2 border-t border-line-subtle pt-2">
-                      {manager && isItemAvailable ? (
-                        <button
-                          type="button"
-                          className="primary-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
-                          onClick={() => setModal({ type: 'checkout', id: i.id })}
-                        >
-                          <ArrowUpRight size={14} /> Record release
-                        </button>
-                      ) : manager && active ? (
-                        <button
-                          type="button"
-                          className="primary-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
-                          onClick={() => setModal({ type: 'return', id: active.id })}
-                        >
-                          <Clock3 size={14} /> Record return
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="action-pill flex min-h-[38px] flex-1 cursor-pointer items-center justify-center gap-1.5 text-xs font-medium"
-                          onClick={() => setModal({ type: 'history', id: i.id })}
-                        >
-                          <History size={14} /> Usage history
-                        </button>
-                      )}
-
-                      <ActionMenu
-                        triggerLabel={`Actions for ${i.name}`}
-                        className="shrink-0"
-                        items={[
-                          manager && isItemAvailable && {
-                            label: 'Record equipment release',
-                            icon: <ArrowUpRight size={14} className="text-primary" />,
-                            onClick: () => setModal({ type: 'checkout', id: i.id }),
-                          },
-                          manager && active && {
-                            label: 'Record equipment return',
-                            icon: <Clock3 size={14} className="text-primary" />,
-                            onClick: () => setModal({ type: 'return', id: active.id }),
-                          },
-                          {
-                            label: 'View usage history',
-                            icon: <History size={14} className="text-muted-ink" />,
-                            onClick: () => setModal({ type: 'history', id: i.id }),
-                          },
-                          manager && !i.archived && {
-                            label: 'Edit equipment details',
-                            icon: <Pencil size={14} className="text-muted-ink" />,
-                            onClick: () => setModal({ type: 'item', id: i.id }),
-                          },
-                          manager && !i.archived && {
-                            label: 'Archive equipment…',
-                            icon: <Trash2 size={14} className="text-[#963838]" />,
-                            destructive: true,
-                            divider: true,
-                            onClick: () => setDeleteTarget(i),
-                          },
-                        ]}
-                      />
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-
-            {/* Desktop High-Density Table */}
-            <div className="table-wrap hidden md:block">
-            <table>
-              <thead>
-                <tr>
-                  <th>Equipment / asset</th>
-                  <th>Location</th>
-                  <th>Condition</th>
-                  <th>Status & usage details</th>
-                  <th className="text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedItems.map((i, idx) => {
-                  const active = state.loans.find((l) => l.itemId === i.id && !l.returned)
-                  const canSeeBorrower = active && (manager || active.borrowerId === person.id)
-                  const borrower = canSeeBorrower
-                    ? (state.people ?? []).find((p) => p.id === active.borrowerId)
-                    : undefined
-                  const isItemAvailable = available(state, i.id)
-                  return (
-                    <tr
-                      key={i.id}
-                      className="stagger-item"
-                      style={{ '--stagger-i': idx } as React.CSSProperties}
-                    >
                     <td>
                       <div className="cell-title">
                         <span className="equipment-icon" aria-hidden="true">
@@ -732,13 +814,13 @@ export function Inventory() {
                       <Badge>{i.condition}</Badge>
                     </td>
                     <td>
-                      <Badge>
-                        {equipmentStatus(state,i)}
-                      </Badge>
+                      <Badge>{equipmentStatus(state, i)}</Badge>
                       {active && canSeeBorrower && (
                         <div className="mt-1 flex flex-col gap-1">
                           <small className="font-medium text-ink">
-                            {borrower?.name}{borrower?.title ? ` (${borrower.title})` : ''} · Due {dateText(active.due)}
+                            {borrower?.name}
+                            {borrower?.title ? ` (${borrower.title})` : ''} · Due{' '}
+                            {dateText(active.due)}
                           </small>
                           {(active.event || active.eventCategory) && (
                             <div className="flex flex-wrap items-center gap-1.5">
@@ -748,7 +830,9 @@ export function Inventory() {
                                 </span>
                               )}
                               {!active.event && active.eventCategory && (
-                                <span className={`category-pill ${categoryClass(active.eventCategory)}`}>
+                                <span
+                                  className={`category-pill ${categoryClass(active.eventCategory)}`}
+                                >
                                   {active.eventCategory}
                                 </span>
                               )}
@@ -782,33 +866,37 @@ export function Inventory() {
                         <ActionMenu
                           triggerLabel={`Actions for ${i.name}`}
                           items={[
-                            manager && isItemAvailable && {
-                              label: 'Record equipment release',
-                              icon: <ArrowUpRight size={14} className="text-primary" />,
-                              onClick: () => setModal({ type: 'checkout', id: i.id }),
-                            },
-                            manager && active && {
-                              label: 'Record equipment return',
-                              icon: <Clock3 size={14} className="text-primary" />,
-                              onClick: () => setModal({ type: 'return', id: active.id }),
-                            },
+                            manager &&
+                              isItemAvailable && {
+                                label: 'Record equipment release',
+                                icon: <ArrowUpRight size={14} className="text-primary" />,
+                                onClick: () => setModal({ type: 'checkout', id: i.id }),
+                              },
+                            manager &&
+                              active && {
+                                label: 'Record equipment return',
+                                icon: <Clock3 size={14} className="text-primary" />,
+                                onClick: () => setModal({ type: 'return', id: active.id }),
+                              },
                             {
                               label: 'View usage history',
                               icon: <History size={14} className="text-muted-ink" />,
                               onClick: () => setModal({ type: 'history', id: i.id }),
                             },
-                            manager && !i.archived && {
-                              label: 'Edit equipment details',
-                              icon: <Pencil size={14} className="text-muted-ink" />,
-                              onClick: () => setModal({ type: 'item', id: i.id }),
-                            },
-                            manager && !i.archived && {
-                              label: 'Archive equipment…',
-                              icon: <Trash2 size={14} className="text-[#963838]" />,
-                              destructive: true,
-                              divider: true,
-                              onClick: () => setDeleteTarget(i),
-                            },
+                            manager &&
+                              !i.archived && {
+                                label: 'Edit equipment details',
+                                icon: <Pencil size={14} className="text-muted-ink" />,
+                                onClick: () => setModal({ type: 'item', id: i.id }),
+                              },
+                            manager &&
+                              !i.archived && {
+                                label: 'Archive equipment…',
+                                icon: <Trash2 size={14} className="text-[#963838]" />,
+                                destructive: true,
+                                divider: true,
+                                onClick: () => setDeleteTarget(i),
+                              },
                           ]}
                         />
                       </div>
@@ -819,7 +907,7 @@ export function Inventory() {
             </tbody>
           </table>
         </div>
-      {!items.length && <Empty text="Try another search or equipment filter." />}
+        {!items.length && <Empty text="Try another search or equipment filter." />}
         <Pagination
           page={page}
           total={items.length}
@@ -867,7 +955,17 @@ export function Inventory() {
               await act({
                 type: 'checkout',
                 itemId: item?.id ?? value(f, 'item'),
-                ...releaseDetailsSchema.parse({ useType, purpose: value(f,'event'), borrowerId: value(f,'borrower'), external: { name:value(f,'externalName'), organization:value(f,'organization'),contactMethod:value(f,'contactMethod'),contact:value(f,'contact') } }),
+                ...releaseDetailsSchema.parse({
+                  useType,
+                  purpose: value(f, 'event'),
+                  borrowerId: value(f, 'borrower'),
+                  external: {
+                    name: value(f, 'externalName'),
+                    organization: value(f, 'organization'),
+                    contactMethod: value(f, 'contactMethod'),
+                    contact: value(f, 'contact'),
+                  },
+                }),
                 due: value(f, 'due'),
                 condition: value(f, 'condition'),
                 event: value(f, 'event'),
@@ -884,14 +982,29 @@ export function Inventory() {
           {modal.type === 'item' && (
             <>
               <Field label="Equipment name">
-                <input name="name" required defaultValue={item?.name} placeholder="e.g. Sony Alpha a6400 Mirrorless Camera, DJI Ronin Gimbal…" />
+                <input
+                  name="name"
+                  required
+                  defaultValue={item?.name}
+                  placeholder="e.g. Sony Alpha a6400 Mirrorless Camera, DJI Ronin Gimbal…"
+                />
               </Field>
               <div className="form-grid">
                 <Field label="Unique asset tag">
-                  <input name="tag" required defaultValue={item?.tag} placeholder="e.g. TP-CAM-001, TP-AUD-004…" />
+                  <input
+                    name="tag"
+                    required
+                    defaultValue={item?.tag}
+                    placeholder="e.g. TP-CAM-001, TP-AUD-004…"
+                  />
                 </Field>
                 <Field label="Category">
-                  <input name="category" required defaultValue={item?.category ?? 'Camera'} placeholder="e.g. Camera, Audio, Lighting, Computer, Accessory…" />
+                  <input
+                    name="category"
+                    required
+                    defaultValue={item?.category ?? 'Camera'}
+                    placeholder="e.g. Camera, Audio, Lighting, Computer, Accessory…"
+                  />
                 </Field>
               </div>
               <Field label="Storage location">
@@ -938,7 +1051,15 @@ export function Inventory() {
             <>
               {!item && (
                 <Field label="Equipment to release">
-                  <SearchableCombobox name="item" label="Equipment to release" placeholder="Search equipment, asset tag, or category…" options={availableItems.map(ai => ({ value: ai.id, label: `${ai.name} (${ai.tag}) · ${ai.category}` }))} />
+                  <SearchableCombobox
+                    name="item"
+                    label="Equipment to release"
+                    placeholder="Search equipment, asset tag, or category…"
+                    options={availableItems.map((ai) => ({
+                      value: ai.id,
+                      label: `${ai.name} (${ai.tag}) · ${ai.category}`,
+                    }))}
+                  />
                 </Field>
               )}
               <Field label="Release type">
@@ -952,19 +1073,35 @@ export function Inventory() {
               </Field>
               {useType === 'external_borrowing' ? (
                 <>
-                  <Field label="Borrower name"><input name="externalName" required maxLength={120}/></Field>
-                  <Field label="Organization (optional)"><input name="organization" maxLength={160}/></Field>
+                  <Field label="Borrower name">
+                    <input name="externalName" required maxLength={120} />
+                  </Field>
+                  <Field label="Organization (optional)">
+                    <input name="organization" maxLength={160} />
+                  </Field>
                   <Field label="Contact method">
                     <Select name="contactMethod" defaultValue="email">
                       <option value="email">Email</option>
                       <option value="phone">Phone</option>
                     </Select>
                   </Field>
-                  <Field label="Contact details"><input name="contact" required maxLength={160}/></Field>
+                  <Field label="Contact details">
+                    <input name="contact" required maxLength={160} />
+                  </Field>
                 </>
               ) : (
                 <Field label="Responsible editorial staff / borrower">
-                  <SearchableCombobox name="borrower" label="Responsible editorial staff / borrower" placeholder="Search name or position…" options={(state.people ?? []).filter(p => !p.archived).map(p => ({ value: p.id, label: `${p.name} — ${p.title || 'Position not recorded'}` }))} />
+                  <SearchableCombobox
+                    name="borrower"
+                    label="Responsible editorial staff / borrower"
+                    placeholder="Search name or position…"
+                    options={(state.people ?? [])
+                      .filter((p) => !p.archived)
+                      .map((p) => ({
+                        value: p.id,
+                        label: `${p.name} — ${p.title || 'Position not recorded'}`,
+                      }))}
+                  />
                 </Field>
               )}
               <Field label="Purpose / event name">
@@ -972,7 +1109,7 @@ export function Inventory() {
                   name="event"
                   required
                   maxLength={200}
-                  placeholder="e.g. UAAP Men's Basketball Finals, Student Council Forum…"
+                  placeholder="e.g. KUMBATI 2026, Entrada 2026..."
                   autoComplete="off"
                 />
               </Field>
@@ -980,12 +1117,21 @@ export function Inventory() {
                 <SchedulePicker defaultValue={tomorrow()} />
               </Field>
               <Field label="Condition before release">
-                <Select name="condition" defaultValue={item?.condition === 'Fair' ? 'Fair' : 'Good'}>
+                <Select
+                  name="condition"
+                  defaultValue={item?.condition === 'Fair' ? 'Fair' : 'Good'}
+                >
                   <option value="Good">Good — Fully functional & inspected</option>
-                  <option value="Good · 100% Battery & Clean Optics">Good · 100% Battery & Clean Optics</option>
-                  <option value="Good · SD Card Formatted & Media Cleared">Good · SD Card Formatted & Media Cleared</option>
+                  <option value="Good · 100% Battery & Clean Optics">
+                    Good · 100% Battery & Clean Optics
+                  </option>
+                  <option value="Good · SD Card Formatted & Media Cleared">
+                    Good · SD Card Formatted & Media Cleared
+                  </option>
                   <option value="Fair">Fair — Minor cosmetic wear, fully operational</option>
-                  <option value="Fair · Minor exterior scuffs, verified functional">Fair · Minor exterior scuffs, verified functional</option>
+                  <option value="Fair · Minor exterior scuffs, verified functional">
+                    Fair · Minor exterior scuffs, verified functional
+                  </option>
                 </Select>
               </Field>
             </>
@@ -994,8 +1140,8 @@ export function Inventory() {
             <>
               <p>
                 Recording return for{' '}
-                <strong>{state.items.find((i) => i.id === loan?.itemId)?.name}</strong>. An
-                adverse condition opens an incident review without assigning blame.
+                <strong>{state.items.find((i) => i.id === loan?.itemId)?.name}</strong>. An adverse
+                condition opens an incident review without assigning blame.
               </p>
               <Field label="Condition upon return">
                 <Select name="condition" defaultValue="Good">
@@ -1009,20 +1155,42 @@ export function Inventory() {
           )}
           {modal.type === 'history' && (
             <>
-              {manager && <ExportButton filename="equipment-history" label="Export history" sheets={() => [equipmentSheet(state, state.items.filter(i => i.id === item?.id)), releaseSheet(state, state.loans.filter(l => l.itemId === item?.id)), incidentSheet(state, state.incidents.filter(n => n.itemId === item?.id))]} />}
+              {manager && (
+                <ExportButton
+                  filename="equipment-history"
+                  label="Export history"
+                  sheets={() => [
+                    equipmentSheet(
+                      state,
+                      state.items.filter((i) => i.id === item?.id),
+                    ),
+                    releaseSheet(
+                      state,
+                      state.loans.filter((l) => l.itemId === item?.id),
+                    ),
+                    incidentSheet(
+                      state,
+                      state.incidents.filter((n) => n.itemId === item?.id),
+                    ),
+                  ]}
+                />
+              )}
               <p className="hint">
                 Usage history. Other staff members' usage details are restricted in this view.
               </p>
               {state.loans
                 .filter((l) => l.itemId === item?.id && (manager || l.borrowerId === person.id))
                 .map((l) => (
-                  <article className="history-card flex flex-col gap-3 rounded-2xl border border-white/90 bg-white/85 p-4 shadow-xs" key={l.id}>
+                  <article
+                    className="history-card flex flex-col gap-3 rounded-2xl border border-white/90 bg-white/85 p-4 shadow-xs"
+                    key={l.id}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle pb-2.5">
                       <div className="flex items-center gap-2.5">
-                        <Avatar name={borrowerName(state,l)} />
+                        <Avatar name={borrowerName(state, l)} />
                         <div>
                           <strong className="block text-[13.5px] font-medium text-ink">
-                            {borrowerName(state,l)}
+                            {borrowerName(state, l)}
                           </strong>
                           <span className="block text-[11px] text-muted-ink">
                             {(state.people ?? []).find((p) => p.id === l.borrowerId)?.title}
@@ -1128,7 +1296,9 @@ export function Inventory() {
                 Confirm Equipment Deletion
               </strong>
               <p className="mt-1 leading-relaxed">
-                You are about to delete <strong>{deleteTarget.name}</strong> (Tag: <span className="font-mono font-medium">{deleteTarget.tag}</span>, Category: {deleteTarget.category}).
+                You are about to delete <strong>{deleteTarget.name}</strong> (Tag:{' '}
+                <span className="font-mono font-medium">{deleteTarget.tag}</span>, Category:{' '}
+                {deleteTarget.category}).
               </p>
               <p className="mt-2 text-[11.5px] text-red-800 leading-normal">
                 This item will be permanently removed from the active inventory catalog.
@@ -1136,8 +1306,12 @@ export function Inventory() {
             </div>
 
             {state.loans.some((l) => l.itemId === deleteTarget.id && !l.returned) && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="alert">
-                <strong>Attention:</strong> This equipment is currently checked out on loan. Please record its return before deleting.
+              <div
+                className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"
+                role="alert"
+              >
+                <strong>Attention:</strong> This equipment is currently checked out on loan. Please
+                record its return before deleting.
               </div>
             )}
 
@@ -1164,8 +1338,9 @@ export function Incidents() {
   const incidents = visibleIncidents(state, person)
   const reportable = state.items.filter(
     (i) =>
-      !i.archived && (manager ||
-      state.loans.some((l) => l.itemId === i.id && l.borrowerId === person.id && !l.returned)),
+      !i.archived &&
+      (manager ||
+        state.loans.some((l) => l.itemId === i.id && l.borrowerId === person.id && !l.returned)),
   )
 
   return (
@@ -1193,8 +1368,8 @@ export function Incidents() {
         <div>
           <strong>Review without presumption of fault</strong>
           <p>
-            An incident is a request for review. It does not establish fault or imply that a
-            staff member stole or intentionally damaged an item.
+            An incident is a request for review. It does not establish fault or imply that a staff
+            member stole or intentionally damaged an item.
           </p>
         </div>
       </div>
@@ -1212,7 +1387,9 @@ export function Incidents() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <strong className="block truncate text-[14px] font-medium text-ink">{eq?.name}</strong>
+                    <strong className="block truncate text-[14px] font-medium text-ink">
+                      {eq?.name}
+                    </strong>
                     <small className="block text-[11.5px] text-muted-ink">
                       {eq?.tag} · Reported {dateText(i.at)}
                     </small>
@@ -1353,13 +1530,21 @@ export function Incidents() {
                 </Select>
               </Field>
               <Field label="What happened? Include facts and context.">
-                <textarea name="notes" required placeholder="Describe what occurred during assignment: e.g. Dropped during coverage; autofocus ring sticking or loose screw…" />
+                <textarea
+                  name="notes"
+                  required
+                  placeholder="Describe what occurred during assignment: e.g. Dropped during coverage; autofocus ring sticking or loose screw…"
+                />
               </Field>
             </>
           ) : (
             <>
               <Field label="Documented outcome">
-                <textarea name="outcome" required placeholder="Document the resolution: e.g. Replaced filter ring at authorized center. Verified full operability and restocked in cabinet." />
+                <textarea
+                  name="outcome"
+                  required
+                  placeholder="Document the resolution: e.g. Replaced filter ring at authorized center. Verified full operability and restocked in cabinet."
+                />
               </Field>
               <Field label="Condition after review">
                 <Select name="condition" defaultValue="Good">
@@ -1380,4 +1565,3 @@ export function Incidents() {
     </>
   )
 }
-
