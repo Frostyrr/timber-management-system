@@ -20,7 +20,7 @@ describe('Login Page', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders split-screen layout with CLI terminal and without removed badges', () => {
+  it('renders split-screen layout with messenger-style equipment feed and without removed badges', () => {
     render(
       <MemoryRouter>
         <Login />
@@ -45,17 +45,18 @@ describe('Login Page', () => {
     expect(screen.getByText('Sign in to Timberland')).toBeTruthy()
     expect(screen.getByText('Continue with Google')).toBeTruthy()
 
-    // Verify CLI terminal container
-    expect(screen.getByLabelText('Recent equipment activity CLI stream')).toBeTruthy()
-    expect(screen.getByText(/timberd --tail=5 --stream/i)).toBeTruthy()
-    expect(screen.getByText(/timber telemetry --tail=5 --format=interactive/i)).toBeTruthy()
+    // Verify messenger equipment feed container
+    expect(screen.getByLabelText('Recent equipment activity messenger stream')).toBeTruthy()
+    expect(screen.getByText('Equipment Channel')).toBeTruthy()
+    expect(screen.getByText('Listening for live equipment events…')).toBeTruthy()
 
-    // Verify default fallback tags exist
+    // Verify default fallback tags exist in message bubbles
     expect(screen.getByText('TP-CAM-001')).toBeTruthy()
     expect(screen.getByText('TP-AUD-002')).toBeTruthy()
+    expect(screen.getByText('Sony Alpha a6400 Mirrorless Camera')).toBeTruthy()
   })
 
-  it('fetches recent activity from the database and displays them in the CLI', async () => {
+  it('fetches recent activity from the database and displays them in the messenger feed', async () => {
     vi.mocked(fetchRecentPublicActivity).mockResolvedValue([
       {
         id: 'real-db-1',
@@ -91,26 +92,26 @@ describe('Login Page', () => {
     })
   })
 
-  it('allows pausing the CLI auto-cycling stream on hover and resuming on mouse leave', () => {
+  it('allows pausing the auto-cycling messenger feed on hover and resuming on mouse leave', () => {
     render(
       <MemoryRouter>
         <Login />
       </MemoryRouter>
     )
 
-    const cliFeed = screen.getByLabelText('Recent equipment activity CLI stream')
-    expect(screen.getByText('STREAM')).toBeTruthy()
+    const messengerFeed = screen.getByLabelText('Recent equipment activity messenger stream')
+    expect(screen.getByText('Active Telemetry')).toBeTruthy()
 
-    // Mouse enter pauses CLI
-    fireEvent.mouseEnter(cliFeed)
-    expect(screen.getByText('PAUSED')).toBeTruthy()
+    // Mouse enter pauses
+    fireEvent.mouseEnter(messengerFeed)
+    expect(screen.getByText('Paused (Hover)')).toBeTruthy()
 
     // Mouse leave resumes
-    fireEvent.mouseLeave(cliFeed)
-    expect(screen.getByText('STREAM')).toBeTruthy()
+    fireEvent.mouseLeave(messengerFeed)
+    expect(screen.getByText('Active Telemetry')).toBeTruthy()
   })
 
-  it('allows clicking an activity log to focus and highlight it in the CLI', () => {
+  it('allows clicking an activity message bubble to focus and highlight it', () => {
     render(
       <MemoryRouter>
         <Login />
@@ -123,8 +124,7 @@ describe('Login Page', () => {
     expect(secondLogButton).toBeTruthy()
 
     fireEvent.click(secondLogButton)
-    // Should have active scaling and left forest green border class
-    expect(secondLogButton.className).toContain('border-[#153f32]')
+    // Should have active scaling / slide class
     expect(secondLogButton.className).toContain('translate-x-1.5')
   })
 

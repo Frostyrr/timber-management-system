@@ -4,7 +4,15 @@ import {
   RefreshCw,
   AlertCircle,
   Lock,
-  Terminal,
+  Camera,
+  Mic,
+  Video,
+  Lightbulb,
+  Compass,
+  Package,
+  CheckCheck,
+  Radio,
+  Send,
 } from 'lucide-react'
 import { client, fetchRecentPublicActivity, type PublicActivityLog } from '../backend/client'
 import { GoogleIcon } from '../components/ui/GoogleIcon'
@@ -29,7 +37,7 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     action: 'checkout',
     actionLabel: 'CHECKOUT',
     details: 'Released for Feature Desk campus event coverage',
-    timeStr: '12:28:14',
+    timeStr: '12:28 PM',
   },
   {
     id: 'log-2',
@@ -39,7 +47,7 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     action: 'return',
     actionLabel: 'RETURN',
     details: 'Returned in Good Condition to Sound Locker A',
-    timeStr: '12:14:02',
+    timeStr: '12:14 PM',
   },
   {
     id: 'log-3',
@@ -49,7 +57,7 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     action: 'checkout',
     actionLabel: 'CHECKOUT',
     details: 'Released for Sports Desk championship match video',
-    timeStr: '11:49:33',
+    timeStr: '11:49 AM',
   },
   {
     id: 'log-4',
@@ -59,7 +67,7 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     action: 'item',
     actionLabel: 'CATALOG',
     details: 'Routine safety inspection verified by custodian',
-    timeStr: '10:56:40',
+    timeStr: '10:56 AM',
   },
   {
     id: 'log-5',
@@ -69,36 +77,47 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     action: 'checkout',
     actionLabel: 'CHECKOUT',
     details: 'Released for Editorial portrait shoot',
-    timeStr: '10:12:19',
+    timeStr: '10:12 AM',
   },
 ]
+
+function getEquipmentIcon(category: string, name: string = '') {
+  const c = category.toLowerCase()
+  const n = name.toLowerCase()
+  if (c.includes('camera') || n.includes('camera') || n.includes('lens')) return Camera
+  if (c.includes('audio') || n.includes('audio') || n.includes('mic')) return Mic
+  if (c.includes('light') || n.includes('light')) return Lightbulb
+  if (n.includes('gimbal') || n.includes('video')) return Video
+  if (n.includes('tripod') || c.includes('tripod')) return Compass
+  return Package
+}
 
 function formatActionBadge(action: string): { label: string; badgeClass: string } {
   switch (action.toLowerCase()) {
     case 'checkout':
       return {
         label: 'CHECKOUT',
-        badgeClass: 'bg-amber-50 text-amber-900 border border-amber-300/80',
+        badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300/80',
       }
     case 'return':
       return {
         label: 'RETURN',
-        badgeClass: 'bg-emerald-50 text-emerald-900 border border-emerald-300/80',
+        badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
       }
     case 'item':
       return {
         label: 'CATALOG',
-        badgeClass: 'bg-sky-50 text-sky-900 border border-sky-300/80',
+        badgeClass: 'bg-sky-100 text-sky-900 border border-sky-300/80',
       }
     case 'incident':
       return {
         label: 'INCIDENT',
-        badgeClass: 'bg-rose-50 text-rose-900 border border-rose-300/80',
+        badgeClass: 'bg-rose-100 text-rose-900 border border-rose-300/80',
       }
     case 'resolve':
       return {
         label: 'RESOLVE',
-        badgeClass: 'bg-purple-50 text-purple-900 border border-purple-300/80',
+        badgeClass: 'bg-purple-100 text-purple-900 border border-purple-300/80',
       }
     case 'archive':
       return {
@@ -108,24 +127,24 @@ function formatActionBadge(action: string): { label: string; badgeClass: string 
     case 'unarchive':
       return {
         label: 'RESTORE',
-        badgeClass: 'bg-teal-50 text-teal-900 border border-teal-300/80',
+        badgeClass: 'bg-teal-100 text-teal-900 border border-teal-300/80',
       }
     default:
       return {
         label: action.toUpperCase(),
-        badgeClass: 'bg-emerald-50 text-emerald-900 border border-emerald-300/80',
+        badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
       }
   }
 }
 
 function formatIsoTime(iso?: string): string {
-  if (!iso) return '12:00:00'
+  if (!iso) return '12:00 PM'
   try {
     const d = new Date(iso)
-    if (isNaN(d.getTime())) return '12:00:00'
-    return d.toTimeString().slice(0, 8)
+    if (isNaN(d.getTime())) return '12:00 PM'
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   } catch {
-    return '12:00:00'
+    return '12:00 PM'
   }
 }
 
@@ -178,7 +197,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
     }
   }, [])
 
-  // Auto-cycle through the 5 CLI logs with slide-and-fade animation
+  // Auto-cycle through the 5 messenger message bubbles with slide-and-pop animation
   useEffect(() => {
     if (isPaused) return
     const timer = setInterval(() => {
@@ -209,9 +228,9 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   const isLoading = busy || checkingSession
 
   return (
-    <div className="w-full max-w-[1200px] py-4 sm:py-8 lg:py-12">
+    <div className="w-full max-w-[1200px] py-4 sm:py-8 lg:py-12 font-['Geist',sans-serif]">
       <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12 xl:gap-16">
-        {/* Left Column: Brand Masthead & Light White CLI Terminal Stream */}
+        {/* Left Column: Brand Masthead & Messenger-Style Activity Feed */}
         <div className="order-2 flex flex-col gap-6 lg:order-1 lg:col-span-7">
           {/* Masthead Header */}
           <div className="flex flex-col gap-3">
@@ -232,124 +251,128 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
             </p>
           </div>
 
-          {/* White / Light Theme CLI Terminal Container */}
+          {/* Messenger-Style Equipment Wire Container */}
           <section
-            aria-label="Recent equipment activity CLI stream"
+            aria-label="Recent equipment activity messenger stream"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
-            className="flex flex-col overflow-hidden rounded-2xl border border-[#dce6df] bg-white/95 shadow-[0_20px_50px_rgba(21,63,50,0.08)] backdrop-blur-xl font-mono text-xs select-none"
+            className="flex flex-col overflow-hidden rounded-3xl border border-[#dce6df] bg-white/95 shadow-[0_20px_50px_rgba(21,63,50,0.08)] backdrop-blur-2xl select-none"
           >
-            {/* White Terminal Chrome Title Bar */}
-            <div className="flex items-center justify-between border-b border-[#e2eae4] bg-[#f8faf9] px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]/90" aria-hidden="true" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]/90" aria-hidden="true" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#10b981]/90" aria-hidden="true" />
-                <span className="ml-2 font-mono text-[11.5px] font-semibold text-[#2d523e] flex items-center gap-1.5">
-                  <Terminal size={12} className="text-primary" />
-                  <span>timberd --tail=5 --stream</span>
-                </span>
+            {/* Messenger Chat Header Bar */}
+            <div className="flex items-center justify-between border-b border-[#e2eae4] bg-[#f8faf9] px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-pale border border-primary/20 text-primary">
+                  <Radio size={16} />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[13.5px] font-semibold text-ink tracking-tight flex items-center gap-1.5">
+                    <span>Equipment Channel</span>
+                    <span className="text-[11px] font-mono text-muted-ink">#live-wire</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-ink font-['Geist_Mono',monospace]">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{isPaused ? 'Paused (Hover)' : isLiveFromDb ? 'Database Wire' : 'Active Telemetry'}</span>
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
-                </span>
-                <span className="font-mono text-[10.5px] font-bold tracking-wider text-primary uppercase">
-                  {isPaused ? 'PAUSED' : isLiveFromDb ? 'LIVE DB' : 'STREAM'}
+                <span className="rounded-full bg-pale border border-primary/15 px-2.5 py-1 font-['Geist_Mono',monospace] text-[10.5px] font-semibold text-primary">
+                  {isLiveFromDb ? 'LIVE DB' : '5 RECENT'}
                 </span>
               </div>
             </div>
 
-            {/* White Terminal Console Content */}
-            <div className="p-4 sm:p-5 flex flex-col gap-3 bg-[#fcfdfc]">
-              {/* CLI Command Line */}
-              <div className="flex items-center gap-2 text-[11.5px] text-[#4a6356]">
-                <span className="text-primary font-bold">$</span>
-                <span className="text-ink font-medium">timber telemetry --tail=5 --format=interactive</span>
-              </div>
+            {/* Chat Messages Body with One-by-One Staggered Pop Animation */}
+            <div className="p-4 sm:p-5 flex flex-col gap-3">
+              {logs.map((item, index) => {
+                const isSelected = index === activeIndex
+                const Icon = getEquipmentIcon(item.category, item.name)
+                const badge = formatActionBadge(item.actionLabel)
 
-              {/* Staggered Streaming Logs with One-by-One Slide and Fade */}
-              <div className="flex flex-col gap-1.5 pt-1">
-                {logs.map((item, index) => {
-                  const isSelected = index === activeIndex
-                  const badge = formatActionBadge(item.actionLabel)
-
-                  return (
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setActiveIndex(index)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setActiveIndex(index)
+                      }
+                    }}
+                    aria-label={`${item.tag} ${badge.label} ${item.name}`}
+                    className={`group relative flex items-start gap-3 transition-all duration-300 cursor-pointer ${
+                      isSelected ? 'translate-x-1.5' : ''
+                    }`}
+                    style={{
+                      animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
+                    }}
+                  >
+                    {/* Equipment Category Avatar */}
                     <div
-                      key={item.id}
-                      onClick={() => setActiveIndex(index)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setActiveIndex(index)
-                        }
-                      }}
-                      aria-label={`${item.tag} ${badge.label} ${item.name}`}
-                      className={`group relative flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2.5 rounded-lg px-3 py-2 transition-all duration-300 cursor-pointer ${
+                      className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs shadow-2xs transition-all duration-300 ${
                         isSelected
-                          ? 'bg-[#eef4f0] border-l-3 border-[#153f32] text-ink translate-x-1.5 shadow-xs font-medium'
-                          : 'text-[#33463c] border-l-3 border-transparent hover:bg-[#f4f7f5] hover:text-ink'
+                          ? 'border-primary bg-primary text-white scale-105 shadow-xs'
+                          : 'border-[#dce6df] bg-surface text-muted-ink group-hover:border-[#cbd8cf]'
                       }`}
-                      style={{
-                        animation: `cliFadeSlide 0.45s cubic-bezier(0.16, 1, 0.3, 1) ${index * 140}ms both`,
-                      }}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {/* Timestamp */}
-                        <span className="text-[11px] text-[#6b8577] shrink-0 font-medium">
-                          [{item.timeStr}]
-                        </span>
+                      <Icon size={14} />
+                    </div>
 
-                        {/* Action Badge on White CLI */}
-                        <span
-                          className={`text-[10px] font-bold shrink-0 rounded px-1.5 py-0.5 tracking-tight ${badge.badgeClass}`}
-                        >
-                          [{badge.label}]
-                        </span>
-
-                        {/* Equipment Tag */}
-                        <span className="font-bold text-[#153f32] shrink-0">
-                          {item.tag}
-                        </span>
-
-                        <span className="text-primary font-bold shrink-0">»</span>
-
-                        {/* Equipment Name & Details */}
-                        <span className="truncate text-xs text-[#18221d]">
-                          <strong className="font-medium">{item.name}</strong>
-                          <span className="hidden md:inline text-[#5a6f63] ml-1.5 font-normal">
-                            ({item.details})
+                    {/* Chat Message Bubble */}
+                    <div
+                      className={`relative flex flex-1 flex-col gap-1 rounded-2xl rounded-tl-sm border p-3 transition-all duration-300 ${
+                        isSelected
+                          ? 'border-primary/40 bg-[#f2f7f4] shadow-xs'
+                          : 'border-[#e2eae4] bg-white hover:border-[#cbd8cf] hover:bg-[#fafbfa]'
+                      }`}
+                    >
+                      {/* Top Bubble Row: Tag, Action Badge & Time */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-['Geist_Mono',monospace] text-[11px] font-bold text-primary bg-pale px-2 py-0.5 rounded-full">
+                            {item.tag}
                           </span>
-                        </span>
+                          <span
+                            className={`font-['Geist_Mono',monospace] text-[10px] font-bold px-1.5 py-0.5 rounded ${badge.badgeClass}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-[11px] font-['Geist_Mono',monospace] text-muted-ink">
+                          <span>{item.timeStr}</span>
+                          <CheckCheck size={13} className="text-primary" />
+                        </div>
                       </div>
 
-                      {/* Right Tag/Status Indicator */}
-                      <div className="flex items-center gap-1.5 shrink-0 pl-7 sm:pl-0">
-                        <span className="text-[10px] text-[#6b8577] uppercase font-semibold">
-                          {item.category}
-                        </span>
-                        {isSelected && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                        )}
+                      {/* Message Content */}
+                      <div className="text-[13px] leading-snug text-ink">
+                        <strong className="font-semibold text-ink">{item.name}</strong>
+                        <p className="mt-0.5 text-xs text-muted-ink leading-normal">
+                          {item.details}
+                        </p>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )
+              })}
+            </div>
 
-              {/* White Terminal Bottom Command Prompt */}
-              <div className="mt-2 flex items-center justify-between border-t border-[#e2eae4] pt-3 text-[11px] text-[#4a6356]">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-primary font-semibold">timber@workspace:~$</span>
-                  <span className="inline-block h-3.5 w-2 bg-primary animate-pulse align-middle" />
-                </div>
-                <span className="text-[#6b8577] font-mono text-[10.5px]">
-                  {isLiveFromDb ? 'database rpc: connected' : 'telemetry: mock active'}
+            {/* Messenger Decorative Input Bar */}
+            <div className="flex items-center gap-2 border-t border-[#e2eae4] bg-[#f8faf9] px-4 py-2.5">
+              <div className="flex flex-1 items-center justify-between rounded-full border border-[#dce6df] bg-white px-3.5 py-1.5 text-xs text-muted-ink shadow-2xs">
+                <span className="truncate text-[12px]">Listening for live equipment events…</span>
+                <span className="flex items-center gap-1 font-['Geist_Mono',monospace] text-[10.5px] text-primary shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Realtime Wire</span>
                 </span>
+              </div>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-xs">
+                <Send size={13} className="ml-0.5" />
               </div>
             </div>
           </section>
