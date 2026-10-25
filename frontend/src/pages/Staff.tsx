@@ -1,3 +1,6 @@
+import { Select } from '../components/ui/Select'
+import { staffSheet, releaseSheet } from '../exports/reports'
+import { ExportButton } from '../components/ui/ExportButton'
 import { publicationPositions, staffCategories, staffCategory } from '../backend/staffCategories'
 import { PositionCombobox } from '../components/ui/PositionCombobox'
 import { useState } from 'react'
@@ -62,6 +65,7 @@ export function Staff() {
         title="Staff directory"
         description="Record publication members, advisers, PICO staff, and external personnel. Directory entries do not grant sign-in access."
       >
+        <ExportButton filename="staff" sheets={() => [staffSheet(state, people)]} />
         <button
           className="secondary"
           disabled={refreshing}
@@ -103,20 +107,20 @@ export function Staff() {
         </Field>
 
         <Field label="Staff category">
-          <select value={category} onChange={event => { setCategory(event.target.value); setPage(1) }}>
+          <Select aria-label="Staff category" value={category} onChange={event => { setCategory(event.target.value); setPage(1) }}>
             <option value="">All categories</option>
             {[...Object.keys(staffCategories), 'Uncategorized'].map(name => <option key={name} value={name}>{name}</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Staff status">
-          <select value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}>
+          <Select aria-label="Staff status" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}>
             <option value="all">All statuses</option>
             <option value="active">Active</option>
             <option value="archived">Archived</option>
-          </select>
+          </Select>
         </Field>
         <Field label="Sort by">
-          <select value={sort} onChange={event => { setSort(event.target.value); setPage(1) }}>
+          <Select aria-label="Sort by" value={sort} onChange={event => { setSort(event.target.value); setPage(1) }}>
             <option value="name">Name (A–Z)</option>
             <option value="publication-most">Most publication uses</option>
             <option value="publication-least">Least publication uses</option>
@@ -124,7 +128,7 @@ export function Staff() {
             <option value="borrowing-least">Least member borrowings</option>
             <option value="active-most">Most active uses</option>
             <option value="active-least">Least active uses</option>
-          </select>
+          </Select>
         </Field>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -274,6 +278,7 @@ export function Staff() {
           submit="Done"
           onSubmit={() => {}}
         >
+          <ExportButton filename="staff-history" label="Export history" sheets={() => [staffSheet(state, [history]), releaseSheet(state, state.loans.filter(l => l.borrowerId === history.id))]} />
           {state.loans
             .filter((l) => l.borrowerId === history.id)
             .map((l) => (

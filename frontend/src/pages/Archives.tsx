@@ -1,3 +1,6 @@
+import { Select } from '../components/ui/Select'
+import { equipmentSheet, staffSheet, releaseSheet, incidentSheet, activitySheet } from '../exports/reports'
+import { ExportButton } from '../components/ui/ExportButton'
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useInventory } from '../backend/context'
@@ -29,7 +32,10 @@ export function Archives() {
   const events = history ? state.events.filter(e => e.entityId === history.id || e.subjectId === history.id) : []
   const changeTab = (next: typeof tab) => { setTab(next); setSearch(''); setCategory(''); setPage(1); setHistory(null) }
   return <>
-    <Heading eyebrow="PRESERVED RECORDS" title="Archives" description="Archived equipment and staff remain here for reference. Their histories are preserved." />
+    <Heading eyebrow="PRESERVED RECORDS" title="Archives" description="Archived equipment and staff remain here for reference. Their histories are preserved.">
+      <ExportButton filename={`archives-${tab}`} sheets={() => tab === 'equipment' ? [equipmentSheet(state, filtered.flatMap(r => state.items.filter(i => i.id === r.id)))] : [staffSheet(state, filtered.flatMap(r => (state.people??[]).filter(p => p.id === r.id)))]} />
+      <ExportButton filename="archives" label="Export all archives" sheets={() => [equipmentSheet(state, state.items.filter(i => i.archived)), staffSheet(state, (state.people??[]).filter(p => p.archived))]} />
+    </Heading>
     <section className="panel p-5">
       <div role="tablist" aria-label="Archive type" className="mb-5 flex gap-2">
         {(['equipment', 'staff'] as const).map(value => <button key={value} id={`tab-${value}`} type="button" role="tab" aria-selected={tab === value} aria-controls="archive-panel" tabIndex={tab === value ? 0 : -1} className={tab === value ? 'primary' : 'secondary'} onClick={() => changeTab(value)} onKeyDown={event => {
@@ -43,7 +49,7 @@ export function Archives() {
       <div role="tabpanel" id="archive-panel" aria-labelledby={`tab-${tab}`}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Search archives"><input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder={tab === 'equipment' ? 'Name, asset tag, or category' : 'Name, position, or category'} /></Field>
-          <Field label="Archive category"><select value={category} onChange={e => { setCategory(e.target.value); setPage(1) }}><option value="">All categories</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></Field>
+          <Field label="Archive category"><Select aria-label="Archive category" value={category} onChange={e => { setCategory(e.target.value); setPage(1) }}><option value="">All categories</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</Select></Field>
         </div>
         <div className="table-wrap mt-4"><table><thead><tr><th>Name</th><th>{tab === 'equipment' ? 'Asset tag' : 'Position'}</th><th>Category</th>{tab === 'equipment' && <th>Condition</th>}<th>History</th></tr></thead>
           <tbody>{filtered.slice((currentPage-1)*10,currentPage*10).map(r => <tr key={r.id}><td>{r.name}</td><td>{r.detail}</td><td>{r.category}</td>{tab === 'equipment' && <td>{r.condition}</td>}<td><button type="button" className="secondary" aria-label={`View history for ${r.name}`} onClick={() => setHistory(r)}>View history</button></td></tr>)}</tbody></table></div>
@@ -52,6 +58,7 @@ export function Archives() {
       </div>
     </section>
     {history && <Modal title={`${history.name} · history`} submit="Done" onClose={() => setHistory(null)} onSubmit={() => {}}>
+      <ExportButton filename="archive-history" label="Export history" sheets={() => [releaseSheet(state, loans), incidentSheet(state, incidents), activitySheet(state, events)]} />
       <h3 className="font-semibold">Equipment releases</h3>
       {loans.map(l => <article key={l.id} className="rounded-xl border border-line p-4"><strong>{tab === 'equipment' ? borrowerName(state,l) : state.items.find(i => i.id === l.itemId)?.name ?? 'Equipment'}</strong><p>{l.useType === 'publication_use' ? 'Publication use' : l.useType === 'member_borrowing' ? 'Member borrowing' : l.useType === 'external_borrowing' ? 'External borrowing' : 'Unspecified use'} · {l.purpose || l.event || 'Purpose not recorded'}</p><p>Released {dateText(l.out)} · Due {dateText(l.due)}</p><p>{l.returned ? `Returned ${dateText(l.returned)} · ${l.after || 'Condition not recorded'}` : 'Currently in use'}</p></article>)}
       {!loans.length && <Empty text="No equipment use recorded." />}

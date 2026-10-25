@@ -1,3 +1,4 @@
+import { dropdownMenuClass, dropdownOptionClass, dropdownSelectedClass, dropdownIdleClass } from './dropdownStyles'
 import { useId, useRef, useState } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 
@@ -62,12 +63,12 @@ export function SearchableCombobox({ options, defaultValue = '', name, label, pl
         onMouseDown={event=>event.preventDefault()}
         onClick={()=>{ input.current?.focus(); setFiltering(false); setOpen(true) }}><ChevronDown size={16}/></button>
     </div>
-    {open && <div className="mt-1 rounded-xl border border-line bg-white p-1 shadow-sm">
+    {open && <div className={`mt-1 ${dropdownMenuClass}`}>
       <ul id={`${id}-options`} role="listbox" aria-label={`${label} options`} className="slick-scroll-dark-green max-h-[200px] overflow-y-auto">
         {matches.map((option,index)=><li key={option.value} id={`${id}-option-${index}`} role="option"
           aria-selected={selected===option} onMouseDown={event=>event.preventDefault()}
           onClick={()=>choose(option)} onMouseMove={()=>setActive(index)}
-          className={`flex min-h-10 cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm ${active===index?'bg-pale text-primary':'text-ink hover:bg-surface'}`}>
+          className={`${dropdownOptionClass} ${active===index || selected===option ? dropdownSelectedClass : dropdownIdleClass}`}>
           {option.label}{selected===option&&<Check size={14} aria-hidden="true"/>}
         </li>)}
       </ul>

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { it,expect } from 'vitest'
+import { it,expect,vi } from 'vitest'
 import { render,screen,fireEvent,cleanup } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Staff } from './Staff'
@@ -22,6 +22,7 @@ it('paginates directory entries and resets pagination when searching',()=>{
 })
 
 it('combines category and status filters and sorts usage counts in both directions',()=>{
+ vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockReturnValue({width:200,height:40,top:0,bottom:40,left:0,right:200,x:0,y:0,toJSON:()=>({})})
  const initial=seed()
  const state={...initial, people:[
   {id:'a',name:'Alice',title:'Adviser',department:'',archived:false},
@@ -34,16 +35,20 @@ it('combines category and status filters and sorts usage counts in both directio
  render(<MemoryRouter><InventoryContext.Provider value={{state,person:state.profiles[0],act:()=>{},warning:'',notice:''}}><Staff/></InventoryContext.Provider></MemoryRouter>)
  const firstName=()=>screen.getAllByRole('row')[1].querySelector('td')?.textContent
  for(const [sort,expected] of [['publication-most','Bea'],['publication-least','Alice'],['borrowing-most','Alice'],['borrowing-least','Bea'],['active-most','Bea'],['active-least','Alice']]){
-  fireEvent.change(screen.getByLabelText('Sort by'),{target:{value:sort}})
+  fireEvent.click(screen.getByRole('combobox',{name:'Sort by'}))
+  const labels: Record<string,string> = {'publication-most':'Most publication uses','publication-least':'Least publication uses','borrowing-most':'Most member borrowings','borrowing-least':'Least member borrowings','active-most':'Most active uses','active-least':'Least active uses'}
+  fireEvent.click(screen.getByRole('option',{name:labels[sort]}))
   expect(firstName()).toBe(expected)
  }
- fireEvent.change(screen.getByLabelText('Staff category'),{target:{value:'Executives Department'}})
- fireEvent.change(screen.getByLabelText('Staff status'),{target:{value:'archived'}})
+ fireEvent.click(screen.getByRole('combobox',{name:'Staff category'}))
+ fireEvent.click(screen.getByRole('option',{name:'Executives Department'}))
+ fireEvent.click(screen.getByRole('combobox',{name:'Staff status'}))
+ fireEvent.click(screen.getByRole('option',{name:'Archived'}))
  expect(firstName()).toBe('Chris')
  expect(screen.queryByText('Alice')).toBeNull()
  expect(screen.queryByText('Bea')).toBeNull()
  fireEvent.click(screen.getByRole('button',{name:'Reset filters'}))
  expect(firstName()).toBe('Alice')
  expect(screen.getAllByRole('row')).toHaveLength(4)
- cleanup()
+ cleanup();vi.restoreAllMocks()
 })

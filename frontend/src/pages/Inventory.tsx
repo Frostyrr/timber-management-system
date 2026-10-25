@@ -1,3 +1,5 @@
+import { equipmentSheet, releaseSheet, incidentSheet } from '../exports/reports'
+import { ExportButton } from '../components/ui/ExportButton'
 import { SearchableCombobox } from '../components/ui/SearchableCombobox'
 import { releaseDetailsSchema, USE_TYPES, type UseType } from '../demo/release'
 import { value, dateText, tomorrow, categoryClass } from '../components/format'
@@ -465,6 +467,8 @@ export function Inventory() {
             </button>
           </>
         )}
+        {manager && <ExportButton filename="inventory" sheets={() => [equipmentSheet(state, items)]} />}
+        {manager && <ExportButton filename="releases" label="Export releases" sheets={() => [releaseSheet(state, state.loans.filter(l => items.some(i => i.id === l.itemId) && (filter !== 'loans' && filter !== 'overdue' || !l.returned) && (filter !== 'overdue' || isOverdue(l.due))))]} />}
       </Heading>
 
       <section className="mini-metrics" aria-label="Equipment summary">
@@ -1005,6 +1009,7 @@ export function Inventory() {
           )}
           {modal.type === 'history' && (
             <>
+              {manager && <ExportButton filename="equipment-history" label="Export history" sheets={() => [equipmentSheet(state, state.items.filter(i => i.id === item?.id)), releaseSheet(state, state.loans.filter(l => l.itemId === item?.id)), incidentSheet(state, state.incidents.filter(n => n.itemId === item?.id))]} />}
               <p className="hint">
                 Usage history. Other staff members' usage details are restricted in this view.
               </p>
@@ -1178,6 +1183,7 @@ export function Incidents() {
             <Plus size={16} /> Report an incident
           </button>
         )}
+        <ExportButton filename="incidents" sheets={() => [incidentSheet(state, incidents)]} />
       </Heading>
 
       <div className="fairness compact">

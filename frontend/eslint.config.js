@@ -15,6 +15,12 @@ export default defineConfig([
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
+    rules: {
+      'no-restricted-syntax': ['error', {
+        selector: 'JSXOpeningElement[name.name="select"]',
+        message: 'Use components/ui/Select or SearchableCombobox to keep dropdowns consistent.',
+      }],
+    },
     languageOptions: {
       globals: globals.browser,
     },

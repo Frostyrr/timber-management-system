@@ -1,3 +1,5 @@
+import { activitySheet } from '../exports/reports'
+import { ExportButton } from '../components/ui/ExportButton'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Package, ShieldAlert, Clock3, RefreshCw } from 'lucide-react'
@@ -93,6 +95,7 @@ export function Logs() {
         title="Activity logs"
         description="Chronological record of equipment registration, checkout, returns, and incident reviews."
       >
+        <ExportButton filename="activity-logs" sheets={() => [activitySheet(state, filteredEvents)]} />
         <Link to="/inventory" className="secondary">
           <Package size={16} /> Equipment inventory
         </Link>

@@ -1,3 +1,4 @@
+import { dropdownMenuClass, dropdownOptionClass, dropdownSelectedClass, dropdownIdleClass } from './dropdownStyles'
 import { useEffect, useMemo, useRef, useState, useCallback, Children, isValidElement, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check, Search } from 'lucide-react'
@@ -77,7 +78,7 @@ export function Select({
   const currentValue = isControlled
     ? (value ?? '')
     : (uncontrolledValue !== undefined ? uncontrolledValue : (placeholder ? '' : (parsedOptions[0]?.value || '')))
-  const selectedOption = parsedOptions.find((o) => o.value === currentValue && o.value !== '')
+  const selectedOption = parsedOptions.find((o) => o.value === currentValue)
   const displayLabel = selectedOption ? selectedOption.label : (placeholder || currentValue || 'Select an option')
 
   const [isOpen, setIsOpen] = useState(false)
@@ -209,7 +210,7 @@ export function Select({
         maxHeight: maxVisibleOptions ? `${maxVisibleOptions * 38 + (searchable ? 52 : 12)}px` : '260px',
         zIndex: 999999,
       }}
-      className={`fixed z-[999999] overflow-y-auto rounded-xl border border-white/95 bg-white/98 p-1.5 shadow-[0_20px_50px_rgba(21,63,50,0.28)] backdrop-blur-2xl ring-1 ring-black/10 animate-in fade-in zoom-in-95 duration-100 slick-scroll-dark-green ${menuClassName}`}
+      className={`fixed z-[999999] overflow-y-auto ${dropdownMenuClass} animate-in fade-in zoom-in-95 duration-100 slick-scroll-dark-green ${menuClassName}`}
     >
       {searchable && (
         <div className="sticky top-0 z-10 -mx-1.5 -mt-1.5 mb-1.5 border-b border-line-subtle/80 bg-white/95 p-1.5 backdrop-blur-md">
@@ -219,7 +220,7 @@ export function Select({
               type="text"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Search positions…"
+              placeholder="Search options…"
               className="w-full rounded-lg border border-line-subtle bg-surface/70 py-1.5 pr-2.5 pl-7 text-xs text-ink placeholder:text-muted-ink focus:border-primary focus:bg-white focus:outline-none"
               onClick={(e) => e.stopPropagation()}
               autoFocus
@@ -242,10 +243,10 @@ export function Select({
                 handleSelect(opt.value)
                 setFilterText('')
               }}
-              className={`group/opt flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] font-[450] transition-colors duration-100 ${
+              className={`group/opt ${dropdownOptionClass} ${
                 isSelected
-                  ? 'bg-emerald-50 text-primary font-medium'
-                  : 'text-ink hover:bg-black/[0.04]'
+                  ? dropdownSelectedClass
+                  : dropdownIdleClass
               }`}
             >
               <span className="truncate">{opt.label}</span>
