@@ -823,6 +823,17 @@ select {
 }
 
 /* Staggering Entrance Animations */
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+}
+
 @keyframes enterFadeUp {
   from {
     opacity: 0;

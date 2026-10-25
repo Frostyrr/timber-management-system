@@ -49,3 +49,24 @@ export async function mutateSecurity(action: unknown, requestId: string = crypto
   const { error } = await client.rpc('security_mutate', { action, request_id: requestId })
   if (error) throw Error(error.message)
 }
+
+export interface PublicActivityLog {
+  id: string
+  action: string
+  at: string
+  itemName: string
+  tag: string
+  category: string
+  details: string
+}
+
+export async function fetchRecentPublicActivity(): Promise<PublicActivityLog[]> {
+  if (!client) return []
+  try {
+    const { data, error } = await client.rpc('recent_public_activity')
+    if (error || !Array.isArray(data)) return []
+    return data as PublicActivityLog[]
+  } catch {
+    return []
+  }
+}

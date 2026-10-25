@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Login } from './Login'
-import { client } from '../backend/client'
+import { client, fetchRecentPublicActivity } from '../backend/client'
 
 vi.mock('../backend/client', () => ({
   client: {
@@ -11,6 +11,7 @@ vi.mock('../backend/client', () => ({
       signInWithOAuth: vi.fn(),
     },
   },
+  fetchRecentPublicActivity: vi.fn().mockResolvedValue([]),
 }))
 
 describe('Login Page', () => {
@@ -19,7 +20,7 @@ describe('Login Page', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders split-screen layout with brand masthead, login card, and 5 recent activity logs', () => {
+  it('renders split-screen layout with CLI terminal and without removed badges', () => {
     render(
       <MemoryRouter>
         <Login />
@@ -32,58 +33,99 @@ describe('Login Page', () => {
       screen.getByText(/Equipping campus journalists, photographers, and editors with reliable gear/i)
     ).toBeTruthy()
 
-    // Verify login card heading on the right
+    // Assert "Publication Asset Custody" badge is REMOVED
+    expect(screen.queryByText('Publication Asset Custody')).toBeNull()
+
+    // Assert bottom trust badges are REMOVED
+    expect(screen.queryByText(/Audit Logging & RLS/i)).toBeNull()
+    expect(screen.queryByText(/Google SSO Protected/i)).toBeNull()
+    expect(screen.queryByText(/24\/7 Equipment Custody/i)).toBeNull()
+
+    // Verify login card on the right
     expect(screen.getByText('Sign in to Timberland')).toBeTruthy()
     expect(screen.getByText('Continue with Google')).toBeTruthy()
 
-    // Verify 5 recent equipment logs wire header
-    expect(screen.getByText('Recent Equipment Activity')).toBeTruthy()
-    expect(screen.getByText('Top 5 Wire')).toBeTruthy()
+    // Verify CLI terminal container
+    expect(screen.getByLabelText('Recent equipment activity CLI stream')).toBeTruthy()
+    expect(screen.getByText(/timberd --tail=5 --stream/i)).toBeTruthy()
+    expect(screen.getByText(/timber telemetry --tail=5 --format=interactive/i)).toBeTruthy()
 
-    // Verify each of the 5 logs is present
-    const expectedTags = ['TP-CAM-001', 'TP-AUD-002', 'TP-GIM-001', 'TP-LGT-003', 'TP-TRP-002']
-    expectedTags.forEach((tag) => {
-      expect(screen.getByText(tag)).toBeTruthy()
-    })
-
-    expect(screen.getByText('Sony Alpha a6400 Mirrorless Camera')).toBeTruthy()
-    expect(screen.getByText('Zoom H6 Handy Field Audio Recorder')).toBeTruthy()
+    // Verify default fallback tags exist
+    expect(screen.getByText('TP-CAM-001')).toBeTruthy()
+    expect(screen.getByText('TP-AUD-002')).toBeTruthy()
   })
 
-  it('allows pausing auto-cycling on hover and resuming on mouse leave', () => {
+  it('fetches recent activity from the database and displays them in the CLI', async () => {
+    vi.mocked(fetchRecentPublicActivity).mockResolvedValue([
+      {
+        id: 'real-db-1',
+        action: 'checkout',
+        at: '2026-10-25T12:30:00Z',
+        itemName: 'Canon Cinema EOS C70',
+        tag: 'TP-CIN-001',
+        category: 'Cinema',
+        details: 'Staff checkout: Documentary coverage',
+      },
+      {
+        id: 'real-db-2',
+        action: 'return',
+        at: '2026-10-25T12:20:00Z',
+        itemName: 'Rode Wireless GO II',
+        tag: 'TP-MIC-002',
+        category: 'Audio',
+        details: 'Returned in Good condition',
+      },
+    ])
+
     render(
       <MemoryRouter>
         <Login />
       </MemoryRouter>
     )
 
-    const activityFeed = screen.getByLabelText('Recent equipment activity stream')
-    expect(screen.getByText('Auto-cycling')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByText('TP-CIN-001')).toBeTruthy()
+      expect(screen.getByText(/Canon Cinema EOS C70/i)).toBeTruthy()
+      expect(screen.getByText('TP-MIC-002')).toBeTruthy()
+      expect(screen.getByText('LIVE DB')).toBeTruthy()
+    })
+  })
 
-    // Mouse enter pauses
-    fireEvent.mouseEnter(activityFeed)
-    expect(screen.getByText('Paused')).toBeTruthy()
+  it('allows pausing the CLI auto-cycling stream on hover and resuming on mouse leave', () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    )
+
+    const cliFeed = screen.getByLabelText('Recent equipment activity CLI stream')
+    expect(screen.getByText('STREAM')).toBeTruthy()
+
+    // Mouse enter pauses CLI
+    fireEvent.mouseEnter(cliFeed)
+    expect(screen.getByText('PAUSED')).toBeTruthy()
 
     // Mouse leave resumes
-    fireEvent.mouseLeave(activityFeed)
-    expect(screen.getByText('Auto-cycling')).toBeTruthy()
+    fireEvent.mouseLeave(cliFeed)
+    expect(screen.getByText('STREAM')).toBeTruthy()
   })
 
-  it('allows clicking an activity log to focus and highlight it', () => {
+  it('allows clicking an activity log to focus and highlight it in the CLI', () => {
     render(
       <MemoryRouter>
         <Login />
       </MemoryRouter>
     )
 
-    const thirdLogButton = screen.getByRole('button', {
-      name: /TP-GIM-001/i,
+    const secondLogButton = screen.getByRole('button', {
+      name: /TP-AUD-002/i,
     })
-    expect(thirdLogButton).toBeTruthy()
+    expect(secondLogButton).toBeTruthy()
 
-    fireEvent.click(thirdLogButton)
-    // Should have active scaling/border class
-    expect(thirdLogButton.className).toContain('border-primary/40')
+    fireEvent.click(secondLogButton)
+    // Should have active scaling and left emerald border class
+    expect(secondLogButton.className).toContain('border-[#10b981]')
+    expect(secondLogButton.className).toContain('translate-x-1.5')
   })
 
   it('invokes client.auth.signInWithOAuth when clicking Continue with Google', async () => {

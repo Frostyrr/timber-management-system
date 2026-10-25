@@ -3,38 +3,33 @@ import { Link } from 'react-router-dom'
 import {
   RefreshCw,
   AlertCircle,
-  ArrowUpRight,
-  ArrowDownLeft,
-  PackageCheck,
-  ShieldCheck,
   Lock,
-  Sparkles,
-  Activity,
+  Terminal,
 } from 'lucide-react'
-import { client } from '../backend/client'
+import { client, fetchRecentPublicActivity, type PublicActivityLog } from '../backend/client'
 import { GoogleIcon } from '../components/ui/GoogleIcon'
 
-interface PublicLogItem {
+export interface PublicLogItem {
   id: string
   tag: string
   name: string
   category: string
-  action: 'checkout' | 'return' | 'catalog'
+  action: 'checkout' | 'return' | 'item' | 'incident' | 'resolve' | 'archive' | 'unarchive'
   actionLabel: string
   details: string
-  minutesAgo: number
+  timeStr: string
 }
 
-const INITIAL_RECENT_LOGS: PublicLogItem[] = [
+const FALLBACK_LOGS: PublicLogItem[] = [
   {
     id: 'log-1',
     tag: 'TP-CAM-001',
     name: 'Sony Alpha a6400 Mirrorless Camera',
     category: 'Camera',
     action: 'checkout',
-    actionLabel: 'Checked out',
+    actionLabel: 'CHECKOUT',
     details: 'Released for Feature Desk campus event coverage',
-    minutesAgo: 4,
+    timeStr: '12:28:14',
   },
   {
     id: 'log-2',
@@ -42,9 +37,9 @@ const INITIAL_RECENT_LOGS: PublicLogItem[] = [
     name: 'Zoom H6 Handy Field Audio Recorder',
     category: 'Audio',
     action: 'return',
-    actionLabel: 'Returned in Good Condition',
-    details: 'Verified and restocked in Sound Locker A',
-    minutesAgo: 18,
+    actionLabel: 'RETURN',
+    details: 'Returned in Good Condition to Sound Locker A',
+    timeStr: '12:14:02',
   },
   {
     id: 'log-3',
@@ -52,19 +47,19 @@ const INITIAL_RECENT_LOGS: PublicLogItem[] = [
     name: 'DJI Ronin-SC 3-Axis Handheld Gimbal',
     category: 'Accessory',
     action: 'checkout',
-    actionLabel: 'Checked out',
+    actionLabel: 'CHECKOUT',
     details: 'Released for Sports Desk championship match video',
-    minutesAgo: 42,
+    timeStr: '11:49:33',
   },
   {
     id: 'log-4',
     tag: 'TP-LGT-003',
     name: 'Godox SL-60W Continuous Studio Light',
     category: 'Lighting',
-    action: 'catalog',
-    actionLabel: 'Maintenance Inspection Passed',
-    details: 'Routine safety and power inspection verified by custodian',
-    minutesAgo: 95,
+    action: 'item',
+    actionLabel: 'CATALOG',
+    details: 'Routine safety inspection verified by custodian',
+    timeStr: '10:56:40',
   },
   {
     id: 'log-5',
@@ -72,16 +67,42 @@ const INITIAL_RECENT_LOGS: PublicLogItem[] = [
     name: 'Manfrotto 055 Pro 3-Section Tripod',
     category: 'Accessory',
     action: 'checkout',
-    actionLabel: 'Checked out',
+    actionLabel: 'CHECKOUT',
     details: 'Released for Editorial portrait shoot',
-    minutesAgo: 140,
+    timeStr: '10:12:19',
   },
 ]
 
-function formatRelativeTime(mins: number): string {
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  return `${hours}h ago`
+function formatActionBadge(action: string): { label: string; color: string } {
+  switch (action.toLowerCase()) {
+    case 'checkout':
+      return { label: 'CHECKOUT', color: 'text-[#f59e0b]' }
+    case 'return':
+      return { label: 'RETURN', color: 'text-[#10b981]' }
+    case 'item':
+      return { label: 'CATALOG', color: 'text-[#38bdf8]' }
+    case 'incident':
+      return { label: 'INCIDENT', color: 'text-[#f43f5e]' }
+    case 'resolve':
+      return { label: 'RESOLVE', color: 'text-[#a855f7]' }
+    case 'archive':
+      return { label: 'ARCHIVE', color: 'text-[#94a3b8]' }
+    case 'unarchive':
+      return { label: 'RESTORE', color: 'text-[#34d399]' }
+    default:
+      return { label: action.toUpperCase(), color: 'text-[#10b981]' }
+  }
+}
+
+function formatIsoTime(iso?: string): string {
+  if (!iso) return '12:00:00'
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return '12:00:00'
+    return d.toTimeString().slice(0, 8)
+  } catch {
+    return '12:00:00'
+  }
 }
 
 export function Login({ checkingSession = false }: { checkingSession?: boolean }) {
@@ -89,14 +110,57 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   const [error, setError] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const [logs] = useState<PublicLogItem[]>(INITIAL_RECENT_LOGS)
+  const [logs, setLogs] = useState<PublicLogItem[]>(FALLBACK_LOGS)
+  const [isLiveFromDb, setIsLiveFromDb] = useState(false)
 
-  // Auto-cycle through the 5 most recent logs every 3.8s when not paused by hover
+  // Fetch recent equipment activity from the database
+  useEffect(() => {
+    let active = true
+    async function loadActivity() {
+      try {
+        const rawLogs = await fetchRecentPublicActivity()
+        if (!active || !rawLogs || rawLogs.length === 0) return
+
+        const formatted: PublicLogItem[] = rawLogs.slice(0, 5).map((l: PublicActivityLog, idx: number) => {
+          const badge = formatActionBadge(l.action)
+          return {
+            id: l.id || `db-${idx}`,
+            tag: l.tag || 'TP-EQP',
+            name: l.itemName || 'Equipment item',
+            category: l.category || 'Gear',
+            action: (l.action as PublicLogItem['action']) || 'checkout',
+            actionLabel: badge.label,
+            details: l.details || 'Database record updated',
+            timeStr: formatIsoTime(l.at),
+          }
+        })
+
+        if (formatted.length > 0) {
+          // If fewer than 5 logs in DB, pad with fallback
+          const combined = [...formatted]
+          if (combined.length < 5) {
+            FALLBACK_LOGS.slice(combined.length, 5).forEach((item) => combined.push(item))
+          }
+          setLogs(combined)
+          setIsLiveFromDb(true)
+        }
+      } catch {
+        // Gracefully use fallback logs
+      }
+    }
+
+    void loadActivity()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Auto-cycle through the 5 CLI logs with slide-and-fade animation
   useEffect(() => {
     if (isPaused) return
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % logs.length)
-    }, 3800)
+    }, 3600)
     return () => clearInterval(timer)
   }, [isPaused, logs.length])
 
@@ -124,23 +188,17 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   return (
     <div className="w-full max-w-[1200px] py-4 sm:py-8 lg:py-12">
       <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12 xl:gap-16">
-        {/* Left Column: Brand Masthead & Animated Recent 5 Activity Logs */}
+        {/* Left Column: Brand Masthead & CLI Terminal Stream */}
         <div className="order-2 flex flex-col gap-6 lg:order-1 lg:col-span-7">
-          {/* Masthead Header */}
+          {/* Masthead Header without badge */}
           <div className="flex flex-col gap-3">
-            <div className="inline-flex items-center gap-2.5">
-              <Link to="/" className="inline-flex items-center transition-transform hover:scale-105">
-                <img
-                  src="/logo.png"
-                  alt="The Timberland publication logo"
-                  className="h-12 w-auto object-contain drop-shadow-xs sm:h-14"
-                />
-              </Link>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-pale px-3 py-1 font-mono text-[11px] font-semibold text-primary">
-                <Sparkles size={12} />
-                <span>Publication Asset Custody</span>
-              </span>
-            </div>
+            <Link to="/" className="inline-flex items-center transition-transform hover:scale-105 w-fit">
+              <img
+                src="/logo.png"
+                alt="The Timberland publication logo"
+                className="h-12 w-auto object-contain drop-shadow-xs sm:h-14"
+              />
+            </Link>
 
             <h1 className="text-[28px] font-bold tracking-[-0.03em] text-ink sm:text-[34px] lg:text-[38px] leading-tight">
               The Timberland
@@ -151,137 +209,125 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
             </p>
           </div>
 
-          {/* Animated 5 Recent Logs Stream Card */}
+          {/* CLI Terminal Container */}
           <section
-            aria-label="Recent equipment activity stream"
+            aria-label="Recent equipment activity CLI stream"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
-            className="flex flex-col rounded-3xl border border-white/90 bg-white/75 p-5 shadow-[0_16px_48px_rgba(21,63,50,0.08)] backdrop-blur-2xl transition-all"
+            className="flex flex-col overflow-hidden rounded-2xl border border-[#1b2b22] bg-[#09110d] shadow-[0_24px_56px_rgba(0,0,0,0.35)] font-mono text-xs select-none"
           >
-            {/* Live Telemetry Status Header */}
-            <div className="flex items-center justify-between border-b border-line-subtle pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                </span>
-                <span className="text-[13px] font-semibold text-ink">Recent Equipment Activity</span>
-                <span className="rounded-full bg-surface px-2 py-0.5 font-mono text-[10.5px] font-medium text-muted-ink">
-                  Top 5 Wire
+            {/* Terminal Window Chrome Title Bar */}
+            <div className="flex items-center justify-between border-b border-[#1b2b22] bg-[#0d1712] px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]/90" aria-hidden="true" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]/90" aria-hidden="true" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#10b981]/90" aria-hidden="true" />
+                <span className="ml-2 font-mono text-[11px] font-medium text-[#7ea08f] flex items-center gap-1.5">
+                  <Terminal size={12} className="text-[#10b981]" />
+                  <span>timberd --tail=5 --stream</span>
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-ink">
-                <Activity size={13} className="text-primary animate-pulse" />
-                <span>{isPaused ? 'Paused' : 'Auto-cycling'}</span>
+
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                <span className="font-mono text-[10px] font-semibold tracking-wider text-emerald-400 uppercase">
+                  {isPaused ? 'PAUSED' : isLiveFromDb ? 'LIVE DB' : 'STREAM'}
+                </span>
               </div>
             </div>
 
-            {/* 5 Animated Log Items */}
-            <div className="mt-3.5 flex flex-col gap-2.5">
-              {logs.map((item, index) => {
-                const isSelected = index === activeIndex
-                const Icon =
-                  item.action === 'checkout'
-                    ? ArrowUpRight
-                    : item.action === 'return'
-                      ? ArrowDownLeft
-                      : PackageCheck
+            {/* Terminal Console Content */}
+            <div className="p-4 sm:p-5 flex flex-col gap-3">
+              {/* CLI Command Line */}
+              <div className="flex items-center gap-2 text-[11.5px] text-[#527a65]">
+                <span className="text-[#10b981] font-semibold">$</span>
+                <span className="text-[#94a3b8]">timber telemetry --tail=5 --format=interactive</span>
+              </div>
 
-                const badgeStyle =
-                  item.action === 'checkout'
-                    ? 'bg-amber-100/90 text-amber-900 border-amber-200/80'
-                    : item.action === 'return'
-                      ? 'bg-emerald-100/90 text-emerald-900 border-emerald-200/80'
-                      : 'bg-blue-100/90 text-blue-900 border-blue-200/80'
+              {/* Streaming Logs with Slide and Fade */}
+              <div className="flex flex-col gap-1.5 pt-1">
+                {logs.map((item, index) => {
+                  const isSelected = index === activeIndex
+                  const badge = formatActionBadge(item.actionLabel)
 
-                const iconStyle =
-                  item.action === 'checkout'
-                    ? 'bg-amber-500/10 text-amber-700'
-                    : item.action === 'return'
-                      ? 'bg-emerald-500/10 text-emerald-700'
-                      : 'bg-blue-500/10 text-blue-700'
-
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => setActiveIndex(index)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setActiveIndex(index)
-                      }
-                    }}
-                    aria-label={`${item.tag} - ${item.actionLabel}`}
-                    className={`group relative flex items-start gap-3 rounded-2xl border p-3 transition-all duration-300 cursor-pointer ${
-                      isSelected
-                        ? 'border-primary/40 bg-white/95 shadow-[0_8px_24px_rgba(21,63,50,0.08)] scale-[1.01]'
-                        : 'border-white/70 bg-white/50 hover:border-white/95 hover:bg-white/80'
-                    }`}
-                  >
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 ${iconStyle} ${
-                        isSelected ? 'scale-110 shadow-xs' : ''
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => setActiveIndex(index)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setActiveIndex(index)
+                        }
+                      }}
+                      aria-label={`${item.tag} ${badge.label} ${item.name}`}
+                      className={`group relative flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2.5 rounded-lg px-3 py-2 transition-all duration-300 cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#12281c] border-l-2 border-[#10b981] text-[#f1f5f9] translate-x-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                          : 'text-[#94a3b8] hover:bg-[#0f1d16] hover:text-[#e2e8f0]'
                       }`}
+                      style={{
+                        animation: `fadeSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${index * 60}ms both`,
+                      }}
                     >
-                      <Icon size={16} />
-                    </span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {/* Prompt Arrow & Timestamp */}
+                        <span className="text-[11px] text-[#426151] shrink-0">
+                          [{item.timeStr}]
+                        </span>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center justify-between gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[11px] font-semibold text-muted-ink">
-                            {item.tag}
+                        {/* Action Badge */}
+                        <span className={`text-[11px] font-bold shrink-0 ${badge.color}`}>
+                          [{badge.label}]
+                        </span>
+
+                        {/* Equipment Tag */}
+                        <span className="font-bold text-[#e2e8f0] shrink-0">
+                          {item.tag}
+                        </span>
+
+                        <span className="text-[#10b981] shrink-0">»</span>
+
+                        {/* Equipment Name & Details */}
+                        <span className="truncate text-xs font-normal text-[#cbd5e1]">
+                          {item.name}
+                          <span className="hidden md:inline text-[#64748b] ml-1.5">
+                            ({item.details})
                           </span>
-                          <span className="text-[11px] text-muted-ink">·</span>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${badgeStyle}`}
-                          >
-                            {item.actionLabel}
-                          </span>
-                        </div>
-                        <span className="font-mono text-[11px] font-medium text-muted-ink">
-                          {formatRelativeTime(item.minutesAgo)}
                         </span>
                       </div>
 
-                      <strong className="mt-1 block truncate text-[13px] font-medium text-ink">
-                        {item.name}
-                      </strong>
-                      <p className="mt-0.5 truncate text-[11.5px] text-muted-ink">
-                        {item.details}
-                      </p>
+                      {/* Right Tag/Status Indicator */}
+                      <div className="flex items-center gap-1.5 shrink-0 pl-7 sm:pl-0">
+                        <span className="text-[10.5px] text-[#4e6b5d] uppercase">
+                          {item.category}
+                        </span>
+                        {isSelected && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
 
-            {/* Bottom Telemetry Note */}
-            <div className="mt-3 flex items-center justify-between border-t border-line-subtle pt-2.5 text-[11px] text-muted-ink">
-              <span>Sanitized public activity feed</span>
-              <span className="flex items-center gap-1 font-mono">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Live Feed
-              </span>
+              {/* Terminal Bottom Command Prompt */}
+              <div className="mt-2 flex items-center justify-between border-t border-[#1b2b22] pt-3 text-[11px] text-[#527a65]">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[#10b981]">timber@workspace:~$</span>
+                  <span className="inline-block h-3.5 w-1.5 bg-emerald-400 animate-pulse" />
+                </div>
+                <span className="text-[#4e6b5d] font-mono">
+                  {isLiveFromDb ? 'database rpc: connected' : 'telemetry: mock active'}
+                </span>
+              </div>
             </div>
           </section>
-
-          {/* Trust & Compliance Badges */}
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-ink pt-1">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck size={15} className="text-primary" />
-              <span>Audit Logging & RLS</span>
-            </div>
-            <span>·</span>
-            <div className="flex items-center gap-1.5">
-              <Lock size={14} className="text-primary" />
-              <span>Google SSO Protected</span>
-            </div>
-            <span>·</span>
-            <span>24/7 Equipment Custody</span>
-          </div>
         </div>
 
         {/* Right Column: High-Contrast Glassmorphic Login Portal Card */}
