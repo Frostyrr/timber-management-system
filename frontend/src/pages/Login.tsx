@@ -34,7 +34,6 @@ function formatIsoTime(iso?: string): string {
 export function Login({ checkingSession = false }: { checkingSession?: boolean }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const [logs, setLogs] = useState<PublicLogItem[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
@@ -42,20 +41,10 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   const containerRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
 
-  // Dynamically centers the active carousel item within the viewport
-  useLayoutEffect(() => {
-    if (logs.length === 0) return
-    const container = containerRef.current
-    const activeEl = itemRefs.current[activeIndex]
-    if (!container || !activeEl) {
-      setTrackOffset(-activeIndex * 104)
-      return
-    }
-    const containerH = container.clientHeight || 410
-    const itemTop = activeEl.offsetTop || activeIndex * 104
-    const itemH = activeEl.offsetHeight || 88
-    setTrackOffset(containerH / 2 - (itemTop + itemH / 2))
-  }, [activeIndex, logs.length])
+  // Infinite looping carousel buffer: duplicate into 3 continuous sets if >1 item
+  const virtualItems = logs.length > 1 ? [...logs, ...logs, ...logs] : logs
+  const [virtualIndex, setVirtualIndex] = useState(0)
+  const [enableTransition, setEnableTransition] = useState(true)
 
   // Fetch actual equipment usage & returns from database (maximum 5)
   useEffect(() => {
@@ -67,6 +56,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
 
         if (!rawLogs || rawLogs.length === 0) {
           setLogs([])
+          setVirtualIndex(0)
           return
         }
 
@@ -91,6 +81,8 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         })
 
         setLogs(formatted)
+        setVirtualIndex(formatted.length > 1 ? formatted.length : 0)
+        setEnableTransition(true)
       } catch {
         if (active) setLogs([])
       } finally {
@@ -104,14 +96,57 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
     }
   }, [])
 
-  // Auto-cycle through the chat bubbles when multiple are present and not paused
+  // Dynamically centers the active carousel item within the viewport
+  useLayoutEffect(() => {
+    if (virtualItems.length === 0) return
+    const container = containerRef.current
+    const activeEl = itemRefs.current[virtualIndex]
+    if (!container || !activeEl) {
+      setTrackOffset(-virtualIndex * 110)
+      return
+    }
+    const containerH = container.clientHeight || 430
+    const itemTop = activeEl.offsetTop || virtualIndex * 110
+    const itemH = activeEl.offsetHeight || 92
+    setTrackOffset(containerH / 2 - (itemTop + itemH / 2))
+  }, [virtualIndex, virtualItems.length])
+
+  // Continuous auto-cycle through the carousel
   useEffect(() => {
     if (isPaused || logs.length <= 1) return
     const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % logs.length)
+      setVirtualIndex((prev) => prev + 1)
     }, 4000)
     return () => clearInterval(interval)
   }, [isPaused, logs.length])
+
+  // Infinite loop normalization: seamlessly resets back to middle buffer without animation flicker
+  useEffect(() => {
+    if (logs.length <= 1) return
+    if (virtualIndex >= 2 * logs.length) {
+      const timer = setTimeout(() => {
+        setEnableTransition(false)
+        setVirtualIndex((prev) => prev - logs.length)
+      }, 620)
+      return () => clearTimeout(timer)
+    } else if (virtualIndex < logs.length) {
+      const timer = setTimeout(() => {
+        setEnableTransition(false)
+        setVirtualIndex((prev) => prev + logs.length)
+      }, 620)
+      return () => clearTimeout(timer)
+    }
+  }, [virtualIndex, logs.length])
+
+  // Re-enable smooth transitions on the immediate frame following the reset
+  useLayoutEffect(() => {
+    if (!enableTransition) {
+      const raf = requestAnimationFrame(() => {
+        setEnableTransition(true)
+      })
+      return () => cancelAnimationFrame(raf)
+    }
+  }, [enableTransition])
 
   const handleSignIn = async () => {
     setError('')
@@ -201,15 +236,15 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
             aria-label="Recent equipment usage and returns chatbox"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
-            className="relative h-[410px] w-full overflow-hidden select-none"
+            className="relative h-[430px] w-full overflow-hidden select-none"
             style={{
               maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)',
               WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)',
             }}
           >
             {/* Top & Bottom Ambient Vignette Fade Overlays */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f7f9f7]/90 via-[#f7f9f7]/40 to-transparent z-30" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#f7f9f7]/90 via-[#f7f9f7]/40 to-transparent z-30" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#f7f9f7]/95 via-[#f7f9f7]/40 to-transparent z-30" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#f7f9f7]/95 via-[#f7f9f7]/40 to-transparent z-30" />
 
             {isLoaded && logs.length === 0 ? (
               <div
@@ -228,54 +263,58 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
               </div>
             ) : (
               <div
-                className="flex flex-col gap-3.5 transition-transform duration-600 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform py-20"
+                className={`flex flex-col gap-4 will-change-transform py-24 ${
+                  enableTransition
+                    ? 'transition-transform duration-600 ease-[cubic-bezier(0.16,1,0.3,1)]'
+                    : 'transition-none'
+                }`}
                 style={{
                   transform: `translate3d(0, ${trackOffset}px, 0)`,
                 }}
               >
-                {logs.map((item, index) => {
-                  const isSelected = index === activeIndex
-                  const distance = Math.abs(index - activeIndex)
+                {virtualItems.map((item, index) => {
+                  const isSelected = index === virtualIndex
+                  const distance = Math.abs(index - virtualIndex)
 
                   return (
                     <div
-                      key={item.id}
+                      key={`${item.id}-${index}`}
                       ref={(el) => {
                         itemRefs.current[index] = el
                       }}
-                      onClick={() => setActiveIndex(index)}
+                      onClick={() => setVirtualIndex(index)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          setActiveIndex(index)
+                          setVirtualIndex(index)
                         }
                       }}
                       aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
-                      className={`chat-bubble-pop group relative flex items-end justify-end gap-2.5 cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                      className={`chat-bubble-pop group relative flex items-end justify-end cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] pr-3 ${
                         isSelected
-                          ? 'scale-[1.03] opacity-100 z-20 filter-none'
+                          ? 'scale-[1.08] sm:scale-[1.10] opacity-100 z-20 filter-none'
                           : distance === 1
-                            ? 'scale-[0.93] opacity-35 filter blur-[1.5px] hover:opacity-75 hover:blur-none hover:scale-[0.97]'
-                            : 'scale-[0.88] opacity-20 filter blur-[2.5px] hover:opacity-60 hover:blur-[0.5px] hover:scale-[0.92]'
+                            ? 'scale-[0.88] opacity-35 filter blur-[1.5px] hover:opacity-75 hover:blur-none hover:scale-[0.93]'
+                            : 'scale-[0.78] opacity-15 filter blur-[3px] hover:opacity-60 hover:blur-[0.5px] hover:scale-[0.84]'
                       }`}
                       style={{
-                        animation: `messagePop 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${index * 110}ms both`,
+                        animation: `messagePop 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${(index % logs.length) * 110}ms both`,
                       }}
                     >
-                      {/* Primary Dark Green Chat Speech Bubble with iconic tail */}
+                      {/* Primary Dark Green Chat Speech Bubble with iconic tail - No redundant avatar */}
                       <div
-                        className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] px-4 py-3 text-white shadow-xs transition-all duration-500 max-w-[88%] sm:max-w-[82%] ${
+                        className={`relative flex flex-col gap-1.5 rounded-[22px] rounded-br-[4px] text-white shadow-xs transition-all duration-500 w-full max-w-[94%] sm:max-w-[88%] ${
                           isSelected
-                            ? 'bg-[#0d2e24] ring-2 ring-primary/40 shadow-[0_16px_36px_rgba(21,63,50,0.35)]'
-                            : 'bg-primary hover:bg-[#103429]'
+                            ? 'bg-[#0d2e24] ring-2 ring-primary/45 shadow-[0_22px_50px_rgba(21,63,50,0.42)] px-5 py-4'
+                            : 'bg-primary hover:bg-[#103429] px-4 py-3'
                         }`}
                       >
                         {/* Top Row: Tag, Action Badge & Time */}
-                        <div className="flex items-center justify-between gap-2.5 border-b border-white/20 pb-1 text-[11px] font-['Geist_Mono',monospace]">
+                        <div className="flex items-center justify-between gap-2.5 border-b border-white/20 pb-1.5 text-[11px] font-['Geist_Mono',monospace]">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-bold tracking-tight bg-white/20 px-2 py-0.5 rounded-full text-[10.5px]">
+                            <span className="font-bold tracking-tight bg-white/20 px-2.5 py-0.5 rounded-full text-[10.5px]">
                               {item.tag}
                             </span>
                             <span className="text-[10px] font-bold tracking-wide uppercase bg-black/25 px-1.5 py-0.5 rounded text-white/95">
@@ -291,7 +330,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
 
                         {/* Chat Message Content */}
                         <div className="text-[13px] leading-snug pt-0.5 text-white">
-                          <strong className="font-semibold block">{item.name}</strong>
+                          <strong className="font-semibold block text-[14px] sm:text-[14.5px]">{item.name}</strong>
                           <p className="mt-0.5 text-xs text-white/85 leading-normal">
                             {item.details}
                           </p>
@@ -309,21 +348,6 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                         >
                           <path d="M0,0 C0,7 2,14 10,14 C4,14 0,10 0,0 Z" />
                         </svg>
-                      </div>
-
-                      {/* Logo Icon Avatar beside the chat bubble */}
-                      <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-500 shadow-2xs mb-0.5 ${
-                          isSelected
-                            ? 'border-primary ring-2 ring-primary/30 scale-110 shadow-sm opacity-100'
-                            : 'border-[#dce6df] opacity-40 group-hover:opacity-100 group-hover:border-primary/50'
-                        }`}
-                      >
-                        <img
-                          src="/logo.png"
-                          alt="Timberland avatar"
-                          className="h-full w-full object-contain"
-                        />
                       </div>
                     </div>
                   )
