@@ -20,7 +20,7 @@ describe('Login Page', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders sign-in on the left with hero text directly above Continue with Google, and messenger feed on the right', () => {
+  it('renders unboxed hero on the left and chatbox with logo avatars on the right without bottom input bar', () => {
     render(
       <MemoryRouter>
         <Login />
@@ -43,16 +43,24 @@ describe('Login Page', () => {
     expect(screen.queryByText(/Audit Logging & RLS/i)).toBeNull()
     expect(screen.queryByText(/Google SSO Protected/i)).toBeNull()
 
-    // Verify right column messenger feed container
-    expect(screen.getByLabelText('Recent equipment activity messenger stream')).toBeTruthy()
-    expect(screen.getByText('Equipment Channel')).toBeTruthy()
+    // Assert decorative bottom send/input bar is REMOVED
+    expect(screen.queryByText(/Listening for live equipment events/i)).toBeNull()
 
-    // Verify tags are present in DOM
+    // Verify right column chatbox container and custodian header
+    expect(screen.getByLabelText('Recent equipment usage and returns chatbox')).toBeTruthy()
+    expect(screen.getByText('Timberland Custodian')).toBeTruthy()
+
+    // Verify logo avatars exist
+    const avatars = screen.getAllByAltText('Timberland avatar')
+    expect(avatars.length).toBeGreaterThanOrEqual(1)
+
+    // Verify equipment usage and returns
     expect(screen.getByText('TP-CAM-001')).toBeTruthy()
     expect(screen.getByText('Sony Alpha a6400 Mirrorless Camera')).toBeTruthy()
+    expect(screen.getByText('TP-AUD-002')).toBeTruthy()
   })
 
-  it('fetches recent activity from the database and staggers them in the messenger feed', async () => {
+  it('fetches actual equipment usage & returns from database and displays them in the chatbox', async () => {
     vi.mocked(fetchRecentPublicActivity).mockResolvedValue([
       {
         id: 'real-db-1',
@@ -61,7 +69,7 @@ describe('Login Page', () => {
         itemName: 'Canon Cinema EOS C70',
         tag: 'TP-CIN-001',
         category: 'Cinema',
-        details: 'Staff checkout: Documentary coverage',
+        details: 'Checked out for Documentary coverage',
       },
       {
         id: 'real-db-2',
@@ -87,26 +95,26 @@ describe('Login Page', () => {
     })
   })
 
-  it('allows pausing the auto-cycling messenger feed on hover and resuming on mouse leave', () => {
+  it('allows pausing the auto-cycling chatbox on hover and resuming on mouse leave', () => {
     render(
       <MemoryRouter>
         <Login />
       </MemoryRouter>
     )
 
-    const messengerFeed = screen.getByLabelText('Recent equipment activity messenger stream')
-    expect(screen.getByText('Active Telemetry')).toBeTruthy()
+    const chatbox = screen.getByLabelText('Recent equipment usage and returns chatbox')
+    expect(screen.getByText('Recent Equipment Usage')).toBeTruthy()
 
     // Mouse enter pauses
-    fireEvent.mouseEnter(messengerFeed)
+    fireEvent.mouseEnter(chatbox)
     expect(screen.getByText('Paused (Hover)')).toBeTruthy()
 
     // Mouse leave resumes
-    fireEvent.mouseLeave(messengerFeed)
-    expect(screen.getByText('Active Telemetry')).toBeTruthy()
+    fireEvent.mouseLeave(chatbox)
+    expect(screen.getByText('Recent Equipment Usage')).toBeTruthy()
   })
 
-  it('allows clicking an activity message bubble to focus and highlight it', () => {
+  it('allows clicking a chat bubble to focus and highlight it', () => {
     render(
       <MemoryRouter>
         <Login />

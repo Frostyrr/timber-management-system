@@ -3,15 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   RefreshCw,
   AlertCircle,
-  Camera,
-  Mic,
-  Video,
-  Lightbulb,
-  Compass,
-  Package,
   CheckCheck,
-  Radio,
-  Send,
 } from 'lucide-react'
 import { client, fetchRecentPublicActivity, type PublicActivityLog } from '../backend/client'
 import { GoogleIcon } from '../components/ui/GoogleIcon'
@@ -21,13 +13,13 @@ export interface PublicLogItem {
   tag: string
   name: string
   category: string
-  action: 'checkout' | 'return' | 'item' | 'incident' | 'resolve' | 'archive' | 'unarchive'
+  action: 'checkout' | 'return'
   actionLabel: string
   details: string
   timeStr: string
 }
 
-const FALLBACK_LOGS: PublicLogItem[] = [
+const FALLBACK_USAGE_RETURNS: PublicLogItem[] = [
   {
     id: 'log-1',
     tag: 'TP-CAM-001',
@@ -35,7 +27,7 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     category: 'Camera',
     action: 'checkout',
     actionLabel: 'CHECKOUT',
-    details: 'Released for Feature Desk campus event coverage',
+    details: 'Checked out for Feature Desk campus event coverage',
     timeStr: '12:28 PM',
   },
   {
@@ -45,7 +37,7 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     category: 'Audio',
     action: 'return',
     actionLabel: 'RETURN',
-    details: 'Returned in Good Condition to Sound Locker A',
+    details: 'Returned in Good condition',
     timeStr: '12:14 PM',
   },
   {
@@ -55,7 +47,7 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     category: 'Accessory',
     action: 'checkout',
     actionLabel: 'CHECKOUT',
-    details: 'Released for Sports Desk championship match video',
+    details: 'Checked out for Sports Desk match video coverage',
     timeStr: '11:49 AM',
   },
   {
@@ -63,9 +55,9 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     tag: 'TP-LGT-003',
     name: 'Godox SL-60W Continuous Studio Light',
     category: 'Lighting',
-    action: 'item',
-    actionLabel: 'CATALOG',
-    details: 'Routine safety inspection verified by custodian',
+    action: 'return',
+    actionLabel: 'RETURN',
+    details: 'Returned in Good condition',
     timeStr: '10:56 AM',
   },
   {
@@ -75,64 +67,21 @@ const FALLBACK_LOGS: PublicLogItem[] = [
     category: 'Accessory',
     action: 'checkout',
     actionLabel: 'CHECKOUT',
-    details: 'Released for Editorial portrait shoot',
+    details: 'Checked out for Editorial portrait shoot',
     timeStr: '10:12 AM',
   },
 ]
 
-function getEquipmentIcon(category: string, name: string = '') {
-  const c = category.toLowerCase()
-  const n = name.toLowerCase()
-  if (c.includes('camera') || n.includes('camera') || n.includes('lens')) return Camera
-  if (c.includes('audio') || n.includes('audio') || n.includes('mic')) return Mic
-  if (c.includes('light') || n.includes('light')) return Lightbulb
-  if (n.includes('gimbal') || n.includes('video')) return Video
-  if (n.includes('tripod') || c.includes('tripod')) return Compass
-  return Package
-}
-
 function formatActionBadge(action: string): { label: string; badgeClass: string } {
-  switch (action.toLowerCase()) {
-    case 'checkout':
-      return {
-        label: 'CHECKOUT',
-        badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300/80',
-      }
-    case 'return':
-      return {
-        label: 'RETURN',
-        badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
-      }
-    case 'item':
-      return {
-        label: 'CATALOG',
-        badgeClass: 'bg-sky-100 text-sky-900 border border-sky-300/80',
-      }
-    case 'incident':
-      return {
-        label: 'INCIDENT',
-        badgeClass: 'bg-rose-100 text-rose-900 border border-rose-300/80',
-      }
-    case 'resolve':
-      return {
-        label: 'RESOLVE',
-        badgeClass: 'bg-purple-100 text-purple-900 border border-purple-300/80',
-      }
-    case 'archive':
-      return {
-        label: 'ARCHIVE',
-        badgeClass: 'bg-slate-100 text-slate-800 border border-slate-300/80',
-      }
-    case 'unarchive':
-      return {
-        label: 'RESTORE',
-        badgeClass: 'bg-teal-100 text-teal-900 border border-teal-300/80',
-      }
-    default:
-      return {
-        label: action.toUpperCase(),
-        badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
-      }
+  if (action.toLowerCase() === 'return') {
+    return {
+      label: 'RETURN',
+      badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
+    }
+  }
+  return {
+    label: 'CHECKOUT',
+    badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300/80',
   }
 }
 
@@ -152,10 +101,10 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   const [error, setError] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const [logs, setLogs] = useState<PublicLogItem[]>(FALLBACK_LOGS)
+  const [logs, setLogs] = useState<PublicLogItem[]>(FALLBACK_USAGE_RETURNS)
   const [isLiveFromDb, setIsLiveFromDb] = useState(false)
 
-  // Fetch recent equipment activity from the database
+  // Fetch actual equipment usage & returns from database (most recent 5)
   useEffect(() => {
     let active = true
     async function loadActivity() {
@@ -163,16 +112,23 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         const rawLogs = await fetchRecentPublicActivity()
         if (!active || !rawLogs || rawLogs.length === 0) return
 
-        const formatted: PublicLogItem[] = rawLogs.slice(0, 5).map((l: PublicActivityLog, idx: number) => {
-          const badge = formatActionBadge(l.action)
+        // Filter for actual equipment usage (checkout) and returns
+        const filtered = rawLogs.filter(
+          (l) => l.action.toLowerCase() === 'checkout' || l.action.toLowerCase() === 'return'
+        )
+
+        const targetList = filtered.length > 0 ? filtered : rawLogs
+        const formatted: PublicLogItem[] = targetList.slice(0, 5).map((l: PublicActivityLog, idx: number) => {
+          const action = l.action.toLowerCase() === 'return' ? 'return' : 'checkout'
+          const badge = formatActionBadge(action)
           return {
             id: l.id || `db-${idx}`,
             tag: l.tag || 'TP-EQP',
             name: l.itemName || 'Equipment item',
             category: l.category || 'Gear',
-            action: (l.action as PublicLogItem['action']) || 'checkout',
+            action,
             actionLabel: badge.label,
-            details: l.details || 'Database record updated',
+            details: l.details || (action === 'return' ? 'Returned in Good condition' : 'Checked out for editorial assignment'),
             timeStr: formatIsoTime(l.at),
           }
         })
@@ -180,13 +136,13 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         if (formatted.length > 0) {
           const combined = [...formatted]
           if (combined.length < 5) {
-            FALLBACK_LOGS.slice(combined.length, 5).forEach((item) => combined.push(item))
+            FALLBACK_USAGE_RETURNS.slice(combined.length, 5).forEach((item) => combined.push(item))
           }
           setLogs(combined)
           setIsLiveFromDb(true)
         }
       } catch {
-        // Fallback to initial mock logs if DB query fails or unconfigured
+        // Fallback to initial mock usage and returns if DB query fails or unconfigured
       }
     }
 
@@ -196,7 +152,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
     }
   }, [])
 
-  // Auto-cycle through the 5 messenger message bubbles every 3.4s when not paused
+  // Auto-cycle through the 5 chat bubbles every 3.4s when not paused
   useEffect(() => {
     if (isPaused) return
     const timer = setInterval(() => {
@@ -286,25 +242,27 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
           </div>
         </div>
 
-        {/* Right Column: Messenger-Style Activity Feed with Staggered Incoming Logs */}
+        {/* Right Column: Chatbox with Logo Icon Avatar & Staggered Incoming Bubbles */}
         <div className="flex flex-col lg:col-span-6">
           <section
-            aria-label="Recent equipment activity messenger stream"
+            aria-label="Recent equipment usage and returns chatbox"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
             className="flex flex-col overflow-hidden rounded-3xl border border-[#dce6df] bg-white/95 shadow-[0_20px_50px_rgba(21,63,50,0.08)] backdrop-blur-2xl select-none"
           >
-            {/* Messenger Chat Header Bar */}
-            <div className="flex items-center justify-between border-b border-[#e2eae4] bg-[#f8faf9] px-4 py-3">
+            {/* Chatbox Header */}
+            <div className="flex items-center justify-between border-b border-[#e2eae4] bg-[#f8faf9] px-5 py-3.5">
               <div className="flex items-center gap-3">
-                <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-pale border border-primary/20 text-primary">
-                  <Radio size={16} />
-                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-[#dce6df] p-1.5 shadow-2xs">
+                  <img
+                    src="/logo.png"
+                    alt="The Timberland logo"
+                    className="h-full w-full object-contain"
+                  />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[13.5px] font-semibold text-ink tracking-tight flex items-center gap-1.5">
-                    <span>Equipment Channel</span>
-                    <span className="text-[11px] font-mono text-muted-ink">#live-wire</span>
+                  <span className="text-[14px] font-semibold text-ink tracking-tight">
+                    Timberland Custodian
                   </span>
                   <span className="flex items-center gap-1.5 text-[11px] text-muted-ink font-['Geist_Mono',monospace]">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -312,8 +270,8 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                       {isPaused
                         ? 'Paused (Hover)'
                         : isLiveFromDb
-                          ? 'Live Database Wire'
-                          : 'Active Telemetry'}
+                          ? 'Live Equipment Wire'
+                          : 'Recent Equipment Usage'}
                     </span>
                   </span>
                 </div>
@@ -326,11 +284,10 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
               </div>
             </div>
 
-            {/* Chat Messages Body - Each log starts invisible and staggers in one by one */}
-            <div className="p-4 sm:p-5 flex flex-col gap-3 min-h-[380px] max-h-[440px] overflow-hidden">
+            {/* Chat Messages Body - Staggered speech bubbles with logo avatar */}
+            <div className="p-4 sm:p-5 flex flex-col gap-3 min-h-[380px] max-h-[460px] overflow-hidden">
               {logs.map((item, index) => {
                 const isSelected = index === activeIndex
-                const Icon = getEquipmentIcon(item.category, item.name)
                 const badge = formatActionBadge(item.actionLabel)
 
                 return (
@@ -350,26 +307,30 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                       isSelected ? 'translate-x-1.5' : ''
                     }`}
                     style={{
-                      animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 140}ms both`,
+                      animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
                     }}
                   >
-                    {/* Category Avatar */}
+                    {/* Publication Logo Icon Avatar */}
                     <div
-                      className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs shadow-2xs transition-all duration-300 ${
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-300 shadow-2xs ${
                         isSelected
-                          ? 'border-primary bg-primary text-white scale-105 shadow-xs'
-                          : 'border-[#dce6df] bg-surface text-muted-ink group-hover:border-[#cbd8cf]'
+                          ? 'border-primary ring-2 ring-primary/20 scale-105 shadow-xs'
+                          : 'border-[#dce6df] group-hover:border-[#cbd8cf]'
                       }`}
                     >
-                      <Icon size={14} />
+                      <img
+                        src="/logo.png"
+                        alt="Timberland avatar"
+                        className="h-full w-full object-contain"
+                      />
                     </div>
 
-                    {/* Chat Bubble Card */}
+                    {/* Chat Speech Bubble */}
                     <div
-                      className={`relative flex flex-1 flex-col gap-1 rounded-2xl rounded-tl-sm border p-3 transition-all duration-300 ${
+                      className={`relative flex flex-1 flex-col gap-1 rounded-2xl rounded-tl-xs border p-3.5 transition-all duration-300 ${
                         isSelected
-                          ? 'border-primary/40 bg-[#f2f7f4] shadow-xs'
-                          : 'border-[#e2eae4] bg-white hover:border-[#cbd8cf] hover:bg-[#fafbfa]'
+                          ? 'border-primary/40 bg-[#f0f6f2] shadow-xs'
+                          : 'border-[#e2eae4] bg-[#f8faf9] hover:border-[#cbd8cf] hover:bg-white'
                       }`}
                     >
                       {/* Top Bubble Row: Tag, Action Badge & Time */}
@@ -391,8 +352,8 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                         </div>
                       </div>
 
-                      {/* Message Content */}
-                      <div className="text-[13px] leading-snug text-ink">
+                      {/* Chat Message Content */}
+                      <div className="text-[13px] leading-snug text-ink pt-0.5">
                         <strong className="font-semibold text-ink">{item.name}</strong>
                         <p className="mt-0.5 text-xs text-muted-ink leading-normal">
                           {item.details}
@@ -402,20 +363,6 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                   </div>
                 )
               })}
-            </div>
-
-            {/* Messenger Decorative Bottom Input Bar */}
-            <div className="flex items-center gap-2 border-t border-[#e2eae4] bg-[#f8faf9] px-4 py-2.5">
-              <div className="flex flex-1 items-center justify-between rounded-full border border-[#dce6df] bg-white px-3.5 py-1.5 text-xs text-muted-ink shadow-2xs">
-                <span className="truncate text-[12px]">Listening for live equipment events…</span>
-                <span className="flex items-center gap-1 font-['Geist_Mono',monospace] text-[10.5px] text-primary shrink-0">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                  <span>Realtime Wire</span>
-                </span>
-              </div>
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-xs">
-                <Send size={13} className="ml-0.5" />
-              </div>
             </div>
           </section>
         </div>
