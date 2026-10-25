@@ -20,3 +20,30 @@ it('paginates directory entries and resets pagination when searching',()=>{
  expect(screen.queryByRole('navigation',{name:'Table pagination'})).toBeNull()
  view.unmount();cleanup()
 })
+
+it('combines category and status filters and sorts usage counts in both directions',()=>{
+ const initial=seed()
+ const state={...initial, people:[
+  {id:'a',name:'Alice',title:'Adviser',department:'',archived:false},
+  {id:'b',name:'Bea',title:'News Writer',department:'',archived:false},
+  {id:'c',name:'Chris',title:'Adviser',department:'',archived:true},
+ ],loans:[
+  {...initial.loans[0],id:'l1',borrowerId:'b',useType:'publication_use' as const,returned:undefined},
+  {...initial.loans[0],id:'l2',borrowerId:'a',useType:'member_borrowing' as const,returned:'2026-01-01'},
+ ]}
+ render(<MemoryRouter><InventoryContext.Provider value={{state,person:state.profiles[0],act:()=>{},warning:'',notice:''}}><Staff/></InventoryContext.Provider></MemoryRouter>)
+ const firstName=()=>screen.getAllByRole('row')[1].querySelector('td')?.textContent
+ for(const [sort,expected] of [['publication-most','Bea'],['publication-least','Alice'],['borrowing-most','Alice'],['borrowing-least','Bea'],['active-most','Bea'],['active-least','Alice']]){
+  fireEvent.change(screen.getByLabelText('Sort by'),{target:{value:sort}})
+  expect(firstName()).toBe(expected)
+ }
+ fireEvent.change(screen.getByLabelText('Staff category'),{target:{value:'Executives Department'}})
+ fireEvent.change(screen.getByLabelText('Staff status'),{target:{value:'archived'}})
+ expect(firstName()).toBe('Chris')
+ expect(screen.queryByText('Alice')).toBeNull()
+ expect(screen.queryByText('Bea')).toBeNull()
+ fireEvent.click(screen.getByRole('button',{name:'Reset filters'}))
+ expect(firstName()).toBe('Alice')
+ expect(screen.getAllByRole('row')).toHaveLength(4)
+ cleanup()
+})

@@ -1152,8 +1152,8 @@ export function Incidents() {
   const incidents = visibleIncidents(state, person)
   const reportable = state.items.filter(
     (i) =>
-      manager ||
-      state.loans.some((l) => l.itemId === i.id && l.borrowerId === person.id && !l.returned),
+      !i.archived && (manager ||
+      state.loans.some((l) => l.itemId === i.id && l.borrowerId === person.id && !l.returned)),
   )
 
   return (

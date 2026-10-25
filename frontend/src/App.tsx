@@ -1,3 +1,4 @@
+import { Archives } from './pages/Archives'
 import { useState, useRef, useEffect } from 'react'
 import { Link, NavLink, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -48,7 +49,7 @@ export default function App() {
     { to: '/inventory', name: 'Inventory', icon: Package },
     { to: '/incidents', name: 'Incident reviews', icon: ShieldAlert },
     { to: '/logs', name: 'Logs', icon: ScrollText },
-    ...(manager ? [{ to: '/staff', name: 'Staff directory', icon: Users }] : []),
+    ...(manager ? [{ to: '/staff', name: 'Staff directory', icon: Users }, { to: '/archives', name: 'Archives', icon: Package }] : []),
     { to: '/security', name: 'Cybersecurity', icon: ShieldCheck },
     ...(person.role === 'Administrator' ? [{to:'/access', name:'System access', icon:KeyRound}] : []),
     { to: '/settings', name: 'My account', icon: SettingsIcon },
@@ -462,6 +463,7 @@ export default function App() {
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/logs" element={<Logs />} />
                 <Route path="/staff" element={<Staff />} />
+                <Route path="/archives" element={<Archives />} />
                   <Route path="/access" element={<Access />} />
                 <Route path="/security" element={<Security />} />
                 <Route path="/settings" element={<Settings />} />

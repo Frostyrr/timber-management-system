@@ -15,6 +15,8 @@ export function Staff() {
   const { state, person, act, refresh } = useInventory()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
+  const [status, setStatus] = useState('all')
+  const [sort, setSort] = useState('name')
   const [page, setPage] = useState(1)
   const pageSize = 10
   const [editing, setEditing] = useState<DirectoryPerson | null>(null)
@@ -24,9 +26,26 @@ export function Staff() {
 
   if (!canInventory(person)) return <Navigate to="/" replace />
 
-  const people = (state.people ?? []).filter((p) =>
-    `${p.name} ${p.title} ${staffCategory(p.title)}`.toLowerCase().includes(search.toLowerCase()) && (!category || staffCategory(p.title) === category),
-  )
+  const counts = new Map((state.people ?? []).map(p => [p.id, { publication: 0, borrowing: 0, active: 0 }]))
+  for (const loan of state.loans) {
+    const count = counts.get(loan.borrowerId ?? '')
+    if (!count) continue
+    if (loan.useType === 'publication_use') count.publication++
+    if (loan.useType === 'member_borrowing') count.borrowing++
+    if (!loan.returned) count.active++
+  }
+  const people = (state.people ?? []).filter(p =>
+    `${p.name} ${p.title} ${staffCategory(p.title)}`.toLowerCase().includes(search.trim().toLowerCase()) &&
+    (!category || staffCategory(p.title) === category) &&
+    (status === 'all' || p.archived === (status === 'archived')),
+  ).sort((a, b) => {
+    const [metric, direction] = sort.split('-')
+    if (metric === 'publication' || metric === 'borrowing' || metric === 'active') {
+      const difference = (counts.get(a.id)?.[metric] ?? 0) - (counts.get(b.id)?.[metric] ?? 0)
+      if (difference) return direction === 'least' ? difference : -difference
+    }
+    return a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
+  })
 
   const currentPage = Math.min(page, Math.max(1, Math.ceil(people.length / pageSize)))
   const pagePeople = people.slice((currentPage - 1) * pageSize, currentPage * pageSize)
@@ -69,6 +88,7 @@ export function Staff() {
       </Heading>
 
       <section className="panel p-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Field label="Search staff">
           <input
             value={search}
@@ -83,6 +103,29 @@ export function Staff() {
             {[...Object.keys(staffCategories), 'Uncategorized'].map(name => <option key={name} value={name}>{name}</option>)}
           </select>
         </Field>
+        <Field label="Staff status">
+          <select value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}>
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
+        </Field>
+        <Field label="Sort by">
+          <select value={sort} onChange={event => { setSort(event.target.value); setPage(1) }}>
+            <option value="name">Name (A–Z)</option>
+            <option value="publication-most">Most publication uses</option>
+            <option value="publication-least">Least publication uses</option>
+            <option value="borrowing-most">Most member borrowings</option>
+            <option value="borrowing-least">Least member borrowings</option>
+            <option value="active-most">Most active uses</option>
+            <option value="active-least">Least active uses</option>
+          </select>
+        </Field>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p role="status" className="text-sm text-muted-ink">{people.length} matching {people.length === 1 ? 'entry' : 'entries'}</p>
+          {(search || category || status !== 'all' || sort !== 'name') && <button type="button" className="secondary" onClick={() => { setSearch(''); setCategory(''); setStatus('all'); setSort('name'); setPage(1) }}>Reset filters</button>}
+        </div>
         <div className="table-wrap mt-4">
           <table>
             <thead>
@@ -99,15 +142,15 @@ export function Staff() {
             </thead>
             <tbody>
               {pagePeople.map((p) => {
-                const uses = state.loans.filter((l) => l.borrowerId === p.id)
+                const count = counts.get(p.id)!
                 return (
                   <tr key={p.id}>
                     <td>{p.name}</td>
                     <td>{p.title || 'Not recorded'}</td>
                     <td>{staffCategory(p.title)}</td>
-                    <td>{uses.filter((l) => l.useType === 'publication_use').length}</td>
-                    <td>{uses.filter((l) => l.useType === 'member_borrowing').length}</td>
-                    <td>{uses.filter((l) => !l.returned).length}</td>
+                    <td>{count.publication}</td>
+                    <td>{count.borrowing}</td>
+                    <td>{count.active}</td>
                     <td>
                       <Badge>{p.archived ? 'Archived' : 'Active'}</Badge>
                     </td>
@@ -144,7 +187,7 @@ export function Staff() {
           </table>
         </div>
         {!people.length && (
-          <Empty text="No staff members match this view. Add a directory entry to record equipment use." />
+          <Empty text="No staff members match this view. Try changing or resetting the filters." />
         )}
         <Pagination page={currentPage} total={people.length} pageSize={pageSize} onPageChange={setPage} label="directory entries" />
       </section>
