@@ -19,6 +19,11 @@ import {
   Bell,
   Clock3,
   CheckCheck,
+  Archive,
+  Radio,
+  Lock,
+  UserX,
+  History,
 } from 'lucide-react'
 import { useInventory } from './backend/context'
 import { visibleIncidents, canInventory, isOverdue } from './backend/model'
@@ -31,7 +36,11 @@ import { Staff } from './pages/Staff'
 import { Access } from './pages/Access'
 import { Login } from './pages/Login'
 import { Settings } from './pages/Settings'
-import { Security } from './pages/Security'
+import { SecurityThreats } from './pages/security/SecurityThreats'
+import { SecurityLogins } from './pages/security/SecurityLogins'
+import { SecuritySessions } from './pages/security/SecuritySessions'
+import { SecurityPolicies } from './pages/security/SecurityPolicies'
+import { SecuritySuspensions } from './pages/security/SecuritySuspensions'
 import './App.css'
 
 export default function App() {
@@ -44,14 +53,21 @@ export default function App() {
   const navigate = useNavigate()
   const manager = canInventory(person)
 
-  const links = [
+  const managementLinks = [
     { to: '/', name: 'Overview', icon: LayoutDashboard },
     { to: '/inventory', name: 'Inventory', icon: Package },
     { to: '/incidents', name: 'Incident reviews', icon: ShieldAlert },
     { to: '/logs', name: 'Logs', icon: ScrollText },
-    ...(manager ? [{ to: '/staff', name: 'Staff directory', icon: Users }, { to: '/archives', name: 'Archives', icon: Package }] : []),
-    { to: '/security', name: 'Cybersecurity', icon: ShieldCheck },
-    ...(person.role === 'Administrator' ? [{to:'/access', name:'System access', icon:KeyRound}] : []),
+    ...(manager ? [{ to: '/staff', name: 'Staff directory', icon: Users }, { to: '/archives', name: 'Archives', icon: Archive }] : []),
+  ]
+
+  const securityLinks = [
+    { to: '/security', name: 'Cybersecurity posture', icon: ShieldCheck },
+    { to: '/security/logins', name: 'Login & devices', icon: History },
+    { to: '/security/sessions', name: 'Active sessions', icon: Radio },
+    { to: '/security/policies', name: 'Access policies', icon: Lock },
+    { to: '/security/suspensions', name: 'Account suspension', icon: UserX },
+    ...(person.role === 'Administrator' ? [{ to: '/access', name: 'System access', icon: KeyRound }] : []),
     { to: '/settings', name: 'My account', icon: SettingsIcon },
   ]
 
@@ -415,7 +431,7 @@ export default function App() {
                     <div className="my-1.5 h-px w-6 bg-line-subtle" aria-hidden="true" />
                   </>
                 )}
-                {links.map(({ to, name, icon: Icon }) => {
+                {managementLinks.map(({ to, name, icon: Icon }) => {
                   const badge = to === '/incidents' ? openIncidentCount : 0
                   return (
                     <NavLink
@@ -438,6 +454,32 @@ export default function App() {
                       <span className="rail-label">
                         {name}
                         {badge > 0 && <span className="rail-inline-count">{badge}</span>}
+                      </span>
+                    </NavLink>
+                  )
+                })}
+
+                {/* Visual Divider Demarcating Management Tools from Cybersecurity Suite */}
+                <div className="my-1.5 flex flex-col items-center gap-1 w-full" aria-hidden="true">
+                  <div className="h-px w-6 bg-line-subtle" />
+                </div>
+
+                {securityLinks.map(({ to, name, icon: Icon }) => {
+                  return (
+                    <NavLink
+                      end={to === '/security'}
+                      key={to}
+                      to={to}
+                      aria-label={name}
+                      className={({ isActive }) =>
+                        `dock-item rail-pill-item ${isActive ? 'active' : ''}`
+                      }
+                    >
+                      <span className="relative inline-flex items-center justify-center">
+                        <Icon size={19} />
+                      </span>
+                      <span className="rail-label">
+                        {name}
                       </span>
                     </NavLink>
                   )
@@ -465,7 +507,11 @@ export default function App() {
                 <Route path="/staff" element={<Staff />} />
                 <Route path="/archives" element={<Archives />} />
                   <Route path="/access" element={<Access />} />
-                <Route path="/security" element={<Security />} />
+                <Route path="/security" element={<SecurityThreats />} />
+                <Route path="/security/logins" element={<SecurityLogins />} />
+                <Route path="/security/sessions" element={<SecuritySessions />} />
+                <Route path="/security/policies" element={<SecurityPolicies />} />
+                <Route path="/security/suspensions" element={<SecuritySuspensions />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
@@ -550,7 +596,10 @@ export default function App() {
 
               {/* Navigation Links */}
               <nav aria-label="Mobile full navigation" className="flex flex-col gap-1.5">
-                {links.map(({ to, name, icon: Icon }) => {
+                <div className="px-2 pb-1 text-[11px] font-bold tracking-wider text-muted-ink uppercase">
+                  Management Tools
+                </div>
+                {managementLinks.map(({ to, name, icon: Icon }) => {
                   const badge = to === '/incidents' ? openIncidentCount : 0
                   const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
                   return (
@@ -575,6 +624,35 @@ export default function App() {
                           {badge}
                         </span>
                       )}
+                    </Link>
+                  )
+                })}
+
+                {/* Mobile Section Header & Divider */}
+                <div className="mt-3 mb-1 pt-3 border-t border-line-subtle px-2 flex items-center justify-between text-[11px] font-bold tracking-wider text-muted-ink uppercase">
+                  <span>Cybersecurity Suite</span>
+                  <ShieldCheck size={14} className="text-primary" />
+                </div>
+
+                {securityLinks.map(({ to, name, icon: Icon }) => {
+                  const isActive = to === '/security' ? location.pathname === '/security' : location.pathname.startsWith(to)
+                  return (
+                    <Link
+                      key={to}
+                      to={to}
+                      onClick={() => setMenu(false)}
+                      className={`flex min-h-[48px] items-center justify-between rounded-2xl px-4 text-[14px] font-medium transition-all ${
+                        isActive
+                          ? 'border border-primary/30 bg-pale text-primary font-semibold'
+                          : 'text-ink hover:bg-surface'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${isActive ? 'bg-primary text-white' : 'bg-surface text-muted-ink'}`}>
+                          <Icon size={17} />
+                        </span>
+                        <span>{name}</span>
+                      </div>
                     </Link>
                   )
                 })}
