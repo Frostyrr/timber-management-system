@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import {
   RefreshCw,
   AlertCircle,
-  Lock,
   Camera,
   Mic,
   Video,
@@ -197,7 +196,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
     }
   }, [])
 
-  // Auto-cycle through the 5 messenger message bubbles with slide-and-pop animation
+  // Auto-cycle through the 5 messenger message bubbles every 3.4s when not paused
   useEffect(() => {
     if (isPaused) return
     const timer = setInterval(() => {
@@ -228,30 +227,67 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   const isLoading = busy || checkingSession
 
   return (
-    <div className="w-full max-w-[1200px] py-4 sm:py-8 lg:py-12 font-['Geist',sans-serif]">
-      <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12 xl:gap-16">
-        {/* Left Column: Brand Masthead & Messenger-Style Activity Feed */}
-        <div className="order-2 flex flex-col gap-6 lg:order-1 lg:col-span-7">
-          {/* Masthead Header */}
-          <div className="flex flex-col gap-3">
+    <div className="w-full max-w-[1240px] py-4 sm:py-8 lg:py-12 font-['Geist',sans-serif]">
+      <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-14 xl:gap-20">
+        {/* Left Column: Unboxed Hero Masthead & Google Sign-In */}
+        <div className="flex flex-col gap-8 lg:col-span-6">
+          {/* Masthead Header without card background */}
+          <div className="flex flex-col gap-4">
             <Link to="/" className="inline-flex items-center transition-transform hover:scale-105 w-fit">
               <img
                 src="/logo.png"
                 alt="The Timberland publication logo"
-                className="h-12 w-auto object-contain drop-shadow-xs sm:h-14"
+                className="h-14 w-auto object-contain drop-shadow-xs sm:h-16"
               />
             </Link>
 
-            <h1 className="text-[28px] font-bold tracking-[-0.03em] text-ink sm:text-[34px] lg:text-[38px] leading-tight">
+            <h1 className="text-[32px] font-bold tracking-[-0.03em] text-ink sm:text-[40px] lg:text-[44px] leading-[1.12]">
               The Timberland
             </h1>
-            <p className="max-w-[560px] text-[14px] leading-relaxed text-muted-ink sm:text-[15px]">
+
+            <p className="max-w-[500px] text-[15px] leading-relaxed text-muted-ink sm:text-[16px]">
               Equipping campus journalists, photographers, and editors with reliable gear.
               Real-time checkout, return verification, and transparent student custodian accountability.
             </p>
           </div>
 
-          {/* Messenger-Style Equipment Wire Container */}
+          {/* Action Area directly below hero text */}
+          <div className="flex flex-col gap-4 max-w-[420px]">
+            <button
+              type="button"
+              onClick={handleSignIn}
+              disabled={isLoading}
+              className="google-official-btn w-full py-3.5 transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer shadow-[0_4px_16px_rgba(21,63,50,0.08)] hover:shadow-[0_6px_20px_rgba(21,63,50,0.12)] active:scale-[0.99]"
+            >
+              {isLoading ? (
+                <RefreshCw size={19} className="animate-spin text-primary" />
+              ) : (
+                <GoogleIcon size={19} />
+              )}
+              <span className="font-medium text-[14.5px] text-ink">
+                {isLoading ? 'Connecting to Google…' : 'Continue with Google'}
+              </span>
+            </button>
+
+            {error && (
+              <div
+                role="alert"
+                className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/90 p-3 text-left text-xs text-red-700"
+              >
+                <AlertCircle size={15} className="shrink-0 text-red-600" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 text-[12px] text-muted-ink">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span>Authorized operators only · Student publication Google Workspace</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Messenger-Style Activity Feed with Staggered Incoming Logs */}
+        <div className="flex flex-col lg:col-span-6">
           <section
             aria-label="Recent equipment activity messenger stream"
             onMouseEnter={() => setIsPaused(true)}
@@ -272,7 +308,13 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                   </span>
                   <span className="flex items-center gap-1.5 text-[11px] text-muted-ink font-['Geist_Mono',monospace]">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>{isPaused ? 'Paused (Hover)' : isLiveFromDb ? 'Database Wire' : 'Active Telemetry'}</span>
+                    <span>
+                      {isPaused
+                        ? 'Paused (Hover)'
+                        : isLiveFromDb
+                          ? 'Live Database Wire'
+                          : 'Active Telemetry'}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -284,8 +326,8 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
               </div>
             </div>
 
-            {/* Chat Messages Body with One-by-One Staggered Pop Animation */}
-            <div className="p-4 sm:p-5 flex flex-col gap-3">
+            {/* Chat Messages Body - Each log starts invisible and staggers in one by one */}
+            <div className="p-4 sm:p-5 flex flex-col gap-3 min-h-[380px] max-h-[440px] overflow-hidden">
               {logs.map((item, index) => {
                 const isSelected = index === activeIndex
                 const Icon = getEquipmentIcon(item.category, item.name)
@@ -308,10 +350,10 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                       isSelected ? 'translate-x-1.5' : ''
                     }`}
                     style={{
-                      animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
+                      animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 140}ms both`,
                     }}
                   >
-                    {/* Equipment Category Avatar */}
+                    {/* Category Avatar */}
                     <div
                       className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs shadow-2xs transition-all duration-300 ${
                         isSelected
@@ -322,7 +364,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                       <Icon size={14} />
                     </div>
 
-                    {/* Chat Message Bubble */}
+                    {/* Chat Bubble Card */}
                     <div
                       className={`relative flex flex-1 flex-col gap-1 rounded-2xl rounded-tl-sm border p-3 transition-all duration-300 ${
                         isSelected
@@ -362,7 +404,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
               })}
             </div>
 
-            {/* Messenger Decorative Input Bar */}
+            {/* Messenger Decorative Bottom Input Bar */}
             <div className="flex items-center gap-2 border-t border-[#e2eae4] bg-[#f8faf9] px-4 py-2.5">
               <div className="flex flex-1 items-center justify-between rounded-full border border-[#dce6df] bg-white px-3.5 py-1.5 text-xs text-muted-ink shadow-2xs">
                 <span className="truncate text-[12px]">Listening for live equipment events…</span>
@@ -376,58 +418,6 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
               </div>
             </div>
           </section>
-        </div>
-
-        {/* Right Column: High-Contrast Glassmorphic Login Portal Card */}
-        <div className="order-1 flex justify-center lg:order-2 lg:col-span-5">
-          <div className="w-full max-w-[440px] rounded-[32px] border border-white/95 bg-white/90 p-8 shadow-[0_24px_64px_rgba(21,63,50,0.14)] backdrop-blur-2xl backdrop-saturate-[180%] sm:p-10 text-center animate-enter">
-            {/* Login Card Header */}
-            <div className="mb-8 flex flex-col items-center">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-pale text-primary shadow-xs">
-                <Lock size={24} />
-              </div>
-              <h2 className="text-[24px] font-bold tracking-[-0.03em] text-ink sm:text-[26px]">
-                Sign in to Timberland
-              </h2>
-              <p className="mt-2 text-[13px] leading-[1.5] text-muted-ink">
-                Sign in with your Google Workspace account to access publication equipment and inventory records.
-              </p>
-            </div>
-
-            {/* Sole Action: Continue with Google */}
-            <div className="flex flex-col gap-4">
-              <button
-                type="button"
-                onClick={handleSignIn}
-                disabled={isLoading}
-                className="google-official-btn py-3.5 transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-              >
-                {isLoading ? (
-                  <RefreshCw size={19} className="animate-spin text-primary" />
-                ) : (
-                  <GoogleIcon size={19} />
-                )}
-                <span className="font-medium text-[14px] text-ink">
-                  {isLoading ? 'Connecting to Google…' : 'Continue with Google'}
-                </span>
-              </button>
-
-              {error && (
-                <div
-                  role="alert"
-                  className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/90 p-3 text-left text-xs text-red-700"
-                >
-                  <AlertCircle size={15} className="shrink-0 text-red-600" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-line-subtle bg-surface/70 p-3 text-center text-[11.5px] text-muted-ink">
-                <span className="font-medium text-ink">Authorized Operators Only</span>
-                <span>Use your registered university or student publication Google account.</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

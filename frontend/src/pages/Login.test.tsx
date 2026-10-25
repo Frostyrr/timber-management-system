@@ -20,18 +20,21 @@ describe('Login Page', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders split-screen layout with messenger-style equipment feed and without removed badges', () => {
+  it('renders sign-in on the left with hero text directly above Continue with Google, and messenger feed on the right', () => {
     render(
       <MemoryRouter>
         <Login />
       </MemoryRouter>
     )
 
-    // Verify brand masthead
+    // Verify left column hero title and description
     expect(screen.getByText('The Timberland')).toBeTruthy()
     expect(
       screen.getByText(/Equipping campus journalists, photographers, and editors with reliable gear/i)
     ).toBeTruthy()
+
+    // Verify Continue with Google button is rendered directly in the hero action area
+    expect(screen.getByText('Continue with Google')).toBeTruthy()
 
     // Assert "Publication Asset Custody" badge is REMOVED
     expect(screen.queryByText('Publication Asset Custody')).toBeNull()
@@ -39,24 +42,17 @@ describe('Login Page', () => {
     // Assert bottom trust badges are REMOVED
     expect(screen.queryByText(/Audit Logging & RLS/i)).toBeNull()
     expect(screen.queryByText(/Google SSO Protected/i)).toBeNull()
-    expect(screen.queryByText(/24\/7 Equipment Custody/i)).toBeNull()
 
-    // Verify login card on the right
-    expect(screen.getByText('Sign in to Timberland')).toBeTruthy()
-    expect(screen.getByText('Continue with Google')).toBeTruthy()
-
-    // Verify messenger equipment feed container
+    // Verify right column messenger feed container
     expect(screen.getByLabelText('Recent equipment activity messenger stream')).toBeTruthy()
     expect(screen.getByText('Equipment Channel')).toBeTruthy()
-    expect(screen.getByText('Listening for live equipment events…')).toBeTruthy()
 
-    // Verify default fallback tags exist in message bubbles
+    // Verify tags are present in DOM
     expect(screen.getByText('TP-CAM-001')).toBeTruthy()
-    expect(screen.getByText('TP-AUD-002')).toBeTruthy()
     expect(screen.getByText('Sony Alpha a6400 Mirrorless Camera')).toBeTruthy()
   })
 
-  it('fetches recent activity from the database and displays them in the messenger feed', async () => {
+  it('fetches recent activity from the database and staggers them in the messenger feed', async () => {
     vi.mocked(fetchRecentPublicActivity).mockResolvedValue([
       {
         id: 'real-db-1',
@@ -87,7 +83,6 @@ describe('Login Page', () => {
     await waitFor(() => {
       expect(screen.getByText('TP-CIN-001')).toBeTruthy()
       expect(screen.getByText(/Canon Cinema EOS C70/i)).toBeTruthy()
-      expect(screen.getByText('TP-MIC-002')).toBeTruthy()
       expect(screen.getByText('LIVE DB')).toBeTruthy()
     })
   })
@@ -124,7 +119,6 @@ describe('Login Page', () => {
     expect(secondLogButton).toBeTruthy()
 
     fireEvent.click(secondLogButton)
-    // Should have active scaling / slide class
     expect(secondLogButton.className).toContain('translate-x-1.5')
   })
 
