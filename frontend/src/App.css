@@ -4,6 +4,9 @@
 .floating-pill-rail {
   @apply fixed top-1/2 z-40 m-0 flex shrink-0 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-white/90 bg-white/72 py-3 px-2 backdrop-blur-2xl backdrop-saturate-[180%];
   left: max(28px, calc((100vw - 1400px) / 2 + 28px));
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  scrollbar-width: none;
   box-shadow:
     0 22px 50px -10px rgba(21, 63, 50, 0.13),
     0 2px 8px rgba(21, 63, 50, 0.04),
