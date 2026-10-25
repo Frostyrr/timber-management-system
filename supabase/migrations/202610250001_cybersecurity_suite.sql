@@ -55,6 +55,20 @@ create table if not exists timber.security_threats (
 alter table timber.security_threats enable row level security;
 revoke all on timber.security_threats from public, anon, authenticated;
 
+-- Seed initial telemetry threats (idempotent)
+insert into timber.security_threats (id, type, severity, title, description, target_email, ip, location, detected_at, status, resolution_note)
+values
+  ('thr-01', 'impossible_travel', 'critical', 'Impossible Geolocation Travel Detected',
+   'Account authenticated from Frankfurt, Germany (Tor exit node) only 48 minutes after an active session in Cagayan de Oro, Philippines.',
+   'ryan.ilagan@thetimberland.pub', '185.220.101.5', 'Frankfurt, Germany', now() - interval '48 minutes', 'active', null),
+  ('thr-02', 'unauthorized_domain_attempt', 'high', 'Non-Institutional Domain Access Blocked',
+   'Repeated authentication attempts from unauthorized personal webmail domain (@gmail.com) blocked by institutional domain guardrails.',
+   'unknown.intruder@gmail.com', '119.93.18.204', 'Davao City, Philippines', now() - interval '2 hours', 'active', null),
+  ('thr-03', 'brute_force', 'medium', 'Consecutive Failed Password Threshold Exceeded',
+   '5 consecutive failed credential attempts detected on staff account within 3 minutes. Temporary lockout threshold triggered.',
+   'alyssa.delacruz@thetimberland.pub', '124.106.141.12', 'Cagayan de Oro, Philippines', now() - interval '14 hours', 'active', null)
+on conflict(id) do nothing;
+
 -- 4. Security Policies Table
 create table if not exists timber.security_policies (
   id text primary key default 'primary',
@@ -133,7 +147,7 @@ begin
         'os', s.os,
         'startedAt', s.started_at,
         'lastActive', s.last_active,
-        'isCurrent', (s.user_id = auth.uid()),
+        'isCurrent', s.is_current,
         'status', s.status
       ) order by s.last_active desc), '[]'::jsonb)
       from timber.security_sessions s
@@ -238,8 +252,11 @@ begin
 
   elsif act_type = 'suspend-account' then
     if p.role <> 'Administrator' then raise exception 'Administrator access required to suspend accounts.'; end if;
-    target_id := (action->>'userId')::uuid;
+    target_id := nullif(action->>'userId', '')::uuid;
+    if target_id is null then raise exception 'Valid member UUID required.'; end if;
+
     select * into target_user from timber.profiles where id = target_id;
+    if not found then raise exception 'Member profile not found.'; end if;
     if target_user.id = p.id then raise exception 'Cannot suspend your own administrator account.'; end if;
 
     -- Update profile status to suspended
@@ -252,12 +269,12 @@ begin
     insert into timber.security_suspensions (user_id, user_name, user_email, role, suspended_at, suspended_by, reason, previous_status)
     values (
       target_id,
-      coalesce(action->>'userName', target_user.name),
-      coalesce(action->>'userEmail', target_user.name),
-      coalesce(action->>'role', target_user.role),
+      coalesce(nullif(action->>'userName', ''), target_user.name),
+      coalesce(nullif(action->>'userEmail', ''), (select email from auth.users where id = target_id), target_user.name),
+      coalesce(nullif(action->>'role', ''), target_user.role),
       now(),
       p.name,
-      coalesce(action->>'reason', 'Suspended by administrator'),
+      coalesce(nullif(action->>'reason', ''), 'Suspended by administrator'),
       coalesce(target_user.status, 'active')
     )
     on conflict(user_id) do update set
@@ -267,7 +284,8 @@ begin
 
   elsif act_type = 'reactivate-account' then
     if p.role <> 'Administrator' then raise exception 'Administrator access required to reactivate accounts.'; end if;
-    target_id := (action->>'userId')::uuid;
+    target_id := nullif(action->>'userId', '')::uuid;
+    if target_id is null then raise exception 'Valid member UUID required.'; end if;
 
     update timber.profiles set status = 'active' where id = target_id;
     delete from timber.security_suspensions where user_id = target_id;
@@ -319,5 +337,9 @@ begin
     raise exception 'Unknown security mutation type: %', act_type;
   end if;
 end $$;
+
+-- 8. Execution Grants
+grant execute on function public.security_snapshot() to authenticated;
+grant execute on function public.security_mutate(jsonb, uuid) to authenticated;
 
 commit;
