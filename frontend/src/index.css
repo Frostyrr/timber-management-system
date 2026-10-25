@@ -278,4 +278,13 @@
     touch-action: pan-x pan-y;
   }
 
+  /* Scrollbar hiding utility for touch interfaces, mobile drawers, and modals */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
 }

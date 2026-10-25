@@ -217,7 +217,7 @@ export default function App() {
                     </div>
 
                     {/* Notification List */}
-                    <div className="flex max-h-[360px] flex-col gap-1 overflow-y-auto p-2">
+                    <div className="flex max-h-[360px] flex-col gap-1 overflow-y-auto no-scrollbar sm:slick-scroll-dark-green p-2">
                       {overdueLoans.map((l) => {
                         const item = state.items.find((i) => i.id === l.itemId)
                         const borrower = (state.people ?? []).find((p) => p.id === l.borrowerId)
@@ -528,7 +528,7 @@ export default function App() {
             role="dialog"
             aria-label="Navigation menu"
             aria-modal="true"
-            className="relative z-10 flex max-h-[85vh] flex-col overflow-hidden rounded-t-[32px] border-t border-x border-white/95 bg-white/95 p-5 pb-6 shadow-[0_-16px_48px_rgba(21,63,50,0.22)] backdrop-blur-2xl animate-enter"
+            className="relative z-10 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[32px] border-t border-x border-white/95 bg-white/95 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-16px_48px_rgba(21,63,50,0.22)] backdrop-blur-2xl animate-enter"
           >
             {/* Pull Indicator Pill */}
             <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#dbe4de]" aria-hidden="true" />
@@ -554,7 +554,7 @@ export default function App() {
             </div>
 
             {/* Scrollable Content Body */}
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-0.5">
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto overscroll-contain no-scrollbar pr-0.5 [scrollbar-width:none]">
               {/* Quick Primary Actions for Custodians */}
               {manager && (
                 <div className="grid grid-cols-2 gap-2.5">
