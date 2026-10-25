@@ -76,6 +76,7 @@ const eventSchema = z.object({
 export const stateSchema = z.object({
   version: z.literal(3),
   profiles: z.array(profileSchema).min(1),
+  people: z.array(z.object({ id: z.string(), name: z.string(), department: z.string(), title: z.string(), archived: z.boolean() })).optional(),
   items: z.array(itemSchema),
   loans: z.array(loanSchema),
   incidents: z.array(incidentSchema),
@@ -181,6 +182,12 @@ export type Action =
   | { type: 'incident'; itemId: string; kind: 'Damaged' | 'Missing'; notes: string }
   | { type: 'resolve'; id: string; outcome: string; condition: Item['condition'] }
   | { type: 'archive'; itemId: string; reason: string }
+  | { type: 'unarchive'; itemId: string; reason?: string }
+  | { type: 'person-save'; id: string; name: string; department: string; title: string }
+  | { type: 'person-archive'; id: string; reason: string }
+  | { type: 'person-unarchive'; id: string; reason?: string }
+  | { type: 'purge-archive'; targetType: 'equipment' | 'staff'; id: string; reason?: string }
+  | { type: 'purge-all-archives'; targetType?: 'equipment' | 'staff' | 'all'; reason?: string }
   | { type: 'correct'; loanId: string; purpose: string; due: string; reason: string }
   | { type: 'membership'; id: string; role: Profile['role']; status: 'active' | 'pending' | 'suspended'; reason: string }
   | { type: 'add-profile'; name: string; role: Profile['role']; title?: string; department: string; status?: 'active' | 'pending' | 'suspended' }
@@ -482,6 +489,46 @@ export function transition(state: State, actorId: string, action: Action): State
     i.archived = true
     s.items = s.items.filter((x) => x.id !== action.itemId)
     log(`Deleted equipment: ${i.name} (${i.tag}) - ${action.reason || 'Decommissioned'}`, i.id)
+  } else if (action.type === 'unarchive') {
+    requireThat(canInventory(p), 'Only custodians and administrators manage equipment.')
+    const i = s.items.find((x) => x.id === action.itemId)
+    if (!i) throw Error('Equipment not found.')
+    i.archived = false
+    log(`Restored equipment from archives: ${i.name} (${i.tag})`, i.id)
+  } else if (action.type === 'person-unarchive') {
+    requireThat(canInventory(p), 'Only custodians and administrators manage staff.')
+    const personObj = s.people?.find((x) => x.id === action.id)
+    if (!personObj) throw Error('Staff member not found.')
+    personObj.archived = false
+    log(`Restored staff member from archives: ${personObj.name}`, personObj.id)
+  } else if (action.type === 'purge-archive') {
+    requireThat(canInventory(p), 'Only custodians and administrators manage archives.')
+    if (action.targetType === 'equipment') {
+      s.items = s.items.filter((x) => x.id !== action.id)
+      s.loans = s.loans.filter((l) => l.itemId !== action.id)
+      s.incidents = s.incidents.filter((i) => i.itemId !== action.id)
+      log(`Purged archived equipment: ${action.id}`, action.id)
+    } else {
+      if (s.people) s.people = s.people.filter((x) => x.id !== action.id)
+      s.loans = s.loans.filter((l) => l.borrowerId !== action.id)
+      log(`Purged archived staff member: ${action.id}`, action.id)
+    }
+  } else if (action.type === 'purge-all-archives') {
+    requireThat(canInventory(p), 'Only custodians and administrators manage archives.')
+    if (!action.targetType || action.targetType === 'all' || action.targetType === 'equipment') {
+      const archivedItemIds = new Set(s.items.filter((i) => i.archived).map((i) => i.id))
+      s.items = s.items.filter((i) => !i.archived)
+      s.loans = s.loans.filter((l) => !archivedItemIds.has(l.itemId))
+      s.incidents = s.incidents.filter((i) => !archivedItemIds.has(i.itemId))
+    }
+    if (!action.targetType || action.targetType === 'all' || action.targetType === 'staff') {
+      if (s.people) {
+        const archivedPersonIds = new Set(s.people.filter((p) => p.archived).map((p) => p.id))
+        s.people = s.people.filter((p) => !p.archived)
+        s.loans = s.loans.filter((l) => !archivedPersonIds.has(l.borrowerId ?? ''))
+      }
+    }
+    log('Purged all archived records from system.', 'system')
   } else if (action.type === 'add-profile') {
     requireThat(canInventory(p), 'Only custodians and administrators can add members.')
     requireThat(action.name.trim(), 'Staff member name is required.')

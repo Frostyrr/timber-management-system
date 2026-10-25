@@ -9,6 +9,10 @@ function getActionSuccessMessage(action: Action, state: State | null): string {
   switch (action.type) {
     case 'person-save': return 'Staff directory entry saved.'
     case 'person-archive': return 'Staff directory entry archived. Usage history retained.'
+    case 'person-unarchive': return 'Staff directory entry restored from archives.'
+    case 'unarchive': return 'Equipment restored from archives to active catalog.'
+    case 'purge-archive': return 'Archived record permanently purged.'
+    case 'purge-all-archives': return 'Archived mock records purged successfully.'
     case 'checkout': {
       const item = state?.items.find((i) => i.id === action.itemId)
       return item

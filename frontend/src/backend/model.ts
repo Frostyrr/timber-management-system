@@ -99,12 +99,16 @@ export const available = (s: State, id: string) =>
 export type Action =
   | { type:'person-save'; id:string; name:string; department:string; title:string }
   | { type:'person-archive'; id:string; reason:string }
+  | { type:'person-unarchive'; id:string; reason?:string }
   | { type: 'item'; item: Item }
   | ({ type:'checkout';itemId:string;due:string;condition:string;event?:string;eventCategory?:string } & ReleaseDetails)
   | { type: 'return'; loanId: string; condition: Item['condition'] }
   | { type: 'incident'; itemId: string; kind: 'Damaged' | 'Missing'; notes: string }
   | { type: 'resolve'; id: string; outcome: string; condition: Item['condition'] }
   | { type: 'archive'; itemId: string; reason: string }
+  | { type: 'unarchive'; itemId: string; reason?: string }
+  | { type: 'purge-archive'; targetType: 'equipment' | 'staff'; id: string; reason?: string }
+  | { type: 'purge-all-archives'; targetType?: 'equipment' | 'staff' | 'all'; reason?: string }
   | { type: 'correct'; loanId: string; purpose: string; due: string; reason: string }
   | { type: 'membership'; id: string; role: Profile['role']; status: 'active' | 'pending' | 'suspended'; reason: string }
   | { type: 'update-profile'; id: string; name?: string; role?: Profile['role']; title?: string; department?: string; status?: 'active' | 'pending' | 'suspended'; reason?: string }
@@ -136,7 +140,7 @@ export function formatEventDetails(
   const rawAction = (e.action || e.text || '').trim().toLowerCase()
 
   // Staff Directory Changes (Human-readable descriptions, never leak technical keys)
-  if (rawAction.startsWith('people.') || rawAction === 'person-save' || rawAction === 'person-archive') {
+  if (rawAction.startsWith('people.') || rawAction === 'person-save' || rawAction === 'person-archive' || rawAction === 'person-unarchive') {
     const personObj = state.people?.find((p) => p.id === e.entityId || p.id === e.subjectId)
     const rawName = (e.after?.name as string) || (e.before?.name as string) || personObj?.name
     const name = rawName && rawName !== 'Directory member' && rawName !== 'undefined' ? rawName : ''
@@ -149,6 +153,9 @@ export function formatEventDetails(
     }
     if (e.after?.archived || rawAction === 'people.delete' || rawAction === 'person-archive') {
       return `Archived directory member${nameSuffix}`
+    }
+    if (rawAction === 'person-unarchive') {
+      return `Restored directory member from archives${nameSuffix}`
     }
     return `Updated directory member${nameSuffix}${positionSuffix}`
   }
@@ -207,6 +214,14 @@ export function formatEventDetails(
 
   if (rawAction === 'items.delete' || rawAction === 'archive') {
     return `Decommissioned equipment: ${itemName}${e.reason ? ` (${e.reason})` : ''}`
+  }
+
+  if (rawAction === 'unarchive') {
+    return `Restored equipment from archives: ${itemName}`
+  }
+
+  if (rawAction === 'purge-archive' || rawAction === 'purge-all-archives') {
+    return `Purged archived record from system: ${itemName}`
   }
 
   // 4. Incident Reports & Resolutions
