@@ -58,8 +58,8 @@ export function Settings() {
 
   // Security telemetry & sessions
   const { securityState, revokeSession } = useSecuritySuite(person)
-  const sessions: SecuritySession[] = securityState?.sessions ?? []
-  const loginHistory: SecurityLoginEvent[] = securityState?.loginEvents ?? []
+  const sessions: SecuritySession[] = useMemo(() => securityState?.sessions ?? [], [securityState?.sessions])
+  const loginHistory: SecurityLoginEvent[] = useMemo(() => securityState?.loginEvents ?? [], [securityState?.loginEvents])
 
   const userEmail =
     person?.email ||

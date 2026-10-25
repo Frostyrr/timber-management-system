@@ -27,8 +27,6 @@ export function Archives() {
   const [editingNoteRecord, setEditingNoteRecord] = useState<{ id: string; name: string; type: 'equipment' | 'staff'; currentReason: string } | null>(null)
   const [purgeAllConfirm, setPurgeAllConfirm] = useState(false)
 
-  if (!canInventory(person)) return <Navigate to="/" replace />
-
   const getArchiveReason = (id: string, explicitReason?: string | null) => {
     if (explicitReason && explicitReason.trim()) return explicitReason.trim()
     const ev = state.events.find(
@@ -81,6 +79,11 @@ export function Archives() {
     setHistory(null)
   }
 
+  const swipeHandlers = useTouchSwipe({
+    onSwipeLeft: () => changeTab('staff'),
+    onSwipeRight: () => changeTab('equipment'),
+  })
+
   const handleRestore = async () => {
     if (!restoringRecord) return
     const isEquipment = restoringRecord.type === 'equipment'
@@ -122,6 +125,8 @@ export function Archives() {
     })
     setEditingNoteRecord(null)
   }
+
+  if (!canInventory(person)) return <Navigate to="/" replace />
 
   return <>
     <Heading

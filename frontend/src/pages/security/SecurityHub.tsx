@@ -436,7 +436,7 @@ export function SecurityHub({ initialTab }: SecurityHubProps) {
       <section className="panel p-5 sm:p-6 space-y-5">
         {/* Sub-Tabs Navigation Bar */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 border-b border-line-subtle pb-3.5">
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-surface rounded-2xl border border-line-subtle">
+          <div className="touch-slide-x p-1 bg-surface rounded-2xl border border-line-subtle w-full lg:w-auto">
             <button
               type="button"
               onClick={() => setTab('threats')}

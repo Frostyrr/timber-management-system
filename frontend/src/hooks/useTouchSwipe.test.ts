@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import { type TouchEvent } from 'react'
 import { useTouchSwipe } from './useTouchSwipe'
 
 describe('useTouchSwipe hook', () => {
@@ -15,10 +16,10 @@ describe('useTouchSwipe hook', () => {
     act(() => {
       result.current.onTouchStart({
         touches: [{ clientX: 200, clientY: 100 }],
-      } as any)
+      } as unknown as TouchEvent)
       result.current.onTouchMove({
         touches: [{ clientX: 120, clientY: 105 }],
-      } as any)
+      } as unknown as TouchEvent)
       result.current.onTouchEnd()
     })
 
@@ -37,10 +38,10 @@ describe('useTouchSwipe hook', () => {
     act(() => {
       result.current.onTouchStart({
         touches: [{ clientX: 100, clientY: 100 }],
-      } as any)
+      } as unknown as TouchEvent)
       result.current.onTouchMove({
         touches: [{ clientX: 180, clientY: 105 }],
-      } as any)
+      } as unknown as TouchEvent)
       result.current.onTouchEnd()
     })
 
@@ -59,11 +60,11 @@ describe('useTouchSwipe hook', () => {
     act(() => {
       result.current.onTouchStart({
         touches: [{ clientX: 100, clientY: 100 }],
-      } as any)
+      } as unknown as TouchEvent)
       // Moving mainly vertically (e.g. scrolling page down)
       result.current.onTouchMove({
         touches: [{ clientX: 110, clientY: 250 }],
-      } as any)
+      } as unknown as TouchEvent)
       result.current.onTouchEnd()
     })
 
