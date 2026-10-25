@@ -7,6 +7,7 @@ export const profileSchema = z.object({
   department: z.string(),
   status: z.enum(['pending','active','suspended']).optional(),
   title: z.string().optional(),
+  email: z.string().optional(),
 })
 const itemSchema = z.object({
   id: z.string(),
@@ -92,16 +93,16 @@ export const isOverdue = (due: string) => new Date(due).getTime() < Date.now()
 export function seed(now = new Date()): State {
   const date = (days: number) => new Date(now.getTime() + days * 86400000).toISOString()
   const profiles: Profile[] = [
-    { id: 'admin', name: 'Marc Elson Rebato', role: 'Administrator', title: 'Multimedia Director', department: 'Multimedia & Visuals' },
-    { id: 'dana-gales', name: 'Dana Paula Gales', role: 'Administrator', title: 'Associate Editor', department: 'Editorial Board' },
-    { id: 'custodian', name: 'Juvie Rose Mosquite', role: 'Inventory Custodian', title: 'Head Photojournalist', department: 'Photojournalism' },
-    { id: 'robert-dedumo', name: 'Robert Kent Dedumo', role: 'Inventory Custodian', title: 'Head Videojournalist', department: 'Videojournalism' },
-    { id: 'staff', name: 'Christian Punay', role: 'Staff', title: 'Head Video Editor', department: 'Video Production' },
-    { id: 'p5', name: 'Zhairo Milan', role: 'Staff', title: 'Head Cartoonist', department: 'Art & Cartoons' },
-    { id: 'jennel-inso', name: 'Jennel Inso', role: 'Staff', title: 'Head Graphics Artist', department: 'Layout & Graphics' },
-    { id: 'editor', name: 'Ryan Ilagan', role: 'Staff', title: 'News Writer', department: 'News Desk' },
-    { id: 'hanna-bonggot', name: 'Hanna Camela Bonggot', role: 'Staff', title: 'News Writer', department: 'News Desk' },
-    { id: 'p8', name: 'Anthony Pormento', role: 'Staff', title: 'Column Writer', department: 'Opinion & Columns' },
+    { id: 'admin', name: 'Marc Elson Rebato', role: 'Administrator', title: 'Multimedia Director', department: 'Multimedia & Visuals', email: 'marc.rebato@thetimberland.pub' },
+    { id: 'dana-gales', name: 'Dana Paula Gales', role: 'Administrator', title: 'Associate Editor', department: 'Editorial Board', email: 'dana.gales@thetimberland.pub' },
+    { id: 'custodian', name: 'Juvie Rose Mosquite', role: 'Inventory Custodian', title: 'Head Photojournalist', department: 'Photojournalism', email: 'juvie.mosquite@thetimberland.pub' },
+    { id: 'robert-dedumo', name: 'Robert Kent Dedumo', role: 'Inventory Custodian', title: 'Head Videojournalist', department: 'Videojournalism', email: 'robert.dedumo@thetimberland.pub' },
+    { id: 'staff', name: 'Christian Punay', role: 'Staff', title: 'Head Video Editor', department: 'Video Production', email: 'christian.punay@thetimberland.pub' },
+    { id: 'p5', name: 'Zhairo Milan', role: 'Staff', title: 'Head Cartoonist', department: 'Art & Cartoons', email: 'zhairo.milan@thetimberland.pub' },
+    { id: 'jennel-inso', name: 'Jennel Inso', role: 'Staff', title: 'Head Graphics Artist', department: 'Layout & Graphics', email: 'jennel.inso@thetimberland.pub' },
+    { id: 'editor', name: 'Ryan Ilagan', role: 'Staff', title: 'News Writer', department: 'News Desk', email: 'ryan.ilagan@thetimberland.pub' },
+    { id: 'hanna-bonggot', name: 'Hanna Camela Bonggot', role: 'Staff', title: 'News Writer', department: 'News Desk', email: 'hanna.bonggot@thetimberland.pub' },
+    { id: 'p8', name: 'Anthony Pormento', role: 'Staff', title: 'Column Writer', department: 'Opinion & Columns', email: 'anthony.pormento@thetimberland.pub' },
   ]
   const names = [
     'Canon EOS 80D',
@@ -576,13 +577,21 @@ export function transition(state: State, actorId: string, action: Action): State
       log(`Updated member role for ${target.name} to ${action.role} (${action.status})`, target.id)
     }
   } else if (action.type === 'delete-profile') {
-    requireThat(canInventory(p), 'Only custodians and administrators can delete accounts.')
-    if (s.profiles.find((x) => x.id === action.id)?.role === 'Administrator') {
-      requireThat(p.role === 'Administrator', 'Only administrators can delete administrator accounts.')
-    }
-    requireThat(action.id !== actorId, 'You cannot delete your own active administrator account.')
     const target = s.profiles.find((x) => x.id === action.id)
     if (!target) throw Error('Account not found.')
+    const isSelfDelete = action.id === actorId && action.reason?.includes('Self-requested')
+    if (isSelfDelete) {
+      if (target.role === 'Administrator') {
+        const otherAdmins = s.profiles.filter((x) => x.role === 'Administrator' && x.status !== 'suspended' && x.id !== action.id)
+        requireThat(otherAdmins.length > 0, 'You cannot delete your account because you are the sole active administrator.')
+      }
+    } else {
+      requireThat(canInventory(p), 'Only custodians and administrators can delete accounts.')
+      if (target.role === 'Administrator') {
+        requireThat(p.role === 'Administrator', 'Only administrators can delete administrator accounts.')
+      }
+      requireThat(action.id !== actorId, 'You cannot delete your own active administrator account.')
+    }
     requireThat(!s.loans.some((l) => l.borrowerId === action.id && !l.returned), 'Cannot remove account with unreturned active equipment loans.')
     s.profiles = s.profiles.filter((x) => x.id !== action.id)
     log(`Deleted account for ${target.name} (${target.role}) - ${action.reason || 'Account deleted'}`, action.id)

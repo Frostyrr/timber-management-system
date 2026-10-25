@@ -7,6 +7,7 @@ export const profileSchema = z.object({
   department: z.string(),
   status: z.enum(['pending','active','suspended']).optional(),
   title: z.string().optional(),
+  email: z.string().optional(),
 })
 const itemSchema = z.object({
   id: z.string(),

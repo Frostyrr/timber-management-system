@@ -12,6 +12,14 @@ export async function identity() {
   if (!client) throw Error('Supabase is not configured.')
   const { data, error } = await client.rpc('inventory_identity')
   if (error) throw error
+  if (!data?.email) {
+    try {
+      const { data: userData } = await client.auth.getUser()
+      if (userData?.user?.email) data.email = userData.user.email
+    } catch {
+      // fallback to database profile
+    }
+  }
   return profileSchema.parse(data)
 }
 
