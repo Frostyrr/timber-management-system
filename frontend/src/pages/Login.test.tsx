@@ -161,15 +161,19 @@ describe('Login Page', () => {
     })
 
     const bubbles = screen.getAllByRole('button', { name: /TP-/i })
-    expect(bubbles[0].className).toContain('scale-[1.01]')
+    expect(bubbles[0].className).toContain('scale-[1.03]')
+    expect(bubbles[0].className).toContain('opacity-100')
+    expect(bubbles[1].className).toContain('opacity-45')
 
     // Hovering pauses auto-cycling
     fireEvent.mouseEnter(chatbox)
-    expect(bubbles[0].className).toContain('scale-[1.01]')
+    expect(bubbles[0].className).toContain('scale-[1.03]')
+    expect(bubbles[0].className).toContain('opacity-100')
 
     // Mouse leave resumes auto-cycling
     fireEvent.mouseLeave(chatbox)
-    expect(bubbles[0].className).toContain('scale-[1.01]')
+    expect(bubbles[0].className).toContain('scale-[1.03]')
+    expect(bubbles[0].className).toContain('opacity-100')
   })
 
   it('allows clicking a chat bubble to focus and highlight it', async () => {
@@ -183,13 +187,16 @@ describe('Login Page', () => {
       expect(screen.getByText('TP-AUD-002')).toBeTruthy()
     })
 
+    const bubbles = screen.getAllByRole('button', { name: /TP-/i })
     const secondLogButton = screen.getByRole('button', {
       name: /TP-AUD-002/i,
     })
     expect(secondLogButton).toBeTruthy()
 
     fireEvent.click(secondLogButton)
-    expect(secondLogButton.className).toContain('scale-[1.01]')
+    expect(secondLogButton.className).toContain('scale-[1.03]')
+    expect(secondLogButton.className).toContain('opacity-100')
+    expect(bubbles[0].className).toContain('opacity-45')
   })
 
   it('invokes client.auth.signInWithOAuth when clicking Continue with Google', async () => {

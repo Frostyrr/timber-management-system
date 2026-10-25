@@ -216,21 +216,23 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                       }
                     }}
                     aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
-                    className={`chat-bubble-pop group relative flex items-end justify-end gap-2.5 transition-transform duration-200 cursor-pointer ${
-                      isSelected ? 'scale-[1.01]' : 'hover:scale-[1.005]'
+                    className={`chat-bubble-pop group relative flex items-end justify-end gap-2.5 transition-[transform,opacity] duration-300 ease-out cursor-pointer ${
+                      isSelected
+                        ? 'scale-[1.03] opacity-100 z-10'
+                        : 'scale-[0.98] opacity-45 hover:opacity-90 hover:scale-[1.01]'
                     }`}
                     style={{
                       animation: `messagePop 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${index * 120}ms both`,
                     }}
                   >
-                  {/* Primary Dark Green Chat Speech Bubble with iconic tail */}
-                  <div
-                    className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] px-4 py-3 text-white shadow-xs transition-all duration-300 max-w-[88%] sm:max-w-[82%] ${
-                      isSelected
-                        ? 'bg-[#0d2e24] ring-2 ring-primary/40 shadow-[0_8px_24px_rgba(21,63,50,0.28)]'
-                        : 'bg-primary hover:bg-[#103429]'
-                    }`}
-                  >
+                    {/* Primary Dark Green Chat Speech Bubble with iconic tail */}
+                    <div
+                      className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] px-4 py-3 text-white shadow-xs transition-all duration-300 max-w-[88%] sm:max-w-[82%] ${
+                        isSelected
+                          ? 'bg-[#0d2e24] ring-2 ring-primary/40 shadow-[0_12px_32px_rgba(21,63,50,0.32)]'
+                          : 'bg-primary hover:bg-[#103429]'
+                      }`}
+                    >
                     {/* Top Row: Tag, Action Badge & Time */}
                     <div className="flex items-center justify-between gap-2.5 border-b border-white/20 pb-1 text-[11px] font-['Geist_Mono',monospace]">
                       <div className="flex items-center gap-1.5">
@@ -274,8 +276,8 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-300 shadow-2xs mb-0.5 ${
                       isSelected
-                        ? 'border-primary ring-2 ring-primary/20 scale-105'
-                        : 'border-[#dce6df] group-hover:border-primary/50'
+                        ? 'border-primary ring-2 ring-primary/30 scale-110 shadow-sm opacity-100'
+                        : 'border-[#dce6df] opacity-60 group-hover:opacity-100 group-hover:border-primary/50'
                     }`}
                   >
                     <img
