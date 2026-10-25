@@ -74,9 +74,10 @@ begin
      select * into n from timber.incidents where id=(action->>'id')::uuid;
      item_id:=n.item_id;
    elsif t='item' then item_id:=(action->'item'->>'id')::uuid;
-   elsif t='purge-archive' and action->>'targetType'='equipment' then
-     item_id:=(action->>'id')::uuid;
-   else item_id:=(action->>'itemId')::uuid;
+   elsif t='purge-archive' then
+      item_id:=coalesce((action->>'id')::uuid, (action->>'itemId')::uuid);
+    else
+      item_id:=coalesce((action->>'itemId')::uuid, (action->>'id')::uuid);
    end if;
    if item_id is null then raise exception 'Record not found.'; end if;
    perform pg_advisory_xact_lock(hashtextextended(item_id::text,1));
