@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   RefreshCw,
@@ -38,6 +38,24 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   const [isPaused, setIsPaused] = useState(false)
   const [logs, setLogs] = useState<PublicLogItem[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
+  const [trackOffset, setTrackOffset] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  // Dynamically centers the active carousel item within the viewport
+  useLayoutEffect(() => {
+    if (logs.length === 0) return
+    const container = containerRef.current
+    const activeEl = itemRefs.current[activeIndex]
+    if (!container || !activeEl) {
+      setTrackOffset(-activeIndex * 104)
+      return
+    }
+    const containerH = container.clientHeight || 410
+    const itemTop = activeEl.offsetTop || activeIndex * 104
+    const itemH = activeEl.offsetHeight || 88
+    setTrackOffset(containerH / 2 - (itemTop + itemH / 2))
+  }, [activeIndex, logs.length])
 
   // Fetch actual equipment usage & returns from database (maximum 5)
   useEffect(() => {
@@ -176,18 +194,27 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
           </div>
         </div>
 
-        {/* Right Column: Sleek Unboxed Chat Stream with Primary Dark Green Bubbles & Logo Avatars */}
+        {/* Right Column: Vertical Carousel with Center Spotlight & Ambient Gradient Blur */}
         <div className="flex flex-col justify-center lg:col-span-6">
           <section
+            ref={containerRef}
             aria-label="Recent equipment usage and returns chatbox"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
-            className="flex flex-col gap-3 select-none"
+            className="relative h-[410px] w-full overflow-hidden select-none"
+            style={{
+              maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)',
+            }}
           >
+            {/* Top & Bottom Ambient Vignette Fade Overlays */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f7f9f7]/90 via-[#f7f9f7]/40 to-transparent z-30" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#f7f9f7]/90 via-[#f7f9f7]/40 to-transparent z-30" />
+
             {isLoaded && logs.length === 0 ? (
               <div
                 data-testid="chatbox-empty-state"
-                className="flex flex-col items-center justify-center text-center p-8 sm:p-11 rounded-3xl border border-[#dce6df] bg-white/75 backdrop-blur-md shadow-xs max-w-[460px] mx-auto lg:mx-0 lg:ml-auto select-none"
+                className="flex h-full flex-col items-center justify-center text-center p-8 sm:p-11 rounded-3xl border border-[#dce6df] bg-white/75 backdrop-blur-md shadow-xs max-w-[460px] mx-auto lg:mx-0 lg:ml-auto"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pale text-primary border border-primary/15 shadow-2xs mb-3.5">
                   <PackageOpen size={24} className="text-primary" />
@@ -200,96 +227,109 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                 </p>
               </div>
             ) : (
-              logs.map((item, index) => {
-                const isSelected = index === activeIndex
+              <div
+                className="flex flex-col gap-3.5 transition-transform duration-600 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform py-20"
+                style={{
+                  transform: `translate3d(0, ${trackOffset}px, 0)`,
+                }}
+              >
+                {logs.map((item, index) => {
+                  const isSelected = index === activeIndex
+                  const distance = Math.abs(index - activeIndex)
 
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => setActiveIndex(index)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setActiveIndex(index)
-                      }
-                    }}
-                    aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
-                    className={`chat-bubble-pop group relative flex items-end justify-end gap-2.5 transition-[transform,opacity] duration-300 ease-out cursor-pointer ${
-                      isSelected
-                        ? 'scale-[1.03] opacity-100 z-10'
-                        : 'scale-[0.98] opacity-45 hover:opacity-90 hover:scale-[1.01]'
-                    }`}
-                    style={{
-                      animation: `messagePop 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${index * 120}ms both`,
-                    }}
-                  >
-                    {/* Primary Dark Green Chat Speech Bubble with iconic tail */}
+                  return (
                     <div
-                      className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] px-4 py-3 text-white shadow-xs transition-all duration-300 max-w-[88%] sm:max-w-[82%] ${
+                      key={item.id}
+                      ref={(el) => {
+                        itemRefs.current[index] = el
+                      }}
+                      onClick={() => setActiveIndex(index)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setActiveIndex(index)
+                        }
+                      }}
+                      aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
+                      className={`chat-bubble-pop group relative flex items-end justify-end gap-2.5 cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                         isSelected
-                          ? 'bg-[#0d2e24] ring-2 ring-primary/40 shadow-[0_12px_32px_rgba(21,63,50,0.32)]'
-                          : 'bg-primary hover:bg-[#103429]'
+                          ? 'scale-[1.03] opacity-100 z-20 filter-none'
+                          : distance === 1
+                            ? 'scale-[0.93] opacity-35 filter blur-[1.5px] hover:opacity-75 hover:blur-none hover:scale-[0.97]'
+                            : 'scale-[0.88] opacity-20 filter blur-[2.5px] hover:opacity-60 hover:blur-[0.5px] hover:scale-[0.92]'
                       }`}
+                      style={{
+                        animation: `messagePop 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${index * 110}ms both`,
+                      }}
                     >
-                    {/* Top Row: Tag, Action Badge & Time */}
-                    <div className="flex items-center justify-between gap-2.5 border-b border-white/20 pb-1 text-[11px] font-['Geist_Mono',monospace]">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold tracking-tight bg-white/20 px-2 py-0.5 rounded-full text-[10.5px]">
-                          {item.tag}
-                        </span>
-                        <span className="text-[10px] font-bold tracking-wide uppercase bg-black/25 px-1.5 py-0.5 rounded text-white/95">
-                          {item.actionLabel}
-                        </span>
+                      {/* Primary Dark Green Chat Speech Bubble with iconic tail */}
+                      <div
+                        className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] px-4 py-3 text-white shadow-xs transition-all duration-500 max-w-[88%] sm:max-w-[82%] ${
+                          isSelected
+                            ? 'bg-[#0d2e24] ring-2 ring-primary/40 shadow-[0_16px_36px_rgba(21,63,50,0.35)]'
+                            : 'bg-primary hover:bg-[#103429]'
+                        }`}
+                      >
+                        {/* Top Row: Tag, Action Badge & Time */}
+                        <div className="flex items-center justify-between gap-2.5 border-b border-white/20 pb-1 text-[11px] font-['Geist_Mono',monospace]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold tracking-tight bg-white/20 px-2 py-0.5 rounded-full text-[10.5px]">
+                              {item.tag}
+                            </span>
+                            <span className="text-[10px] font-bold tracking-wide uppercase bg-black/25 px-1.5 py-0.5 rounded text-white/95">
+                              {item.actionLabel}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-[11px] text-white/80">
+                            <span>{item.timeStr}</span>
+                            <CheckCheck size={13} className="text-white/90" />
+                          </div>
+                        </div>
+
+                        {/* Chat Message Content */}
+                        <div className="text-[13px] leading-snug pt-0.5 text-white">
+                          <strong className="font-semibold block">{item.name}</strong>
+                          <p className="mt-0.5 text-xs text-white/85 leading-normal">
+                            {item.details}
+                          </p>
+                        </div>
+
+                        {/* Iconic Bottom-Right Curved Speech Tail */}
+                        <svg
+                          className={`absolute -bottom-[1px] -right-[5px] h-3.5 w-2.5 fill-current pointer-events-none transition-colors duration-300 ${
+                            isSelected
+                              ? 'text-[#0d2e24]'
+                              : 'text-primary group-hover:text-[#103429]'
+                          }`}
+                          viewBox="0 0 10 14"
+                          aria-hidden="true"
+                        >
+                          <path d="M0,0 C0,7 2,14 10,14 C4,14 0,10 0,0 Z" />
+                        </svg>
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] text-white/80">
-                        <span>{item.timeStr}</span>
-                        <CheckCheck size={13} className="text-white/90" />
+                      {/* Logo Icon Avatar beside the chat bubble */}
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-500 shadow-2xs mb-0.5 ${
+                          isSelected
+                            ? 'border-primary ring-2 ring-primary/30 scale-110 shadow-sm opacity-100'
+                            : 'border-[#dce6df] opacity-40 group-hover:opacity-100 group-hover:border-primary/50'
+                        }`}
+                      >
+                        <img
+                          src="/logo.png"
+                          alt="Timberland avatar"
+                          className="h-full w-full object-contain"
+                        />
                       </div>
                     </div>
-
-                    {/* Chat Message Content */}
-                    <div className="text-[13px] leading-snug pt-0.5 text-white">
-                      <strong className="font-semibold block">{item.name}</strong>
-                      <p className="mt-0.5 text-xs text-white/85 leading-normal">
-                        {item.details}
-                      </p>
-                    </div>
-
-                    {/* Iconic Bottom-Right Curved Speech Tail */}
-                    <svg
-                      className={`absolute -bottom-[1px] -right-[5px] h-3.5 w-2.5 fill-current pointer-events-none transition-colors ${
-                        isSelected
-                          ? 'text-[#0d2e24]'
-                          : 'text-primary group-hover:text-[#103429]'
-                      }`}
-                      viewBox="0 0 10 14"
-                      aria-hidden="true"
-                    >
-                      <path d="M0,0 C0,7 2,14 10,14 C4,14 0,10 0,0 Z" />
-                    </svg>
-                  </div>
-
-                  {/* Logo Icon Avatar beside the chat bubble */}
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-300 shadow-2xs mb-0.5 ${
-                      isSelected
-                        ? 'border-primary ring-2 ring-primary/30 scale-110 shadow-sm opacity-100'
-                        : 'border-[#dce6df] opacity-60 group-hover:opacity-100 group-hover:border-primary/50'
-                    }`}
-                  >
-                    <img
-                      src="/logo.png"
-                      alt="Timberland avatar"
-                      className="h-full w-full object-contain"
-                    />
-                  </div>
-                </div>
-              )
-            })
-          )}
+                  )
+                })}
+              </div>
+            )}
           </section>
         </div>
       </div>

@@ -163,7 +163,9 @@ describe('Login Page', () => {
     const bubbles = screen.getAllByRole('button', { name: /TP-/i })
     expect(bubbles[0].className).toContain('scale-[1.03]')
     expect(bubbles[0].className).toContain('opacity-100')
-    expect(bubbles[1].className).toContain('opacity-45')
+    expect(bubbles[0].className).toContain('filter-none')
+    expect(bubbles[1].className).toContain('opacity-35')
+    expect(bubbles[1].className).toContain('blur-[1.5px]')
 
     // Hovering pauses auto-cycling
     fireEvent.mouseEnter(chatbox)
@@ -196,7 +198,9 @@ describe('Login Page', () => {
     fireEvent.click(secondLogButton)
     expect(secondLogButton.className).toContain('scale-[1.03]')
     expect(secondLogButton.className).toContain('opacity-100')
-    expect(bubbles[0].className).toContain('opacity-45')
+    expect(secondLogButton.className).toContain('filter-none')
+    expect(bubbles[0].className).toContain('opacity-35')
+    expect(bubbles[0].className).toContain('blur-[1.5px]')
   })
 
   it('invokes client.auth.signInWithOAuth when clicking Continue with Google', async () => {
