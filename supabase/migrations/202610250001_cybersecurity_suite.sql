@@ -55,20 +55,6 @@ create table if not exists timber.security_threats (
 alter table timber.security_threats enable row level security;
 revoke all on timber.security_threats from public, anon, authenticated;
 
--- Seed initial telemetry threats (idempotent)
-insert into timber.security_threats (id, type, severity, title, description, target_email, ip, location, detected_at, status, resolution_note)
-values
-  ('thr-01', 'impossible_travel', 'critical', 'Impossible Geolocation Travel Detected',
-   'Account authenticated from Frankfurt, Germany (Tor exit node) only 48 minutes after an active session in Cagayan de Oro, Philippines.',
-   'ryan.ilagan@thetimberland.pub', '185.220.101.5', 'Frankfurt, Germany', now() - interval '48 minutes', 'active', null),
-  ('thr-02', 'unauthorized_domain_attempt', 'high', 'Non-Institutional Domain Access Blocked',
-   'Repeated authentication attempts from unauthorized personal webmail domain (@gmail.com) blocked by institutional domain guardrails.',
-   'unknown.intruder@gmail.com', '119.93.18.204', 'Davao City, Philippines', now() - interval '2 hours', 'active', null),
-  ('thr-03', 'brute_force', 'medium', 'Consecutive Failed Password Threshold Exceeded',
-   '5 consecutive failed credential attempts detected on staff account within 3 minutes. Temporary lockout threshold triggered.',
-   'alyssa.delacruz@thetimberland.pub', '124.106.141.12', 'Cagayan de Oro, Philippines', now() - interval '14 hours', 'active', null)
-on conflict(id) do nothing;
-
 -- 4. Security Policies Table
 create table if not exists timber.security_policies (
   id text primary key default 'primary',
@@ -83,16 +69,13 @@ create table if not exists timber.security_policies (
 alter table timber.security_policies enable row level security;
 revoke all on timber.security_policies from public, anon, authenticated;
 
--- Initialize default policy row
+-- Initialize clean institutional policy row
 insert into timber.security_policies (id, allowed_domains, restrict_to_allowed_domains, whitelisted_emails, session_timeout_minutes, max_failed_attempts_before_lock, notify_on_new_device, require_admin_mfa)
 values (
   'primary',
   array['thetimberland.pub', 'ustp.edu.ph'],
   true,
-  '[
-    {"email": "adviser.external@gmail.com", "addedBy": "Marc Elson Rebato", "addedAt": "2026-10-11T00:00:00Z", "note": "Senior Editorial Consultant & Faculty Adviser"},
-    {"email": "pico.coordinator@gmail.com", "addedBy": "Marc Elson Rebato", "addedAt": "2026-10-20T00:00:00Z", "note": "Public Information and Communications Office liaison"}
-  ]'::jsonb,
+  '[]'::jsonb,
   720,
   5,
   true,
@@ -229,7 +212,46 @@ begin
     raise exception 'Approved administrator or custodian membership required.';
   end if;
 
-  if act_type = 'revoke-session' then
+  if act_type = 'register-session' then
+    insert into timber.security_sessions (id, user_id, user_name, user_email, ip, location, device, browser, os, started_at, last_active, is_current, status)
+    values (
+      coalesce(action->>'sessionId', 'sess-' || auth.uid()::text),
+      auth.uid(),
+      p.name,
+      coalesce(nullif(action->>'userEmail', ''), (select email from auth.users where id = auth.uid()), p.name),
+      coalesce(nullif(action->>'ip', ''), '127.0.0.1 (Direct)'),
+      coalesce(nullif(action->>'location', ''), 'Client Workstation'),
+      coalesce(nullif(action->>'device', ''), 'Web Browser'),
+      coalesce(nullif(action->>'browser', ''), 'Modern Browser'),
+      coalesce(nullif(action->>'os', ''), 'Desktop OS'),
+      now(),
+      now(),
+      true,
+      'active'
+    )
+    on conflict (id) do update set
+      last_active = now(),
+      status = 'active';
+
+  elsif act_type = 'log-login' then
+    insert into timber.security_logins (id, user_id, user_name, email, happened_at, ip, location, device, user_agent, status, failure_reason, is_new_device, risk_level)
+    values (
+      coalesce(action->>'eventId', 'login-' || gen_random_uuid()::text),
+      auth.uid(),
+      p.name,
+      coalesce(nullif(action->>'email', ''), (select email from auth.users where id = auth.uid()), p.name),
+      now(),
+      coalesce(nullif(action->>'ip', ''), '127.0.0.1'),
+      coalesce(nullif(action->>'location', ''), 'Client Workstation'),
+      coalesce(nullif(action->>'device', ''), 'Web Browser'),
+      coalesce(nullif(action->>'userAgent', ''), ''),
+      coalesce(nullif(action->>'status', ''), 'success'),
+      nullif(action->>'failureReason', ''),
+      coalesce((action->>'isNewDevice')::boolean, false),
+      coalesce(nullif(action->>'riskLevel', ''), 'low')
+    );
+
+  elsif act_type = 'revoke-session' then
     update timber.security_sessions
     set status = 'revoked'
     where id = action->>'sessionId';

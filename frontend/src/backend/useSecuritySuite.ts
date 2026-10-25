@@ -7,11 +7,12 @@ import {
   notifySecurityStateChange,
   SECURITY_STATE_CHANGED_EVENT,
   getInitialSecurityState,
+  detectCurrentDevice,
 } from './security'
 import { client, fetchSecuritySnapshot, mutateSecurity } from './client'
 
-export function useSecuritySuite() {
-  const [securityState, setSecurityState] = useState<SecurityState>(loadSecurityState)
+export function useSecuritySuite(currentPerson?: { id?: string; name?: string; email?: string; role?: string }) {
+  const [securityState, setSecurityState] = useState<SecurityState>(() => loadSecurityState(currentPerson))
   const [loading, setLoading] = useState(false)
   const [isLive, setIsLive] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -43,25 +44,58 @@ export function useSecuritySuite() {
   useEffect(() => {
     let active = true
     const handler = () => {
-      setSecurityState(loadSecurityState())
+      setSecurityState(loadSecurityState(currentPerson))
     }
     window.addEventListener(SECURITY_STATE_CHANGED_EVENT, handler)
     window.addEventListener('storage', handler)
 
     if (client) {
-      void fetchSecuritySnapshot()
-        .then((data) => {
-          if (active && data && typeof data === 'object') {
-            setSecurityState(data)
-            saveSecurityState(data)
-            notifySecurityStateChange()
-            setIsLive(true)
-            setSyncError(null)
-          }
+      if (currentPerson?.id) {
+        const dev = detectCurrentDevice()
+        const userEmail =
+          currentPerson.email ||
+          (currentPerson.name
+            ? `${currentPerson.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@thetimberland.pub`
+            : 'staff@thetimberland.pub')
+
+        void mutateSecurity({
+          type: 'register-session',
+          sessionId: `sess-${currentPerson.id}`,
+          userEmail,
+          device: `${dev.device} · ${dev.os}`,
+          browser: dev.browser,
+          os: dev.os,
+          ip: dev.ip,
+          location: dev.location,
         })
-        .catch((err) => {
-          console.warn('Backend security sync note (using cached state):', err)
-        })
+          .then(() => fetchSecuritySnapshot())
+          .then((data) => {
+            if (active && data && typeof data === 'object') {
+              setSecurityState(data)
+              saveSecurityState(data)
+              notifySecurityStateChange()
+              setIsLive(true)
+              setSyncError(null)
+            }
+          })
+          .catch((err) => {
+            console.warn('Backend security sync note:', err)
+          })
+      } else {
+        void fetchSecuritySnapshot()
+          .then((data) => {
+            if (active && data && typeof data === 'object') {
+              setSecurityState(data)
+              saveSecurityState(data)
+              notifySecurityStateChange()
+              setIsLive(true)
+              setSyncError(null)
+            }
+          })
+          .catch((err) => {
+            console.warn('Backend security sync note (using cached state):', err)
+          })
+      }
     }
 
     return () => {
@@ -69,7 +103,7 @@ export function useSecuritySuite() {
       window.removeEventListener(SECURITY_STATE_CHANGED_EVENT, handler)
       window.removeEventListener('storage', handler)
     }
-  }, [])
+  }, [currentPerson, syncFromBackend])
 
   const update = useCallback((updater: (prev: SecurityState) => SecurityState) => {
     setSecurityState((current) => {
@@ -336,11 +370,11 @@ export function useSecuritySuite() {
   )
 
   const resetToDefaults = useCallback(() => {
-    const initial = getInitialSecurityState()
+    const initial = getInitialSecurityState(currentPerson)
     saveSecurityState(initial)
     setSecurityState(initial)
     notifySecurityStateChange()
-  }, [])
+  }, [currentPerson])
 
   return {
     securityState,

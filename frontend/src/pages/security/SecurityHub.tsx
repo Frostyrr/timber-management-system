@@ -82,7 +82,7 @@ export function SecurityHub({ initialTab }: SecurityHubProps) {
     reactivateAccount,
     revokeSession,
     revokeAllOtherSessions,
-  } = useSecuritySuite()
+  } = useSecuritySuite(person)
 
   const policy = securityState.policy || {
     allowedDomains: ['thetimberland.pub'],
@@ -842,7 +842,14 @@ export function SecurityHub({ initialTab }: SecurityHubProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line-subtle bg-white">
-                  {securityState.sessions.map((sess) => {
+                  {(securityState.sessions || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-muted-ink">
+                        No active sessions recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    (securityState.sessions || []).map((sess) => {
                     const isPhone = sess.device.toLowerCase().includes('phone')
                     const isActive = sess.status === 'active'
 
@@ -917,7 +924,8 @@ export function SecurityHub({ initialTab }: SecurityHubProps) {
                         </td>
                       </tr>
                     )
-                  })}
+                  })
+                )}
                 </tbody>
               </table>
             </div>
@@ -1002,7 +1010,14 @@ export function SecurityHub({ initialTab }: SecurityHubProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line-subtle bg-white">
-                  {filteredEvents.map((event) => {
+                  {filteredEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-muted-ink">
+                        No authentication events recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEvents.map((event) => {
                     const isSuccess = event.status === 'success'
 
                     return (
@@ -1059,7 +1074,8 @@ export function SecurityHub({ initialTab }: SecurityHubProps) {
                         </td>
                       </tr>
                     )
-                  })}
+                  })
+                )}
                 </tbody>
               </table>
             </div>
@@ -1303,7 +1319,14 @@ export function SecurityHub({ initialTab }: SecurityHubProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line-subtle bg-white">
-                  {filteredProfiles.map((p) => {
+                  {filteredProfiles.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-6 text-center text-muted-ink">
+                        No staff accounts found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredProfiles.map((p) => {
                     const isSuspended = suspendedUserIds.has(p.id)
                     const isSelf = p.id === person.id
                     const suspensionRecord = (securityState.suspensions || []).find((s) => s.userId === p.id)
@@ -1382,7 +1405,8 @@ export function SecurityHub({ initialTab }: SecurityHubProps) {
                         </td>
                       </tr>
                     )
-                  })}
+                  })
+                )}
                 </tbody>
               </table>
             </div>

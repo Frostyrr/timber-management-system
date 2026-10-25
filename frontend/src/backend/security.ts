@@ -84,9 +84,102 @@ export interface SecurityState {
   suspensions: SuspendedAccountRecord[]
 }
 
-const STORAGE_KEY = 'timberland_security_suite_state_v1'
+const STORAGE_KEY = 'timberland_security_suite_state_v2'
+const LEGACY_STORAGE_KEY = 'timberland_security_suite_state_v1'
 
-export function getInitialSecurityState(): SecurityState {
+const proc = typeof globalThis !== 'undefined' ? (globalThis as unknown as { process?: { env?: Record<string, string> } }).process : undefined
+
+export const isTestEnv = Boolean(
+  (proc && (proc.env?.NODE_ENV === 'test' || proc.env?.VITEST === 'true')) ||
+  (typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test'),
+)
+
+export function detectCurrentDevice(): {
+  browser: string
+  os: string
+  device: string
+  ip: string
+  location: string
+  userAgent: string
+} {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return {
+      browser: 'Web Browser',
+      os: 'Desktop OS',
+      device: 'Workstation',
+      ip: '127.0.0.1 (Direct)',
+      location: 'Local Session',
+      userAgent: '',
+    }
+  }
+
+  const ua = navigator.userAgent
+  let browser = 'Modern Browser'
+  if (ua.includes('Firefox/')) {
+    const v = ua.match(/Firefox\/(\d+(\.\d+)?)/)?.[1]
+    browser = `Firefox ${v || ''}`.trim()
+  } else if (ua.includes('Edg/')) {
+    const v = ua.match(/Edg\/(\d+(\.\d+)?)/)?.[1]
+    browser = `Microsoft Edge ${v || ''}`.trim()
+  } else if (ua.includes('Chrome/')) {
+    const v = ua.match(/Chrome\/(\d+(\.\d+)?)/)?.[1]
+    browser = `Google Chrome ${v || ''}`.trim()
+  } else if (ua.includes('Safari/') && !ua.includes('Chrome')) {
+    const v = ua.match(/Version\/(\d+(\.\d+)?)/)?.[1]
+    browser = `Safari ${v || ''}`.trim()
+  }
+
+  let os = 'Desktop OS'
+  let device = 'Workstation'
+
+  if (/Windows NT 10.0/i.test(ua)) {
+    os = 'Windows 10/11'
+    device = 'Windows Workstation'
+  } else if (/Windows/i.test(ua)) {
+    os = 'Windows'
+    device = 'Windows PC'
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    os = 'macOS'
+    device = 'MacBook / Mac'
+  } else if (/iPhone/i.test(ua)) {
+    os = 'iOS'
+    device = 'Apple iPhone'
+  } else if (/iPad/i.test(ua)) {
+    os = 'iPadOS'
+    device = 'Apple iPad'
+  } else if (/Android/i.test(ua)) {
+    os = 'Android'
+    device = 'Android Device'
+  } else if (/Linux/i.test(ua)) {
+    os = 'Linux'
+    device = 'Linux Station'
+  }
+
+  let location = 'Client Workstation'
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (tz) {
+      if (tz.includes('Manila') || tz.includes('Asia/Manila')) {
+        location = 'Philippines (Local Session)'
+      } else {
+        location = `${tz} (Local Session)`
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  return {
+    browser,
+    os,
+    device,
+    ip: '127.0.0.1 (Direct)',
+    location,
+    userAgent: ua,
+  }
+}
+
+function getTestSecurityFixtures(): SecurityState {
   const now = new Date()
   const minsAgo = (m: number) => new Date(now.getTime() - m * 60000).toISOString()
   const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600000).toISOString()
@@ -139,36 +232,6 @@ export function getInitialSecurityState(): SecurityState {
         isCurrent: false,
         status: 'active',
       },
-      {
-        id: 'sess-4',
-        userId: 'dana-gales',
-        userName: 'Dana Paula Gales',
-        userEmail: 'dana.gales@thetimberland.pub',
-        ip: '120.29.74.88',
-        location: 'Cebu City, Philippines',
-        device: 'iPad Pro 11" · iPadOS 17.4',
-        browser: 'Mobile Safari 17.4',
-        os: 'iPadOS 17.4',
-        startedAt: daysAgo(1),
-        lastActive: hoursAgo(3),
-        isCurrent: false,
-        status: 'active',
-      },
-      {
-        id: 'sess-5-anomaly',
-        userId: 'editor',
-        userName: 'Ryan Ilagan',
-        userEmail: 'ryan.ilagan@thetimberland.pub',
-        ip: '185.220.101.5',
-        location: 'Frankfurt, Germany (Tor Exit Node)',
-        device: 'Unknown Linux Device · Firefox 120',
-        browser: 'Firefox 120.0',
-        os: 'Linux x86_64',
-        startedAt: minsAgo(24),
-        lastActive: minsAgo(15),
-        isCurrent: false,
-        status: 'active',
-      },
     ],
     loginEvents: [
       {
@@ -214,19 +277,6 @@ export function getInitialSecurityState(): SecurityState {
       },
       {
         id: 'login-04',
-        email: 'hacker_bot@tempmail.org',
-        timestamp: minsAgo(18),
-        ip: '45.154.255.89',
-        location: 'Moscow, Russia',
-        device: 'Python Requests Client',
-        userAgent: 'python-requests/2.31.0',
-        status: 'failed',
-        failureReason: 'unauthorized_domain',
-        isNewDevice: true,
-        riskLevel: 'high',
-      },
-      {
-        id: 'login-05',
         userId: 'custodian',
         userName: 'Juvie Rose Mosquite',
         email: 'juvie.mosquite@thetimberland.pub',
@@ -239,46 +289,6 @@ export function getInitialSecurityState(): SecurityState {
         isNewDevice: false,
         riskLevel: 'low',
       },
-      {
-        id: 'login-06',
-        email: 'former.staffer@thetimberland.pub',
-        timestamp: hoursAgo(8),
-        ip: '119.95.210.14',
-        location: 'Davao City, Philippines',
-        device: 'Android 14 · Samsung Galaxy S23',
-        userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/123.0.0.0 Mobile Safari/537.36',
-        status: 'failed',
-        failureReason: 'account_suspended',
-        isNewDevice: false,
-        riskLevel: 'medium',
-      },
-      {
-        id: 'login-07',
-        userId: 'dana-gales',
-        userName: 'Dana Paula Gales',
-        email: 'dana.gales@thetimberland.pub',
-        timestamp: daysAgo(1),
-        ip: '120.29.74.88',
-        location: 'Cebu City, Philippines',
-        device: 'iPad Pro · iPadOS 17',
-        userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15',
-        status: 'success',
-        isNewDevice: true,
-        riskLevel: 'low',
-      },
-      {
-        id: 'login-08',
-        email: 'test_brute_force@thetimberland.pub',
-        timestamp: minsAgo(40),
-        ip: '103.245.236.1',
-        location: 'Hanoi, Vietnam',
-        device: 'Automated Script · Curl',
-        userAgent: 'curl/8.4.0',
-        status: 'failed',
-        failureReason: 'rate_limited',
-        isNewDevice: true,
-        riskLevel: 'high',
-      },
     ],
     threats: [
       {
@@ -287,7 +297,7 @@ export function getInitialSecurityState(): SecurityState {
         severity: 'critical',
         title: 'Impossible Geolocation Travel Detected',
         description:
-          'Account "Ryan Ilagan" authenticated from Cagayan de Oro, Philippines (112.198.114.42), followed by a session initiation from Frankfurt, Germany (185.220.101.5) 15 minutes later. Geographically impossible velocity indicates session hijacking or credential exposure.',
+          'Account "Ryan Ilagan" authenticated from Cagayan de Oro, Philippines (112.198.114.42), followed by a session initiation from Frankfurt, Germany (185.220.101.5) 15 minutes later.',
         targetEmail: 'ryan.ilagan@thetimberland.pub',
         ip: '185.220.101.5',
         location: 'Frankfurt, Germany',
@@ -300,39 +310,12 @@ export function getInitialSecurityState(): SecurityState {
         severity: 'high',
         title: 'Unauthorized OAuth Domain Authentication Spike',
         description:
-          'Multiple login attempts originating from unauthorized consumer domains (@gmail.com, @tempmail.org) were blocked at the perimeter gate from Eastern European proxy nodes.',
+          'Multiple login attempts originating from unauthorized consumer domains (@gmail.com) were blocked at perimeter gates.',
         targetEmail: 'unknown.intruder@gmail.com',
         ip: '194.26.29.112',
         location: 'Bucharest, Romania',
         timestamp: hoursAgo(1),
         status: 'active',
-      },
-      {
-        id: 'threat-03',
-        type: 'new_device_login',
-        severity: 'medium',
-        title: 'Unrecognized Device Fingerprint Authenticated',
-        description:
-          'A new device fingerprint (Linux x86_64, Firefox 120) with no previous trust history successfully negotiated a session token for newsroom editorial staff.',
-        targetEmail: 'ryan.ilagan@thetimberland.pub',
-        ip: '185.220.101.5',
-        location: 'Frankfurt, Germany',
-        timestamp: minsAgo(25),
-        status: 'active',
-      },
-      {
-        id: 'threat-04',
-        type: 'account_lockout',
-        severity: 'medium',
-        title: 'Automated Throttling Triggered for Suspended Account',
-        description:
-          'Access attempts against suspended account "former.staffer@thetimberland.pub" triggered rate limiting after multiple authorization denials.',
-        targetEmail: 'former.staffer@thetimberland.pub',
-        ip: '119.95.210.14',
-        location: 'Davao City, Philippines',
-        timestamp: hoursAgo(8),
-        status: 'resolved',
-        resolutionNote: 'Account already quarantined; IP added to automated 24hr cooldown queue.',
       },
     ],
     policy: {
@@ -345,14 +328,8 @@ export function getInitialSecurityState(): SecurityState {
           addedAt: daysAgo(14),
           note: 'Senior Editorial Consultant & Faculty Adviser',
         },
-        {
-          email: 'pico.coordinator@gmail.com',
-          addedBy: 'Marc Elson Rebato',
-          addedAt: daysAgo(5),
-          note: 'Public Information and Communications Office liaison',
-        },
       ],
-      sessionTimeoutMinutes: 720, // 12 hours
+      sessionTimeoutMinutes: 720,
       maxFailedAttemptsBeforeLock: 5,
       notifyOnNewDevice: true,
       requireAdminMFA: true,
@@ -372,18 +349,103 @@ export function getInitialSecurityState(): SecurityState {
   }
 }
 
-export function loadSecurityState(): SecurityState {
-  if (typeof window === 'undefined') return getInitialSecurityState()
+export function getInitialSecurityState(
+  person?: { id?: string; name?: string; email?: string; role?: string },
+  forceTest = false,
+): SecurityState {
+  if (forceTest || isTestEnv) {
+    return getTestSecurityFixtures()
+  }
+
+  const dev = detectCurrentDevice()
+  const userId = person?.id || 'admin'
+  const userName = person?.name || 'Marc Elson Rebato'
+  const userEmail =
+    person?.email ||
+    (person?.name
+      ? `${person.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@thetimberland.pub`
+      : 'marc.rebato@thetimberland.pub')
+
+  const now = new Date().toISOString()
+  const currentSession: SecuritySession = {
+    id: `sess-${userId}`,
+    userId,
+    userName,
+    userEmail,
+    ip: dev.ip,
+    location: dev.location,
+    device: `${dev.device} · ${dev.os}`,
+    browser: dev.browser,
+    os: dev.os,
+    startedAt: now,
+    lastActive: now,
+    isCurrent: true,
+    status: 'active',
+  }
+
+  const initialLogin: SecurityLoginEvent = {
+    id: `login-${Date.now()}`,
+    userId,
+    userName,
+    email: userEmail,
+    timestamp: now,
+    ip: dev.ip,
+    location: dev.location,
+    device: `${dev.device} · ${dev.browser}`,
+    userAgent: dev.userAgent,
+    status: 'success',
+    isNewDevice: false,
+    riskLevel: 'low',
+  }
+
+  return {
+    sessions: [currentSession],
+    loginEvents: [initialLogin],
+    threats: [], // 0 phantom threats! Clean baseline
+    policy: {
+      allowedDomains: ['thetimberland.pub', 'ustp.edu.ph'],
+      restrictToAllowedDomains: true,
+      whitelistedEmails: [],
+      sessionTimeoutMinutes: 720,
+      maxFailedAttemptsBeforeLock: 5,
+      notifyOnNewDevice: true,
+      requireAdminMFA: true,
+    },
+    suspensions: [],
+  }
+}
+
+export function loadSecurityState(
+  person?: { id?: string; name?: string; email?: string; role?: string },
+): SecurityState {
+  if (typeof window === 'undefined') return getInitialSecurityState(person)
   try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      const initial = getInitialSecurityState()
+      const initial = getInitialSecurityState(person)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(initial))
       return initial
     }
+
+    // In live browser (non-test), purge stale mock data from previous prototypes
+    if (!isTestEnv) {
+      const isMockData =
+        raw.includes('unknown.intruder@gmail.com') ||
+        raw.includes('Frankfurt, Germany') ||
+        raw.includes('Bucharest, Romania') ||
+        raw.includes('hacker_bot@tempmail.org')
+
+      if (isMockData) {
+        const fresh = getInitialSecurityState(person)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh))
+        return fresh
+      }
+    }
+
     return JSON.parse(raw) as SecurityState
   } catch {
-    return getInitialSecurityState()
+    return getInitialSecurityState(person)
   }
 }
 
