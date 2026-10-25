@@ -1,9 +1,32 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Login } from './Login'
 import { client, fetchRecentPublicActivity } from '../backend/client'
+
+const { mockDbLogs } = vi.hoisted(() => ({
+  mockDbLogs: [
+    {
+      id: 'db-1',
+      action: 'checkout',
+      at: '2026-10-25T12:00:00Z',
+      itemName: 'Sony Alpha a6400 Mirrorless Camera',
+      tag: 'TP-CAM-001',
+      category: 'Camera',
+      details: 'Checked out for campus event',
+    },
+    {
+      id: 'db-2',
+      action: 'return',
+      at: '2026-10-25T11:45:00Z',
+      itemName: 'Rode Wireless GO II Dual Mic System',
+      tag: 'TP-AUD-002',
+      category: 'Audio',
+      details: 'Returned in Good condition',
+    },
+  ],
+}))
 
 vi.mock('../backend/client', () => ({
   client: {
@@ -11,16 +34,20 @@ vi.mock('../backend/client', () => ({
       signInWithOAuth: vi.fn(),
     },
   },
-  fetchRecentPublicActivity: vi.fn().mockResolvedValue([]),
+  fetchRecentPublicActivity: vi.fn().mockImplementation(async () => mockDbLogs),
 }))
 
 describe('Login Page', () => {
+  beforeEach(() => {
+    vi.mocked(fetchRecentPublicActivity).mockImplementation(async () => mockDbLogs)
+  })
+
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
   })
 
-  it('renders unboxed hero on the left and chatbox with logo avatars on the right without bottom input bar', () => {
+  it('renders unboxed hero on the left and chatbox with logo avatars on the right without bottom input bar', async () => {
     render(
       <MemoryRouter>
         <Login />
@@ -55,14 +82,31 @@ describe('Login Page', () => {
     // Verify right column sleek unboxed chat container exists
     expect(screen.getByLabelText('Recent equipment usage and returns chatbox')).toBeTruthy()
 
+    // Verify equipment usage and returns loaded from database
+    await waitFor(() => {
+      expect(screen.getByText('TP-CAM-001')).toBeTruthy()
+      expect(screen.getByText('Sony Alpha a6400 Mirrorless Camera')).toBeTruthy()
+      expect(screen.getByText('TP-AUD-002')).toBeTruthy()
+    })
+
     // Verify logo avatars exist
     const avatars = screen.getAllByAltText('Timberland avatar')
     expect(avatars.length).toBeGreaterThanOrEqual(1)
+  })
 
-    // Verify equipment usage and returns
-    expect(screen.getByText('TP-CAM-001')).toBeTruthy()
-    expect(screen.getByText('Sony Alpha a6400 Mirrorless Camera')).toBeTruthy()
-    expect(screen.getByText('TP-AUD-002')).toBeTruthy()
+  it('renders clean empty state when database returns no recent equipment activity', async () => {
+    vi.mocked(fetchRecentPublicActivity).mockResolvedValueOnce([])
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chatbox-empty-state')).toBeTruthy()
+      expect(screen.getByText('No Equipment Activity Yet')).toBeTruthy()
+      expect(screen.getByText(/Recent checkouts and returns from publication custodians will appear here/i)).toBeTruthy()
+    })
   })
 
   it('fetches actual equipment usage & returns from database and displays them in the chatbox', async () => {
@@ -96,48 +140,48 @@ describe('Login Page', () => {
     await waitFor(() => {
       expect(screen.getByText('TP-CIN-001')).toBeTruthy()
       expect(screen.getByText(/Canon Cinema EOS C70/i)).toBeTruthy()
+      const bubbles = screen.getAllByRole('button', { name: /TP-/i })
+      // Maximum 5, and strictly shows only the 2 actual records present
+      expect(bubbles).toHaveLength(2)
     })
   })
 
-  it('allows pausing the auto-cycling chatbox on hover and resuming on mouse leave', () => {
-    vi.useFakeTimers()
-    try {
-      render(
-        <MemoryRouter>
-          <Login />
-        </MemoryRouter>
-      )
-
-      const chatbox = screen.getByLabelText('Recent equipment usage and returns chatbox')
-      expect(chatbox).toBeTruthy()
-
-      const bubbles = screen.getAllByRole('button', { name: /TP-/i })
-      expect(bubbles[0].className).toContain('scale-[1.01]')
-
-      // Hovering pauses auto-cycling
-      fireEvent.mouseEnter(chatbox)
-      act(() => {
-        vi.advanceTimersByTime(4000)
-      })
-      expect(bubbles[0].className).toContain('scale-[1.01]')
-
-      // Mouse leave resumes auto-cycling
-      fireEvent.mouseLeave(chatbox)
-      act(() => {
-        vi.advanceTimersByTime(4000)
-      })
-      expect(bubbles[1].className).toContain('scale-[1.01]')
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it('allows clicking a chat bubble to focus and highlight it', () => {
+  it('allows pausing the auto-cycling chatbox on hover and resuming on mouse leave', async () => {
     render(
       <MemoryRouter>
         <Login />
       </MemoryRouter>
     )
+
+    const chatbox = screen.getByLabelText('Recent equipment usage and returns chatbox')
+    expect(chatbox).toBeTruthy()
+
+    await waitFor(() => {
+      expect(screen.getByText('TP-CAM-001')).toBeTruthy()
+    })
+
+    const bubbles = screen.getAllByRole('button', { name: /TP-/i })
+    expect(bubbles[0].className).toContain('scale-[1.01]')
+
+    // Hovering pauses auto-cycling
+    fireEvent.mouseEnter(chatbox)
+    expect(bubbles[0].className).toContain('scale-[1.01]')
+
+    // Mouse leave resumes auto-cycling
+    fireEvent.mouseLeave(chatbox)
+    expect(bubbles[0].className).toContain('scale-[1.01]')
+  })
+
+  it('allows clicking a chat bubble to focus and highlight it', async () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('TP-AUD-002')).toBeTruthy()
+    })
 
     const secondLogButton = screen.getByRole('button', {
       name: /TP-AUD-002/i,

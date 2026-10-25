@@ -4,6 +4,7 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCheck,
+  PackageOpen,
 } from 'lucide-react'
 import { client, fetchRecentPublicActivity, type PublicActivityLog } from '../backend/client'
 import { GoogleIcon } from '../components/ui/GoogleIcon'
@@ -18,59 +19,6 @@ export interface PublicLogItem {
   details: string
   timeStr: string
 }
-
-const FALLBACK_USAGE_RETURNS: PublicLogItem[] = [
-  {
-    id: 'log-1',
-    tag: 'TP-CAM-001',
-    name: 'Sony Alpha a6400 Mirrorless Camera',
-    category: 'Camera',
-    action: 'checkout',
-    actionLabel: 'CHECKOUT',
-    details: 'Checked out for Feature Desk campus event coverage',
-    timeStr: '12:28 PM',
-  },
-  {
-    id: 'log-2',
-    tag: 'TP-AUD-002',
-    name: 'Zoom H6 Handy Field Audio Recorder',
-    category: 'Audio',
-    action: 'return',
-    actionLabel: 'RETURN',
-    details: 'Returned in Good condition',
-    timeStr: '12:14 PM',
-  },
-  {
-    id: 'log-3',
-    tag: 'TP-GIM-001',
-    name: 'DJI Ronin-SC 3-Axis Handheld Gimbal',
-    category: 'Accessory',
-    action: 'checkout',
-    actionLabel: 'CHECKOUT',
-    details: 'Checked out for Sports Desk match video coverage',
-    timeStr: '11:49 AM',
-  },
-  {
-    id: 'log-4',
-    tag: 'TP-LGT-003',
-    name: 'Godox SL-60W Continuous Studio Light',
-    category: 'Lighting',
-    action: 'return',
-    actionLabel: 'RETURN',
-    details: 'Returned in Good condition',
-    timeStr: '10:56 AM',
-  },
-  {
-    id: 'log-5',
-    tag: 'TP-TRP-002',
-    name: 'Manfrotto 055 Pro 3-Section Tripod',
-    category: 'Accessory',
-    action: 'checkout',
-    actionLabel: 'CHECKOUT',
-    details: 'Checked out for Editorial portrait shoot',
-    timeStr: '10:12 AM',
-  },
-]
 
 function formatIsoTime(iso?: string): string {
   if (!iso) return '12:00 PM'
@@ -88,17 +36,23 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   const [error, setError] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const [logs, setLogs] = useState<PublicLogItem[]>(FALLBACK_USAGE_RETURNS)
+  const [logs, setLogs] = useState<PublicLogItem[]>([])
+  const [isLoaded, setIsLoaded] = useState(false)
 
-  // Fetch actual equipment usage & returns from database (most recent 5)
+  // Fetch actual equipment usage & returns from database (maximum 5)
   useEffect(() => {
     let active = true
     async function loadActivity() {
       try {
         const rawLogs = await fetchRecentPublicActivity()
-        if (!active || !rawLogs || rawLogs.length === 0) return
+        if (!active) return
 
-        // Filter strictly for actual equipment usage (checkout) and returns
+        if (!rawLogs || rawLogs.length === 0) {
+          setLogs([])
+          return
+        }
+
+        // Filter for actual equipment usage (checkout) and returns, or all activity
         const filtered = rawLogs.filter(
           (l) => l.action.toLowerCase() === 'checkout' || l.action.toLowerCase() === 'return'
         )
@@ -118,11 +72,11 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
           }
         })
 
-        if (formatted.length > 0) {
-          setLogs(formatted)
-        }
+        setLogs(formatted)
       } catch {
-        // Fallback to initial mock usage and returns if DB query fails or unconfigured
+        if (active) setLogs([])
+      } finally {
+        if (active) setIsLoaded(true)
       }
     }
 
@@ -132,13 +86,13 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
     }
   }, [])
 
-  // Auto-cycle through the 5 chat bubbles every 3.4s when not paused
+  // Auto-cycle through the chat bubbles when multiple are present and not paused
   useEffect(() => {
-    if (isPaused) return
-    const timer = setInterval(() => {
+    if (isPaused || logs.length <= 1) return
+    const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % logs.length)
-    }, 3400)
-    return () => clearInterval(timer)
+    }, 4000)
+    return () => clearInterval(interval)
   }, [isPaused, logs.length])
 
   const handleSignIn = async () => {
@@ -230,29 +184,45 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
             onMouseLeave={() => setIsPaused(false)}
             className="flex flex-col gap-3 select-none"
           >
-            {logs.map((item, index) => {
-              const isSelected = index === activeIndex
+            {isLoaded && logs.length === 0 ? (
+              <div
+                data-testid="chatbox-empty-state"
+                className="flex flex-col items-center justify-center text-center p-8 sm:p-11 rounded-3xl border border-[#dce6df] bg-white/75 backdrop-blur-md shadow-xs max-w-[460px] mx-auto lg:mx-0 lg:ml-auto select-none"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pale text-primary border border-primary/15 shadow-2xs mb-3.5">
+                  <PackageOpen size={24} className="text-primary" />
+                </div>
+                <h3 className="text-[14.5px] font-semibold text-ink tracking-tight">
+                  No Equipment Activity Yet
+                </h3>
+                <p className="mt-1.5 max-w-[320px] text-[12.5px] leading-relaxed text-muted-ink">
+                  Recent checkouts and returns from publication custodians will appear here in real time.
+                </p>
+              </div>
+            ) : (
+              logs.map((item, index) => {
+                const isSelected = index === activeIndex
 
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => setActiveIndex(index)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      setActiveIndex(index)
-                    }
-                  }}
-                  aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
-                  className={`group relative flex items-end justify-end gap-2.5 transition-all duration-300 cursor-pointer ${
-                    isSelected ? 'scale-[1.01]' : 'hover:scale-[1.005]'
-                  }`}
-                  style={{
-                    animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
-                  }}
-                >
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setActiveIndex(index)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setActiveIndex(index)
+                      }
+                    }}
+                    aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
+                    className={`group relative flex items-end justify-end gap-2.5 transition-all duration-300 cursor-pointer ${
+                      isSelected ? 'scale-[1.01]' : 'hover:scale-[1.005]'
+                    }`}
+                    style={{
+                      animation: `messagePop 0.46s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
+                    }}
+                  >
                   {/* Primary Dark Green Chat Speech Bubble with iconic tail */}
                   <div
                     className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] px-4 py-3 text-white shadow-xs transition-all duration-300 max-w-[88%] sm:max-w-[82%] ${
@@ -316,7 +286,8 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                   </div>
                 </div>
               )
-            })}
+            })
+          )}
           </section>
         </div>
       </div>
