@@ -4,3 +4,6 @@ supabase/.branches/
 .env
 .env.local
 *.log
+
+.agent\*
+.codex\*
