@@ -123,8 +123,8 @@ describe('Login Page', () => {
     expect(secondLogButton).toBeTruthy()
 
     fireEvent.click(secondLogButton)
-    // Should have active scaling and left emerald border class
-    expect(secondLogButton.className).toContain('border-[#10b981]')
+    // Should have active scaling and left forest green border class
+    expect(secondLogButton.className).toContain('border-[#153f32]')
     expect(secondLogButton.className).toContain('translate-x-1.5')
   })
 

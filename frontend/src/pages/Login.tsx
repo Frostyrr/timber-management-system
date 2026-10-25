@@ -73,24 +73,48 @@ const FALLBACK_LOGS: PublicLogItem[] = [
   },
 ]
 
-function formatActionBadge(action: string): { label: string; color: string } {
+function formatActionBadge(action: string): { label: string; badgeClass: string } {
   switch (action.toLowerCase()) {
     case 'checkout':
-      return { label: 'CHECKOUT', color: 'text-[#f59e0b]' }
+      return {
+        label: 'CHECKOUT',
+        badgeClass: 'bg-amber-50 text-amber-900 border border-amber-300/80',
+      }
     case 'return':
-      return { label: 'RETURN', color: 'text-[#10b981]' }
+      return {
+        label: 'RETURN',
+        badgeClass: 'bg-emerald-50 text-emerald-900 border border-emerald-300/80',
+      }
     case 'item':
-      return { label: 'CATALOG', color: 'text-[#38bdf8]' }
+      return {
+        label: 'CATALOG',
+        badgeClass: 'bg-sky-50 text-sky-900 border border-sky-300/80',
+      }
     case 'incident':
-      return { label: 'INCIDENT', color: 'text-[#f43f5e]' }
+      return {
+        label: 'INCIDENT',
+        badgeClass: 'bg-rose-50 text-rose-900 border border-rose-300/80',
+      }
     case 'resolve':
-      return { label: 'RESOLVE', color: 'text-[#a855f7]' }
+      return {
+        label: 'RESOLVE',
+        badgeClass: 'bg-purple-50 text-purple-900 border border-purple-300/80',
+      }
     case 'archive':
-      return { label: 'ARCHIVE', color: 'text-[#94a3b8]' }
+      return {
+        label: 'ARCHIVE',
+        badgeClass: 'bg-slate-100 text-slate-800 border border-slate-300/80',
+      }
     case 'unarchive':
-      return { label: 'RESTORE', color: 'text-[#34d399]' }
+      return {
+        label: 'RESTORE',
+        badgeClass: 'bg-teal-50 text-teal-900 border border-teal-300/80',
+      }
     default:
-      return { label: action.toUpperCase(), color: 'text-[#10b981]' }
+      return {
+        label: action.toUpperCase(),
+        badgeClass: 'bg-emerald-50 text-emerald-900 border border-emerald-300/80',
+      }
   }
 }
 
@@ -136,7 +160,6 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         })
 
         if (formatted.length > 0) {
-          // If fewer than 5 logs in DB, pad with fallback
           const combined = [...formatted]
           if (combined.length < 5) {
             FALLBACK_LOGS.slice(combined.length, 5).forEach((item) => combined.push(item))
@@ -145,7 +168,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
           setIsLiveFromDb(true)
         }
       } catch {
-        // Gracefully use fallback logs
+        // Fallback to initial mock logs if DB query fails or unconfigured
       }
     }
 
@@ -160,7 +183,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
     if (isPaused) return
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % logs.length)
-    }, 3600)
+    }, 3400)
     return () => clearInterval(timer)
   }, [isPaused, logs.length])
 
@@ -188,9 +211,9 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   return (
     <div className="w-full max-w-[1200px] py-4 sm:py-8 lg:py-12">
       <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12 xl:gap-16">
-        {/* Left Column: Brand Masthead & CLI Terminal Stream */}
+        {/* Left Column: Brand Masthead & Light White CLI Terminal Stream */}
         <div className="order-2 flex flex-col gap-6 lg:order-1 lg:col-span-7">
-          {/* Masthead Header without badge */}
+          {/* Masthead Header */}
           <div className="flex flex-col gap-3">
             <Link to="/" className="inline-flex items-center transition-transform hover:scale-105 w-fit">
               <img
@@ -209,45 +232,45 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
             </p>
           </div>
 
-          {/* CLI Terminal Container */}
+          {/* White / Light Theme CLI Terminal Container */}
           <section
             aria-label="Recent equipment activity CLI stream"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
-            className="flex flex-col overflow-hidden rounded-2xl border border-[#1b2b22] bg-[#09110d] shadow-[0_24px_56px_rgba(0,0,0,0.35)] font-mono text-xs select-none"
+            className="flex flex-col overflow-hidden rounded-2xl border border-[#dce6df] bg-white/95 shadow-[0_20px_50px_rgba(21,63,50,0.08)] backdrop-blur-xl font-mono text-xs select-none"
           >
-            {/* Terminal Window Chrome Title Bar */}
-            <div className="flex items-center justify-between border-b border-[#1b2b22] bg-[#0d1712] px-4 py-2.5">
+            {/* White Terminal Chrome Title Bar */}
+            <div className="flex items-center justify-between border-b border-[#e2eae4] bg-[#f8faf9] px-4 py-2.5">
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]/90" aria-hidden="true" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]/90" aria-hidden="true" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#10b981]/90" aria-hidden="true" />
-                <span className="ml-2 font-mono text-[11px] font-medium text-[#7ea08f] flex items-center gap-1.5">
-                  <Terminal size={12} className="text-[#10b981]" />
+                <span className="ml-2 font-mono text-[11.5px] font-semibold text-[#2d523e] flex items-center gap-1.5">
+                  <Terminal size={12} className="text-primary" />
                   <span>timberd --tail=5 --stream</span>
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
                 </span>
-                <span className="font-mono text-[10px] font-semibold tracking-wider text-emerald-400 uppercase">
+                <span className="font-mono text-[10.5px] font-bold tracking-wider text-primary uppercase">
                   {isPaused ? 'PAUSED' : isLiveFromDb ? 'LIVE DB' : 'STREAM'}
                 </span>
               </div>
             </div>
 
-            {/* Terminal Console Content */}
-            <div className="p-4 sm:p-5 flex flex-col gap-3">
+            {/* White Terminal Console Content */}
+            <div className="p-4 sm:p-5 flex flex-col gap-3 bg-[#fcfdfc]">
               {/* CLI Command Line */}
-              <div className="flex items-center gap-2 text-[11.5px] text-[#527a65]">
-                <span className="text-[#10b981] font-semibold">$</span>
-                <span className="text-[#94a3b8]">timber telemetry --tail=5 --format=interactive</span>
+              <div className="flex items-center gap-2 text-[11.5px] text-[#4a6356]">
+                <span className="text-primary font-bold">$</span>
+                <span className="text-ink font-medium">timber telemetry --tail=5 --format=interactive</span>
               </div>
 
-              {/* Streaming Logs with Slide and Fade */}
+              {/* Staggered Streaming Logs with One-by-One Slide and Fade */}
               <div className="flex flex-col gap-1.5 pt-1">
                 {logs.map((item, index) => {
                   const isSelected = index === activeIndex
@@ -268,35 +291,37 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                       aria-label={`${item.tag} ${badge.label} ${item.name}`}
                       className={`group relative flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2.5 rounded-lg px-3 py-2 transition-all duration-300 cursor-pointer ${
                         isSelected
-                          ? 'bg-[#12281c] border-l-2 border-[#10b981] text-[#f1f5f9] translate-x-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
-                          : 'text-[#94a3b8] hover:bg-[#0f1d16] hover:text-[#e2e8f0]'
+                          ? 'bg-[#eef4f0] border-l-3 border-[#153f32] text-ink translate-x-1.5 shadow-xs font-medium'
+                          : 'text-[#33463c] border-l-3 border-transparent hover:bg-[#f4f7f5] hover:text-ink'
                       }`}
                       style={{
-                        animation: `fadeSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${index * 60}ms both`,
+                        animation: `cliFadeSlide 0.45s cubic-bezier(0.16, 1, 0.3, 1) ${index * 140}ms both`,
                       }}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        {/* Prompt Arrow & Timestamp */}
-                        <span className="text-[11px] text-[#426151] shrink-0">
+                        {/* Timestamp */}
+                        <span className="text-[11px] text-[#6b8577] shrink-0 font-medium">
                           [{item.timeStr}]
                         </span>
 
-                        {/* Action Badge */}
-                        <span className={`text-[11px] font-bold shrink-0 ${badge.color}`}>
+                        {/* Action Badge on White CLI */}
+                        <span
+                          className={`text-[10px] font-bold shrink-0 rounded px-1.5 py-0.5 tracking-tight ${badge.badgeClass}`}
+                        >
                           [{badge.label}]
                         </span>
 
                         {/* Equipment Tag */}
-                        <span className="font-bold text-[#e2e8f0] shrink-0">
+                        <span className="font-bold text-[#153f32] shrink-0">
                           {item.tag}
                         </span>
 
-                        <span className="text-[#10b981] shrink-0">»</span>
+                        <span className="text-primary font-bold shrink-0">»</span>
 
                         {/* Equipment Name & Details */}
-                        <span className="truncate text-xs font-normal text-[#cbd5e1]">
-                          {item.name}
-                          <span className="hidden md:inline text-[#64748b] ml-1.5">
+                        <span className="truncate text-xs text-[#18221d]">
+                          <strong className="font-medium">{item.name}</strong>
+                          <span className="hidden md:inline text-[#5a6f63] ml-1.5 font-normal">
                             ({item.details})
                           </span>
                         </span>
@@ -304,11 +329,11 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
 
                       {/* Right Tag/Status Indicator */}
                       <div className="flex items-center gap-1.5 shrink-0 pl-7 sm:pl-0">
-                        <span className="text-[10.5px] text-[#4e6b5d] uppercase">
+                        <span className="text-[10px] text-[#6b8577] uppercase font-semibold">
                           {item.category}
                         </span>
                         {isSelected && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                         )}
                       </div>
                     </div>
@@ -316,13 +341,13 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                 })}
               </div>
 
-              {/* Terminal Bottom Command Prompt */}
-              <div className="mt-2 flex items-center justify-between border-t border-[#1b2b22] pt-3 text-[11px] text-[#527a65]">
+              {/* White Terminal Bottom Command Prompt */}
+              <div className="mt-2 flex items-center justify-between border-t border-[#e2eae4] pt-3 text-[11px] text-[#4a6356]">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[#10b981]">timber@workspace:~$</span>
-                  <span className="inline-block h-3.5 w-1.5 bg-emerald-400 animate-pulse" />
+                  <span className="text-primary font-semibold">timber@workspace:~$</span>
+                  <span className="inline-block h-3.5 w-2 bg-primary animate-pulse align-middle" />
                 </div>
-                <span className="text-[#4e6b5d] font-mono">
+                <span className="text-[#6b8577] font-mono text-[10.5px]">
                   {isLiveFromDb ? 'database rpc: connected' : 'telemetry: mock active'}
                 </span>
               </div>
