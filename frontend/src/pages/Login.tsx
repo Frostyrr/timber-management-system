@@ -89,7 +89,6 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const [logs, setLogs] = useState<PublicLogItem[]>(FALLBACK_USAGE_RETURNS)
-  const [isLiveFromDb, setIsLiveFromDb] = useState(false)
 
   // Fetch actual equipment usage & returns from database (most recent 5)
   useEffect(() => {
@@ -125,7 +124,6 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
             FALLBACK_USAGE_RETURNS.slice(combined.length, 5).forEach((item) => combined.push(item))
           }
           setLogs(combined)
-          setIsLiveFromDb(true)
         }
       } catch {
         // Fallback to initial mock usage and returns if DB query fails or unconfigured
@@ -228,134 +226,101 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
           </div>
         </div>
 
-        {/* Right Column: Messenger/iMessage-Style Chatbox with Blue Bubbles & Logo Avatars */}
-        <div className="flex flex-col lg:col-span-6">
+        {/* Right Column: Sleek Unboxed Chat Stream with Primary Dark Green Bubbles & Logo Avatars */}
+        <div className="flex flex-col justify-center lg:col-span-6">
           <section
             aria-label="Recent equipment usage and returns chatbox"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
-            className="flex flex-col overflow-hidden rounded-3xl border border-[#dce6df] bg-white/95 shadow-[0_20px_50px_rgba(21,63,50,0.08)] backdrop-blur-2xl select-none"
+            className="flex flex-col gap-3 select-none"
           >
-            {/* Chatbox Header */}
-            <div className="flex items-center justify-between border-b border-[#e2eae4] bg-[#f8faf9] px-5 py-3.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-[#dce6df] p-1.5 shadow-2xs">
-                  <img
-                    src="/logo.png"
-                    alt="The Timberland logo"
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[14px] font-semibold text-ink tracking-tight">
-                    Timberland Custodian
-                  </span>
-                  <span className="flex items-center gap-1.5 text-[11px] text-muted-ink font-['Geist_Mono',monospace]">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>
-                      {isPaused
-                        ? 'Paused (Hover)'
-                        : isLiveFromDb
-                          ? 'Live Equipment Wire'
-                          : 'Recent Equipment Usage'}
-                    </span>
-                  </span>
-                </div>
-              </div>
+            {logs.map((item, index) => {
+              const isSelected = index === activeIndex
 
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-pale border border-primary/15 px-2.5 py-1 font-['Geist_Mono',monospace] text-[10.5px] font-semibold text-primary">
-                  {isLiveFromDb ? 'LIVE DB' : '5 RECENT'}
-                </span>
-              </div>
-            </div>
-
-            {/* Chat Messages Body - Blue speech bubbles with logo avatars and bottom-right tail */}
-            <div className="p-4 sm:p-5 flex flex-col gap-3 min-h-[380px] max-h-[460px] overflow-hidden">
-              {logs.map((item, index) => {
-                const isSelected = index === activeIndex
-
-                return (
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setActiveIndex(index)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setActiveIndex(index)
+                    }
+                  }}
+                  aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
+                  className={`group relative flex items-end justify-end gap-2.5 transition-all duration-300 cursor-pointer ${
+                    isSelected ? 'scale-[1.01]' : 'hover:scale-[1.005]'
+                  }`}
+                  style={{
+                    animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
+                  }}
+                >
+                  {/* Primary Dark Green Chat Speech Bubble with iconic tail */}
                   <div
-                    key={item.id}
-                    onClick={() => setActiveIndex(index)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setActiveIndex(index)
-                      }
-                    }}
-                    aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
-                    className={`group relative flex items-end justify-end gap-2.5 transition-all duration-300 cursor-pointer ${
-                      isSelected ? 'scale-[1.01]' : 'hover:scale-[1.005]'
+                    className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] px-4 py-3 text-white shadow-xs transition-all duration-300 max-w-[88%] sm:max-w-[82%] ${
+                      isSelected
+                        ? 'bg-[#0d2e24] ring-2 ring-primary/40 shadow-[0_8px_24px_rgba(21,63,50,0.28)]'
+                        : 'bg-primary hover:bg-[#103429]'
                     }`}
-                    style={{
-                      animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
-                    }}
                   >
-                    {/* Blue Chat Speech Bubble with iconic tail */}
-                    <div
-                      className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] bg-[#007aff] px-4 py-3 text-white shadow-xs transition-all duration-300 max-w-[85%] sm:max-w-[80%] ${
-                        isSelected
-                          ? 'bg-[#0071eb] ring-2 ring-[#007aff]/30 shadow-[0_6px_18px_rgba(0,122,255,0.28)]'
-                          : 'hover:bg-[#0075f5]'
-                      }`}
-                    >
-                      {/* Top Row: Tag, Action Badge & Time */}
-                      <div className="flex items-center justify-between gap-2.5 border-b border-white/20 pb-1 text-[11px] font-['Geist_Mono',monospace]">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold tracking-tight bg-white/25 px-2 py-0.5 rounded-full text-[10.5px]">
-                            {item.tag}
-                          </span>
-                          <span className="text-[10px] font-bold tracking-wide uppercase bg-black/15 px-1.5 py-0.5 rounded">
-                            {item.actionLabel}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1 text-[11px] opacity-90">
-                          <span>{item.timeStr}</span>
-                          <CheckCheck size={13} className="text-white" />
-                        </div>
+                    {/* Top Row: Tag, Action Badge & Time */}
+                    <div className="flex items-center justify-between gap-2.5 border-b border-white/20 pb-1 text-[11px] font-['Geist_Mono',monospace]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold tracking-tight bg-white/20 px-2 py-0.5 rounded-full text-[10.5px]">
+                          {item.tag}
+                        </span>
+                        <span className="text-[10px] font-bold tracking-wide uppercase bg-black/25 px-1.5 py-0.5 rounded text-white/95">
+                          {item.actionLabel}
+                        </span>
                       </div>
 
-                      {/* Chat Message Content */}
-                      <div className="text-[13px] leading-snug pt-0.5 text-white">
-                        <strong className="font-semibold block">{item.name}</strong>
-                        <p className="mt-0.5 text-xs text-white/90 leading-normal">
-                          {item.details}
-                        </p>
+                      <div className="flex items-center gap-1 text-[11px] text-white/80">
+                        <span>{item.timeStr}</span>
+                        <CheckCheck size={13} className="text-white/90" />
                       </div>
-
-                      {/* Iconic Bottom-Right Curved Speech Tail */}
-                      <svg
-                        className="absolute -bottom-[1px] -right-[5px] h-3.5 w-2.5 text-[#007aff] fill-current pointer-events-none group-hover:text-[#0075f5] transition-colors"
-                        viewBox="0 0 10 14"
-                        aria-hidden="true"
-                      >
-                        <path d="M0,0 C0,7 2,14 10,14 C4,14 0,10 0,0 Z" />
-                      </svg>
                     </div>
 
-                    {/* Logo Icon Avatar beside the chat bubble */}
-                    <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-300 shadow-2xs mb-0.5 ${
+                    {/* Chat Message Content */}
+                    <div className="text-[13px] leading-snug pt-0.5 text-white">
+                      <strong className="font-semibold block">{item.name}</strong>
+                      <p className="mt-0.5 text-xs text-white/85 leading-normal">
+                        {item.details}
+                      </p>
+                    </div>
+
+                    {/* Iconic Bottom-Right Curved Speech Tail */}
+                    <svg
+                      className={`absolute -bottom-[1px] -right-[5px] h-3.5 w-2.5 fill-current pointer-events-none transition-colors ${
                         isSelected
-                          ? 'border-[#007aff] ring-2 ring-[#007aff]/20 scale-105'
-                          : 'border-[#dce6df] group-hover:border-[#cbd8cf]'
+                          ? 'text-[#0d2e24]'
+                          : 'text-primary group-hover:text-[#103429]'
                       }`}
+                      viewBox="0 0 10 14"
+                      aria-hidden="true"
                     >
-                      <img
-                        src="/logo.png"
-                        alt="Timberland avatar"
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
+                      <path d="M0,0 C0,7 2,14 10,14 C4,14 0,10 0,0 Z" />
+                    </svg>
                   </div>
-                )
-              })}
-            </div>
+
+                  {/* Logo Icon Avatar beside the chat bubble */}
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-300 shadow-2xs mb-0.5 ${
+                      isSelected
+                        ? 'border-primary ring-2 ring-primary/20 scale-105'
+                        : 'border-[#dce6df] group-hover:border-primary/50'
+                    }`}
+                  >
+                    <img
+                      src="/logo.png"
+                      alt="Timberland avatar"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </section>
         </div>
       </div>

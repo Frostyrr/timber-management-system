@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Login } from './Login'
 import { client, fetchRecentPublicActivity } from '../backend/client'
@@ -46,9 +46,14 @@ describe('Login Page', () => {
     // Assert decorative bottom send/input bar is REMOVED
     expect(screen.queryByText(/Listening for live equipment events/i)).toBeNull()
 
-    // Verify right column chatbox container and custodian header
+    // Assert the top header card elements are REMOVED for clean sleek design
+    expect(screen.queryByText('Timberland Custodian')).toBeNull()
+    expect(screen.queryByText('Recent Equipment Usage')).toBeNull()
+    expect(screen.queryByText('5 RECENT')).toBeNull()
+    expect(screen.queryByText('LIVE DB')).toBeNull()
+
+    // Verify right column sleek unboxed chat container exists
     expect(screen.getByLabelText('Recent equipment usage and returns chatbox')).toBeTruthy()
-    expect(screen.getByText('Timberland Custodian')).toBeTruthy()
 
     // Verify logo avatars exist
     const avatars = screen.getAllByAltText('Timberland avatar')
@@ -91,27 +96,40 @@ describe('Login Page', () => {
     await waitFor(() => {
       expect(screen.getByText('TP-CIN-001')).toBeTruthy()
       expect(screen.getByText(/Canon Cinema EOS C70/i)).toBeTruthy()
-      expect(screen.getByText('LIVE DB')).toBeTruthy()
     })
   })
 
   it('allows pausing the auto-cycling chatbox on hover and resuming on mouse leave', () => {
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>
-    )
+    vi.useFakeTimers()
+    try {
+      render(
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>
+      )
 
-    const chatbox = screen.getByLabelText('Recent equipment usage and returns chatbox')
-    expect(screen.getByText('Recent Equipment Usage')).toBeTruthy()
+      const chatbox = screen.getByLabelText('Recent equipment usage and returns chatbox')
+      expect(chatbox).toBeTruthy()
 
-    // Mouse enter pauses
-    fireEvent.mouseEnter(chatbox)
-    expect(screen.getByText('Paused (Hover)')).toBeTruthy()
+      const bubbles = screen.getAllByRole('button', { name: /TP-/i })
+      expect(bubbles[0].className).toContain('scale-[1.01]')
 
-    // Mouse leave resumes
-    fireEvent.mouseLeave(chatbox)
-    expect(screen.getByText('Recent Equipment Usage')).toBeTruthy()
+      // Hovering pauses auto-cycling
+      fireEvent.mouseEnter(chatbox)
+      act(() => {
+        vi.advanceTimersByTime(4000)
+      })
+      expect(bubbles[0].className).toContain('scale-[1.01]')
+
+      // Mouse leave resumes auto-cycling
+      fireEvent.mouseLeave(chatbox)
+      act(() => {
+        vi.advanceTimersByTime(4000)
+      })
+      expect(bubbles[1].className).toContain('scale-[1.01]')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('allows clicking a chat bubble to focus and highlight it', () => {
