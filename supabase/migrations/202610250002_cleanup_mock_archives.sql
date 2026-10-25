@@ -1,5 +1,6 @@
 -- Migration 202610250002_cleanup_mock_archives.sql
--- Clean up all mock / test archived equipment and staff directory entries
+-- Clean up all mock / test archived equipment and staff directory entries,
+-- and add complete Preservation Lifecycle support (restore, purge, and archive note editing)
 begin;
 
 -- 1. Remove mock/test archived equipment from database
@@ -14,7 +15,11 @@ delete from timber.incidents where subject_id in (select id from timber.people w
 delete from timber.releases where borrower_id in (select id from timber.people where archived = true);
 delete from timber.people where archived = true;
 
--- 3. Extend timber.inventory_mutate to support unarchive, purge-archive, and purge-all-archives
+-- 3. Add archive_reason columns for preservation memos
+alter table timber.items add column if not exists archive_reason text;
+alter table timber.people add column if not exists archive_reason text;
+
+-- 4. Extend timber.inventory_mutate to support unarchive, purge-archive, purge-all-archives, and archive-note
 create or replace function timber.inventory_mutate(action jsonb, request_id uuid) returns void language plpgsql security definer set search_path='' as $$
 declare p timber.profiles; manager boolean; t text:=action->>'type'; item_id uuid; r timber.releases; n timber.incidents; i timber.items;
  stored jsonb; release_id uuid; borrower uuid; kind text; cond text; ext jsonb; target timber.profiles;
@@ -23,7 +28,7 @@ begin
  if p.status is distinct from 'active' or p.role not in ('Administrator','Inventory Custodian') then raise exception 'Approved membership required.'; end if;
  if request_id is null then raise exception 'Request ID required.'; end if;
  manager:=p.role in ('Administrator','Inventory Custodian');
- if t is null or t not in ('item','checkout','return','incident','resolve','archive','unarchive','purge-archive','purge-all-archives','correct','membership') then raise exception 'Unknown operation.'; end if;
+ if t is null or t not in ('item','checkout','return','incident','resolve','archive','unarchive','archive-note','purge-archive','purge-all-archives','correct','membership') then raise exception 'Unknown operation.'; end if;
  if t<>'incident' and not manager then raise exception 'Custodian or administrator required.'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p.id::text||request_id::text,0));
  select payload into stored from timber.requests q where q.actor=p.id and q.request_id=inventory_mutate.request_id;
@@ -53,6 +58,13 @@ begin
      delete from timber.incidents where subject_id in (select id from timber.people where archived = true);
      delete from timber.releases where borrower_id in (select id from timber.people where archived = true);
      delete from timber.people where archived = true;
+   end if;
+ elsif t='archive-note' then
+   if length(trim(coalesce(action->>'reason',''))) not between 1 and 1000 then raise exception 'Document a reason.'; end if;
+   if action->>'targetType' = 'equipment' then
+     update timber.items set archive_reason = trim(action->>'reason') where id = (action->>'id')::uuid;
+   else
+     update timber.people set archive_reason = trim(action->>'reason') where id = (action->>'id')::uuid;
    end if;
  else
    if t in ('return','correct') then
@@ -114,7 +126,7 @@ begin
      if length(trim(coalesce(action->>'reason',''))) not between 1 and 1000 then raise exception 'Document a reason.'; end if;
      if t='archive' then
        if exists(select 1 from timber.releases where releases.item_id=i.id and returned_at is null) or exists(select 1 from timber.incidents where incidents.item_id=i.id and resolved_at is null) then raise exception 'Resolve active usage and incidents before archiving.'; end if;
-       update timber.items set archived=true where id=i.id;
+       update timber.items set archived=true, archive_reason=trim(coalesce(action->>'reason', 'Decommissioned from publication inventory')) where id=i.id;
      else
        update timber.releases set purpose=trim(action->>'purpose'),due_at=(action->>'due')::timestamptz where id=r.id;
      end if;
@@ -130,7 +142,7 @@ begin
  insert into timber.requests values(p.id,request_id,action);
 end $$;
 
--- 4. Extend public.inventory_mutate to route person-unarchive and staff purge-archive
+-- 5. Extend public.inventory_mutate to route person-unarchive, archive-note, and staff purge-archive
 create or replace function public.inventory_mutate(action jsonb, request_id uuid) returns void
 language plpgsql security definer set search_path='' as $$
 declare p timber.profiles; target timber.profiles; stored jsonb; operation text:=action->>'type'; person_id uuid;
@@ -159,7 +171,7 @@ begin
      perform 1 from timber.people where id=person_id for update;
      if not found then raise exception 'Directory member not found.'; end if;
      if exists(select 1 from timber.releases where borrower_id=person_id and returned_at is null) then raise exception 'Record outstanding equipment returns before archiving.'; end if;
-     update timber.people set archived=true where id=person_id;
+     update timber.people set archived=true, archive_reason=trim(coalesce(action->>'reason', 'Archived from staff directory')) where id=person_id;
    elsif operation='person-unarchive' then
      perform 1 from timber.people where id=person_id for update;
      if not found then raise exception 'Directory member not found.'; end if;
@@ -176,6 +188,10 @@ begin
    delete from timber.releases where borrower_id = person_id;
    delete from timber.people where id = person_id;
    insert into timber.requests values(p.id,request_id,action);
+   return;
+ end if;
+ if operation='archive-note' then
+   perform timber.inventory_mutate(action, request_id);
    return;
  end if;
  if operation in ('membership','update-profile','delete-profile') then

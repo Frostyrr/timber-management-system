@@ -73,3 +73,41 @@ it('allows restoring an archived record and clean up purging mock archives', asy
  fireEvent.submit(confirmCleanAllBtn.closest('form')!)
  expect(act).toHaveBeenCalledWith({ type: 'purge-all-archives', targetType: 'equipment' })
 })
+
+it('allows editing the archival disposition memo/note for preserved records', async () => {
+ Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {configurable:true, value:vi.fn(function(this: HTMLDialogElement) { this.setAttribute('open','') })})
+ Object.defineProperty(HTMLDialogElement.prototype, 'close', {configurable:true, value:vi.fn(function(this: HTMLDialogElement) { this.removeAttribute('open') })})
+ const initial = seed()
+ const act = vi.fn().mockResolvedValue(undefined)
+ const state = {
+   ...initial,
+   items: [{...initial.items[0], name: 'Retired camera', archived: true, archiveReason: 'Original decommissioning note'}],
+   people: [{id: 'former', name: 'Former member', title: 'Adviser', department: '', archived: true}],
+ }
+
+ render(
+   <MemoryRouter>
+     <InventoryContext.Provider value={{state, person: state.profiles[0], act, warning: '', notice: ''}}>
+       <Archives />
+     </InventoryContext.Provider>
+   </MemoryRouter>
+ )
+
+ const editNoteBtn = screen.getByRole('button', { name: 'Edit note for Retired camera' })
+ fireEvent.click(editNoteBtn)
+
+ expect(screen.getByRole('heading', { name: 'Edit Archive Note · Retired camera' })).toBeTruthy()
+ const textarea = screen.getByLabelText('Archive Reason / Disposition Memo') as HTMLTextAreaElement
+ expect(textarea.value).toBe('Original decommissioning note')
+
+ fireEvent.change(textarea, { target: { value: 'Surplus auction disposition approved by dean' } })
+ const saveBtn = screen.getByRole('button', { name: 'Save note' })
+ fireEvent.submit(saveBtn.closest('form')!)
+
+ expect(act).toHaveBeenCalledWith({
+   type: 'archive-note',
+   targetType: 'equipment',
+   id: 'i0',
+   reason: 'Surplus auction disposition approved by dean',
+ })
+})

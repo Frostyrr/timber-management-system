@@ -17,6 +17,8 @@ const itemSchema = z.object({
   condition: z.enum(['Good', 'Fair', 'Damaged', 'Missing']),
   archived: z.boolean().optional(),
   unavailable: z.boolean().optional(),
+  archiveReason: z.string().optional(),
+  archive_reason: z.string().nullable().optional(),
 })
 export const EVENT_CATEGORIES = [
   'Sports Coverage',
@@ -76,7 +78,7 @@ const eventSchema = z.object({
 export const stateSchema = z.object({
   version: z.literal(3),
   profiles: z.array(profileSchema).min(1),
-  people: z.array(z.object({ id: z.string(), name: z.string(), department: z.string(), title: z.string(), archived: z.boolean() })).optional(),
+  people: z.array(z.object({ id: z.string(), name: z.string(), department: z.string(), title: z.string(), archived: z.boolean(), archiveReason: z.string().optional(), archive_reason: z.string().nullable().optional() })).optional(),
   items: z.array(itemSchema),
   loans: z.array(loanSchema),
   incidents: z.array(incidentSchema),
@@ -183,6 +185,7 @@ export type Action =
   | { type: 'resolve'; id: string; outcome: string; condition: Item['condition'] }
   | { type: 'archive'; itemId: string; reason: string }
   | { type: 'unarchive'; itemId: string; reason?: string }
+  | { type: 'archive-note'; targetType: 'equipment' | 'staff'; id: string; reason: string }
   | { type: 'person-save'; id: string; name: string; department: string; title: string }
   | { type: 'person-archive'; id: string; reason: string }
   | { type: 'person-unarchive'; id: string; reason?: string }
@@ -489,6 +492,19 @@ export function transition(state: State, actorId: string, action: Action): State
     i.archived = true
     s.items = s.items.filter((x) => x.id !== action.itemId)
     log(`Deleted equipment: ${i.name} (${i.tag}) - ${action.reason || 'Decommissioned'}`, i.id)
+  } else if (action.type === 'archive-note') {
+    requireThat(canInventory(p), 'Only custodians and administrators manage archives.')
+    if (action.targetType === 'equipment') {
+      const i = s.items.find((x) => x.id === action.id)
+      if (!i) throw Error('Equipment not found.')
+      i.archiveReason = action.reason
+      log(`Updated archival disposition note for equipment: ${i.name} - ${action.reason}`, i.id)
+    } else {
+      const personObj = s.people?.find((x) => x.id === action.id)
+      if (!personObj) throw Error('Staff member not found.')
+      personObj.archiveReason = action.reason
+      log(`Updated archival disposition note for staff member: ${personObj.name} - ${action.reason}`, personObj.id)
+    }
   } else if (action.type === 'unarchive') {
     requireThat(canInventory(p), 'Only custodians and administrators manage equipment.')
     const i = s.items.find((x) => x.id === action.itemId)

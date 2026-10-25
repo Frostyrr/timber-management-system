@@ -17,6 +17,8 @@ const itemSchema = z.object({
   condition: z.enum(['Good', 'Fair', 'Damaged', 'Missing']),
   archived: z.boolean().optional(),
   unavailable: z.boolean().optional(),
+  archiveReason: z.string().optional(),
+  archive_reason: z.string().nullable().optional(),
 })
 export const EVENT_CATEGORIES = [
   'Sports Coverage',
@@ -74,7 +76,15 @@ const eventSchema = z.object({
   reason: z.string().optional(),
   useType: z.string().nullable().optional(),
 })
-export const directorySchema = z.object({ id:z.string(), name:z.string(), department:z.string(), title:z.string(), archived:z.boolean() })
+export const directorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  department: z.string(),
+  title: z.string(),
+  archived: z.boolean(),
+  archiveReason: z.string().optional(),
+  archive_reason: z.string().nullable().optional(),
+})
 export type DirectoryPerson = z.infer<typeof directorySchema>
 export const stateSchema = z.object({
   version: z.literal(3),
@@ -107,6 +117,7 @@ export type Action =
   | { type: 'resolve'; id: string; outcome: string; condition: Item['condition'] }
   | { type: 'archive'; itemId: string; reason: string }
   | { type: 'unarchive'; itemId: string; reason?: string }
+  | { type: 'archive-note'; targetType: 'equipment' | 'staff'; id: string; reason: string }
   | { type: 'purge-archive'; targetType: 'equipment' | 'staff'; id: string; reason?: string }
   | { type: 'purge-all-archives'; targetType?: 'equipment' | 'staff' | 'all'; reason?: string }
   | { type: 'correct'; loanId: string; purpose: string; due: string; reason: string }
@@ -218,6 +229,10 @@ export function formatEventDetails(
 
   if (rawAction === 'unarchive') {
     return `Restored equipment from archives: ${itemName}`
+  }
+
+  if (rawAction === 'archive-note') {
+    return `Updated archive disposition memo: ${e.reason || itemName}`
   }
 
   if (rawAction === 'purge-archive' || rawAction === 'purge-all-archives') {

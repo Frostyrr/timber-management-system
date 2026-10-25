@@ -12,7 +12,7 @@ import { Field } from '../components/ui/Field'
 import { Modal } from '../components/ui/Modal'
 import { Pagination } from '../components/ui/Pagination'
 import { dateText } from '../components/format'
-import { Trash2, RotateCcw } from 'lucide-react'
+import { Trash2, RotateCcw, Pencil, FileText } from 'lucide-react'
 
 export function Archives() {
   const { state, person, act } = useInventory()
@@ -23,17 +23,48 @@ export function Archives() {
   const [history, setHistory] = useState<{ id: string; name: string } | null>(null)
   const [restoringRecord, setRestoringRecord] = useState<{ id: string; name: string; type: 'equipment' | 'staff' } | null>(null)
   const [purgingRecord, setPurgingRecord] = useState<{ id: string; name: string; type: 'equipment' | 'staff' } | null>(null)
+  const [editingNoteRecord, setEditingNoteRecord] = useState<{ id: string; name: string; type: 'equipment' | 'staff'; currentReason: string } | null>(null)
   const [purgeAllConfirm, setPurgeAllConfirm] = useState(false)
 
   if (!canInventory(person)) return <Navigate to="/" replace />
 
+  const getArchiveReason = (id: string, explicitReason?: string | null) => {
+    if (explicitReason && explicitReason.trim()) return explicitReason.trim()
+    const ev = state.events.find(
+      (e) =>
+        (e.entityId === id || e.subjectId === id) &&
+        (Boolean(e.reason) ||
+          e.text?.toLowerCase().includes('decommission') ||
+          e.text?.toLowerCase().includes('archived')),
+    )
+    return ev?.reason || (tab === 'equipment' ? 'Decommissioned from catalog' : 'Departed / Term completed')
+  }
+
   const records = tab === 'equipment'
-    ? state.items.filter(i => i.archived).map(i => ({ id: i.id, name: i.name, detail: i.tag, category: i.category, condition: i.condition }))
-    : (state.people ?? []).filter(p => p.archived).map(p => ({ id: p.id, name: p.name, detail: p.title || 'Position not recorded', category: staffCategory(p.title), condition: '' }))
+    ? state.items.filter(i => i.archived).map(i => ({
+        id: i.id,
+        name: i.name,
+        detail: i.tag,
+        category: i.category,
+        condition: i.condition,
+        reason: getArchiveReason(i.id, i.archiveReason || i.archive_reason),
+      }))
+    : (state.people ?? []).filter(p => p.archived).map(p => ({
+        id: p.id,
+        name: p.name,
+        detail: p.title || 'Position not recorded',
+        category: staffCategory(p.title),
+        condition: '',
+        reason: getArchiveReason(p.id, p.archiveReason || p.archive_reason),
+      }))
 
   const categories = [...new Set(records.map(r => r.category))].sort()
   const filtered = records
-    .filter(r => (!category || r.category === category) && `${r.name} ${r.detail} ${r.category}`.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter(
+      r =>
+        (!category || r.category === category) &&
+        `${r.name} ${r.detail} ${r.category} ${r.reason}`.toLowerCase().includes(search.trim().toLowerCase()),
+    )
     .sort((a, b) => a.name.localeCompare(b.name))
 
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 10)))
@@ -76,6 +107,19 @@ export function Archives() {
       targetType: tab,
     } as Action)
     setPurgeAllConfirm(false)
+  }
+
+  const handleSaveNote = async (f: FormData) => {
+    if (!editingNoteRecord) return
+    const reason = String(f.get('reason') || '').trim()
+    if (!reason) return
+    await act({
+      type: 'archive-note',
+      targetType: editingNoteRecord.type,
+      id: editingNoteRecord.id,
+      reason,
+    })
+    setEditingNoteRecord(null)
   }
 
   return <>
@@ -139,7 +183,7 @@ export function Archives() {
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
-              placeholder={tab === 'equipment' ? 'Name, asset tag, or category' : 'Name, position, or category'}
+              placeholder={tab === 'equipment' ? 'Name, asset tag, category, or note' : 'Name, position, category, or note'}
             />
           </Field>
           <Field label="Archive category">
@@ -162,16 +206,25 @@ export function Archives() {
                 <th>{tab === 'equipment' ? 'Asset tag' : 'Position'}</th>
                 <th>Category</th>
                 {tab === 'equipment' && <th>Condition</th>}
+                <th>Archival Disposition Memo</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.slice((currentPage-1)*10, currentPage*10).map(r => (
                 <tr key={r.id}>
-                  <td>{r.name}</td>
-                  <td>{r.detail}</td>
+                  <td>
+                    <strong className="block text-ink font-medium">{r.name}</strong>
+                  </td>
+                  <td className="font-mono text-xs">{r.detail}</td>
                   <td>{r.category}</td>
                   {tab === 'equipment' && <td>{r.condition}</td>}
+                  <td className="max-w-xs">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-ink bg-surface/70 px-2 py-0.5 rounded-lg border border-line-subtle line-clamp-1">
+                      <FileText size={11} className="text-muted-ink shrink-0" />
+                      <span className="truncate">{r.reason}</span>
+                    </span>
+                  </td>
                   <td className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
@@ -180,14 +233,24 @@ export function Archives() {
                         aria-label={`View history for ${r.name}`}
                         onClick={() => setHistory(r)}
                       >
-                        View history
+                        History
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary text-xs px-2 py-1 text-muted-ink hover:text-ink hover:bg-surface flex items-center gap-1"
+                        aria-label={`Edit note for ${r.name}`}
+                        onClick={() => setEditingNoteRecord({ id: r.id, name: r.name, type: tab, currentReason: r.reason })}
+                        title="Edit archival disposition note"
+                      >
+                        <Pencil size={11} />
+                        <span>Note</span>
                       </button>
                       <button
                         type="button"
                         className="secondary text-xs px-2.5 py-1 text-primary hover:bg-pale hover:border-line flex items-center gap-1"
                         aria-label={`Restore ${r.name}`}
                         onClick={() => setRestoringRecord({ id: r.id, name: r.name, type: tab })}
-                        title="Restore record to active inventory"
+                        title="Restore record to active catalog"
                       >
                         <RotateCcw size={11} />
                         <span>Restore</span>
@@ -247,6 +310,32 @@ export function Archives() {
           </article>
         ))}
         {!events.length && <Empty text="No activity available." />}
+      </Modal>
+    )}
+
+    {editingNoteRecord && (
+      <Modal
+        title={`Edit Archive Note · ${editingNoteRecord.name}`}
+        submit="Save note"
+        onClose={() => setEditingNoteRecord(null)}
+        onSubmit={handleSaveNote}
+      >
+        <div className="space-y-3.5">
+          <p className="text-xs text-muted-ink leading-relaxed">
+            Update the official archival disposition memo for{' '}
+            <strong className="text-ink">{editingNoteRecord.name}</strong>.
+          </p>
+          <Field label="Archive Reason / Disposition Memo">
+            <textarea
+              name="reason"
+              required
+              defaultValue={editingNoteRecord.currentReason}
+              placeholder="e.g. Decommissioned after sensor defect; parts salvaged for training."
+              rows={3}
+              className="w-full text-xs rounded-xl border border-line p-2.5 bg-white font-sans focus:outline-hidden focus:border-primary"
+            />
+          </Field>
+        </div>
       </Modal>
     )}
 

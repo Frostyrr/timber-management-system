@@ -13,6 +13,7 @@ function getActionSuccessMessage(action: Action, state: State | null): string {
     case 'unarchive': return 'Equipment restored from archives to active catalog.'
     case 'purge-archive': return 'Archived record permanently purged.'
     case 'purge-all-archives': return 'Archived mock records purged successfully.'
+    case 'archive-note': return 'Archive disposition note updated.'
     case 'checkout': {
       const item = state?.items.find((i) => i.id === action.itemId)
       return item
