@@ -128,11 +128,11 @@ export default function App() {
 
   if (isLoginPage) {
     return (
-      <div className="app-backdrop min-h-screen bg-workspace flex items-center justify-center p-4">
+      <div className="app-backdrop min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10">
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        <main id="main" className="w-full flex justify-center">
+        <main id="main" className="w-full max-w-[1240px] flex justify-center">
           <Login />
         </main>
       </div>

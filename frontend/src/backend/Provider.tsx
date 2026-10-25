@@ -176,7 +176,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
     warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '', notice }}>{children}</InventoryContext.Provider>
   if (!signedIn) return <>
     {location.pathname !== '/login' && <Navigate to="/login" replace />}
-    <main className="min-h-screen bg-workspace flex items-center justify-center p-4"><Login checkingSession={false} /></main>
+    <main className="min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10"><div className="w-full max-w-[1240px] flex justify-center"><Login checkingSession={false} /></div></main>
   </>
   return <main className="min-h-screen bg-workspace flex items-center justify-center p-4">
     <div className="w-full max-w-[440px] rounded-[32px] border border-white/90 bg-white/85 p-8 shadow-[0_24px_64px_rgba(21,63,50,0.12)] backdrop-blur-2xl text-center animate-enter">
