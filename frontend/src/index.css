@@ -171,7 +171,7 @@
   input,
   select,
   textarea {
-    @apply max-w-full rounded-xl border border-line bg-canvas px-3.5 py-[8.5px] font-normal text-ink transition-colors duration-150 hover:border-[#c6d0c6];
+    @apply max-w-full rounded-xl border border-line bg-canvas px-3.5 py-2.5 sm:py-[8.5px] min-h-[44px] sm:min-h-[38px] text-[15px] sm:text-[13px] font-normal text-ink transition-colors duration-150 hover:border-[#c6d0c6];
   }
 
   textarea {
@@ -203,11 +203,11 @@
   }
 
   .primary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full bg-primary px-4 py-[8.5px] text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-white shadow-[0_4px_14px_rgba(21,63,50,0.22)] transition-all duration-150 hover:bg-primary-hover;
+    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full bg-primary px-4 sm:px-4 py-2.5 sm:py-[8.5px] min-h-[44px] sm:min-h-[36px] text-[13.5px] sm:text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-white shadow-[0_4px_14px_rgba(21,63,50,0.22)] transition-all duration-150 hover:bg-primary-hover active:scale-[0.98];
   }
 
   .secondary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full border border-white/90 bg-white/85 px-4 py-[8.5px] text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-ink shadow-[0_2px_8px_rgba(21,63,50,0.05)] backdrop-blur-md transition-all duration-150 hover:border-[#cbd8cd] hover:bg-white hover:text-primary;
+    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full border border-white/90 bg-white/85 px-4 sm:px-4 py-2.5 sm:py-[8.5px] min-h-[44px] sm:min-h-[36px] text-[13.5px] sm:text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-ink shadow-[0_2px_8px_rgba(21,63,50,0.05)] backdrop-blur-md transition-all duration-150 hover:border-[#cbd8cd] hover:bg-white hover:text-primary active:scale-[0.98];
   }
 
   .hero-btn-primary {
@@ -223,7 +223,7 @@
   }
 
   .action-pill {
-    @apply inline-flex cursor-pointer items-center justify-center gap-[5px] rounded-full border border-line bg-canvas px-3.5 py-[6px] text-xs font-[450] whitespace-nowrap text-ink shadow-[0_1px_3px_rgba(21,63,50,0.03)] transition-all duration-150 hover:border-[#c5d5c9] hover:bg-pale hover:text-primary;
+    @apply inline-flex cursor-pointer items-center justify-center gap-[5px] rounded-full border border-line bg-canvas px-3.5 py-2 sm:py-[6px] min-h-[40px] sm:min-h-[32px] text-[13px] sm:text-xs font-[450] whitespace-nowrap text-ink shadow-[0_1px_3px_rgba(21,63,50,0.03)] transition-all duration-150 hover:border-[#c5d5c9] hover:bg-pale hover:text-primary active:scale-[0.98];
   }
 
   .action-pill.primary-pill {
@@ -235,7 +235,7 @@
   }
 
   .danger {
-    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full bg-[#963838] px-4 py-[8.5px] text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-white shadow-[0_2px_8px_rgba(150,56,56,0.18)] transition-all duration-150 hover:bg-[#802c2c] active:scale-[0.98];
+    @apply inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-full bg-[#963838] px-4 py-2.5 sm:py-[8.5px] min-h-[44px] sm:min-h-[36px] text-[13.5px] sm:text-[12.5px] font-medium tracking-[-0.01em] whitespace-nowrap text-white shadow-[0_2px_8px_rgba(150,56,56,0.18)] transition-all duration-150 hover:bg-[#802c2c] active:scale-[0.98];
   }
 
   .text-button {
@@ -245,4 +245,29 @@
   .skip-link {
     @apply fixed -top-[100px] left-5 z-[200] rounded-full bg-primary px-[15px] py-[9px] font-medium text-white focus:top-[14px];
   }
+
+  /* Smooth horizontal touch sliding for tab bars, filter pills, and mobile toolbars */
+  .touch-slide-x {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+  }
+
+  .touch-slide-x::-webkit-scrollbar {
+    display: none;
+  }
+
+  .touch-slide-item {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
 }
