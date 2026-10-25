@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   XCircle,
   RotateCcw,
+  RefreshCw,
 } from 'lucide-react'
 import { Heading } from '../../components/layout/Heading'
 import { useSecuritySuite } from '../../backend/useSecuritySuite'
@@ -40,6 +41,9 @@ export function SecurityPolicies() {
     removeAuthorizedEmail,
     suspendAccount,
     reactivateAccount,
+    isLive,
+    loading,
+    syncFromBackend,
   } = useSecuritySuite()
 
   const policy = securityState.policy
@@ -235,49 +239,62 @@ export function SecurityPolicies() {
       {/* Main Tabbed Container */}
       <section className="panel p-5 sm:p-6 space-y-5">
         {/* Sub-Tabs Navigation */}
-        <div className="flex items-center gap-1.5 p-1 bg-surface rounded-2xl border border-line-subtle self-start w-fit">
-          <button
-            type="button"
-            onClick={() => setTab('domains')}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              currentTab === 'domains'
-                ? 'bg-white text-primary shadow-xs'
-                : 'text-muted-ink hover:text-ink'
-            }`}
-          >
-            <Globe2 size={14} className={currentTab === 'domains' ? 'text-primary' : 'text-muted-ink'} />
-            <span>Domain Guard & Allowlist</span>
-          </button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line-subtle pb-3">
+          <div className="flex items-center gap-1.5 p-1 bg-surface rounded-2xl border border-line-subtle self-start w-fit">
+            <button
+              type="button"
+              onClick={() => setTab('domains')}
+              className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                currentTab === 'domains'
+                  ? 'bg-white text-primary shadow-xs'
+                  : 'text-muted-ink hover:text-ink'
+              }`}
+            >
+              <Globe2 size={14} className={currentTab === 'domains' ? 'text-primary' : 'text-muted-ink'} />
+              <span>Domain Guard & Allowlist</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTab('suspensions')}
+              className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                currentTab === 'suspensions'
+                  ? 'bg-white text-primary shadow-xs'
+                  : 'text-muted-ink hover:text-ink'
+              }`}
+            >
+              <UserX size={14} className={currentTab === 'suspensions' ? 'text-red-600' : 'text-muted-ink'} />
+              <span>Account Suspensions & Killswitch</span>
+              {suspendedCount > 0 && (
+                <span className="rounded-full bg-red-100 px-1.5 py-0.2 text-[10px] text-red-800">
+                  {suspendedCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTab('thresholds')}
+              className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                currentTab === 'thresholds'
+                  ? 'bg-white text-primary shadow-xs'
+                  : 'text-muted-ink hover:text-ink'
+              }`}
+            >
+              <Sliders size={14} className={currentTab === 'thresholds' ? 'text-primary' : 'text-muted-ink'} />
+              <span>Session & Lockout Thresholds</span>
+            </button>
+          </div>
 
           <button
             type="button"
-            onClick={() => setTab('suspensions')}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              currentTab === 'suspensions'
-                ? 'bg-white text-primary shadow-xs'
-                : 'text-muted-ink hover:text-ink'
-            }`}
+            onClick={() => void syncFromBackend()}
+            disabled={loading}
+            className="rounded-xl border border-line-subtle bg-white px-2.5 py-1 text-xs font-medium text-muted-ink hover:text-ink transition flex items-center gap-1.5"
+            title="Synchronize from Supabase database"
           >
-            <UserX size={14} className={currentTab === 'suspensions' ? 'text-red-600' : 'text-muted-ink'} />
-            <span>Account Suspensions & Killswitch</span>
-            {suspendedCount > 0 && (
-              <span className="rounded-full bg-red-100 px-1.5 py-0.2 text-[10px] text-red-800">
-                {suspendedCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTab('thresholds')}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              currentTab === 'thresholds'
-                ? 'bg-white text-primary shadow-xs'
-                : 'text-muted-ink hover:text-ink'
-            }`}
-          >
-            <Sliders size={14} className={currentTab === 'thresholds' ? 'text-primary' : 'text-muted-ink'} />
-            <span>Session & Lockout Thresholds</span>
+            <RefreshCw size={12} className={loading ? 'animate-spin text-primary' : 'text-muted-ink'} />
+            <span>{isLive ? 'DB Connected' : 'Sync'}</span>
           </button>
         </div>
 

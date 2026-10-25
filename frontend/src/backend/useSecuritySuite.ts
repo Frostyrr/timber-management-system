@@ -8,17 +8,64 @@ import {
   SECURITY_STATE_CHANGED_EVENT,
   getInitialSecurityState,
 } from './security'
+import { client, fetchSecuritySnapshot, mutateSecurity } from './client'
 
 export function useSecuritySuite() {
   const [securityState, setSecurityState] = useState<SecurityState>(loadSecurityState)
+  const [loading, setLoading] = useState(false)
+  const [isLive, setIsLive] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
+  const syncFromBackend = useCallback(async () => {
+    if (!client) return
+    try {
+      setLoading(true)
+      const data = await fetchSecuritySnapshot()
+      if (data && typeof data === 'object') {
+        setSecurityState(data)
+        saveSecurityState(data)
+        notifySecurityStateChange()
+        setIsLive(true)
+        setSyncError(null)
+      }
+    } catch (err) {
+      console.warn('Backend security sync note (using cached/optimistic state):', err)
+      setSyncError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to synchronize security telemetry with database.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
+    let active = true
     const handler = () => {
       setSecurityState(loadSecurityState())
     }
     window.addEventListener(SECURITY_STATE_CHANGED_EVENT, handler)
     window.addEventListener('storage', handler)
+
+    if (client) {
+      void fetchSecuritySnapshot()
+        .then((data) => {
+          if (active && data && typeof data === 'object') {
+            setSecurityState(data)
+            saveSecurityState(data)
+            notifySecurityStateChange()
+            setIsLive(true)
+            setSyncError(null)
+          }
+        })
+        .catch((err) => {
+          console.warn('Backend security sync note (using cached state):', err)
+        })
+    }
+
     return () => {
+      active = false
       window.removeEventListener(SECURITY_STATE_CHANGED_EVENT, handler)
       window.removeEventListener('storage', handler)
     }
@@ -33,6 +80,19 @@ export function useSecuritySuite() {
     })
   }, [])
 
+  const runRemoteMutation = useCallback(
+    async (mutationPayload: unknown) => {
+      if (!client) return
+      try {
+        await mutateSecurity(mutationPayload)
+        await syncFromBackend()
+      } catch (err) {
+        console.warn('Database security mutation notification:', err)
+      }
+    },
+    [syncFromBackend],
+  )
+
   const revokeSession = useCallback(
     (sessionId: string) => {
       update((prev) => ({
@@ -41,21 +101,31 @@ export function useSecuritySuite() {
           s.id === sessionId ? { ...s, status: 'revoked' as const } : s,
         ),
       }))
+      void runRemoteMutation({ type: 'revoke-session', sessionId })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const revokeAllOtherSessions = useCallback(() => {
-    update((prev) => ({
-      ...prev,
-      sessions: prev.sessions.map((s) =>
-        s.isCurrent ? s : { ...s, status: 'revoked' as const },
-      ),
-    }))
-  }, [update])
+    let currentId = 'sess-current'
+    update((prev) => {
+      const cur = prev.sessions.find((s) => s.isCurrent)
+      if (cur) currentId = cur.id
+      return {
+        ...prev,
+        sessions: prev.sessions.map((s) =>
+          s.isCurrent ? s : { ...s, status: 'revoked' as const },
+        ),
+      }
+    })
+    void runRemoteMutation({ type: 'revoke-all-other-sessions', currentSessionId: currentId })
+  }, [update, runRemoteMutation])
 
   const resolveThreat = useCallback(
-    (threatId: string, resolutionNote: string = 'Threat investigated and resolved by administrator.') => {
+    (
+      threatId: string,
+      resolutionNote: string = 'Threat investigated and resolved by administrator.',
+    ) => {
       update((prev) => ({
         ...prev,
         threats: prev.threats.map((t) =>
@@ -64,8 +134,9 @@ export function useSecuritySuite() {
             : t,
         ),
       }))
+      void runRemoteMutation({ type: 'resolve-threat', threatId, resolutionNote })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const dismissThreat = useCallback(
@@ -76,8 +147,9 @@ export function useSecuritySuite() {
           t.id === threatId ? { ...t, status: 'dismissed' as const } : t,
         ),
       }))
+      void runRemoteMutation({ type: 'dismiss-threat', threatId })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const suspendAccount = useCallback(
@@ -90,7 +162,6 @@ export function useSecuritySuite() {
       adminName: string,
     ) => {
       update((prev) => {
-        // Also revoke all active sessions for this suspended user
         const updatedSessions = prev.sessions.map((s) =>
           s.userId === userId ? { ...s, status: 'revoked' as const } : s,
         )
@@ -121,7 +192,6 @@ export function useSecuritySuite() {
               ...prev.suspensions,
             ]
 
-        // Add a login failed record for the event stream
         const suspensionEvent = {
           id: `suspend-evt-${Date.now()}`,
           userId,
@@ -145,8 +215,16 @@ export function useSecuritySuite() {
           loginEvents: [suspensionEvent, ...prev.loginEvents],
         }
       })
+      void runRemoteMutation({
+        type: 'suspend-account',
+        userId,
+        userName,
+        userEmail,
+        role,
+        reason,
+      })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const reactivateAccount = useCallback(
@@ -155,8 +233,9 @@ export function useSecuritySuite() {
         ...prev,
         suspensions: prev.suspensions.filter((s) => s.userId !== userId),
       }))
+      void runRemoteMutation({ type: 'reactivate-account', userId })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const updatePolicy = useCallback(
@@ -168,8 +247,9 @@ export function useSecuritySuite() {
           ...patch,
         },
       }))
+      void runRemoteMutation({ type: 'update-policy', patch })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const addAuthorizedEmail = useCallback(
@@ -195,8 +275,9 @@ export function useSecuritySuite() {
           },
         }
       })
+      void runRemoteMutation({ type: 'add-authorized-email', email, note })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const removeAuthorizedEmail = useCallback(
@@ -213,15 +294,18 @@ export function useSecuritySuite() {
           },
         }
       })
+      void runRemoteMutation({ type: 'remove-authorized-email', email })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const addAllowedDomain = useCallback(
     (domain: string) => {
+      const normalized = domain.trim().toLowerCase().replace(/^@/, '')
+      if (!normalized) return
+
       update((prev) => {
-        const normalized = domain.trim().toLowerCase().replace(/^@/, '')
-        if (!normalized || prev.policy.allowedDomains.includes(normalized)) {
+        if (prev.policy.allowedDomains.includes(normalized)) {
           return prev
         }
         return {
@@ -232,8 +316,9 @@ export function useSecuritySuite() {
           },
         }
       })
+      void runRemoteMutation({ type: 'add-allowed-domain', domain: normalized })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const removeAllowedDomain = useCallback(
@@ -245,8 +330,9 @@ export function useSecuritySuite() {
           allowedDomains: prev.policy.allowedDomains.filter((d) => d !== domain),
         },
       }))
+      void runRemoteMutation({ type: 'remove-allowed-domain', domain })
     },
-    [update],
+    [update, runRemoteMutation],
   )
 
   const resetToDefaults = useCallback(() => {
@@ -258,6 +344,10 @@ export function useSecuritySuite() {
 
   return {
     securityState,
+    loading,
+    isLive,
+    syncError,
+    syncFromBackend,
     revokeSession,
     revokeAllOtherSessions,
     resolveThreat,

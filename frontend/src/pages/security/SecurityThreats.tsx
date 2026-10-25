@@ -25,6 +25,9 @@ export function SecurityThreats() {
     resolveThreat,
     dismissThreat,
     resetToDefaults,
+    isLive,
+    loading,
+    syncFromBackend,
   } = useSecuritySuite()
 
   const [filter, setFilter] = useState<'all' | 'active' | 'resolved'>('all')
@@ -188,13 +191,26 @@ export function SecurityThreats() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-primary border border-emerald-200">
+              <span className={`h-1.5 w-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-400'}`} />
+              <span>{isLive ? 'Database Synced' : 'Telemetry Active'}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => void syncFromBackend()}
+              disabled={loading}
+              className="secondary text-xs h-8 px-2.5"
+              title="Refresh telemetry from database"
+            >
+              <RefreshCw size={13} className={`text-muted-ink ${loading ? 'animate-spin' : ''}`} />
+              <span>Sync</span>
+            </button>
             <button
               type="button"
               onClick={resetToDefaults}
               className="secondary text-xs h-8 px-2.5"
               title="Reset sample telemetry data"
             >
-              <RefreshCw size={13} className="text-muted-ink" />
               <span>Reset demo logs</span>
             </button>
           </div>

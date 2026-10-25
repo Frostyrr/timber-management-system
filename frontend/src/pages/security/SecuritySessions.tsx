@@ -12,6 +12,7 @@ import {
   Search,
   Sparkles,
   ShieldAlert,
+  RefreshCw,
 } from 'lucide-react'
 import { Heading } from '../../components/layout/Heading'
 import { useSecuritySuite } from '../../backend/useSecuritySuite'
@@ -31,6 +32,9 @@ export function SecuritySessions() {
     securityState,
     revokeSession,
     revokeAllOtherSessions,
+    isLive,
+    loading,
+    syncFromBackend,
   } = useSecuritySuite()
 
   const [revokingSession, setRevokingSession] = useState<SecuritySession | null>(null)
@@ -240,32 +244,45 @@ export function SecuritySessions() {
             </button>
           </div>
 
-          {currentTab === 'sessions' && (
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setConfirmRevokeAll(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 text-xs font-semibold transition"
+              onClick={() => void syncFromBackend()}
+              disabled={loading}
+              className="rounded-xl border border-line-subtle bg-white px-2.5 py-1 text-xs font-medium text-muted-ink hover:text-ink transition flex items-center gap-1.5"
+              title="Synchronize from Supabase database"
             >
-              <LogOut size={13} />
-              <span>Revoke All Other Sessions</span>
+              <RefreshCw size={12} className={loading ? 'animate-spin text-primary' : 'text-muted-ink'} />
+              <span>{isLive ? 'DB Connected' : 'Sync'}</span>
             </button>
-          )}
 
-          {(currentTab === 'logins' || currentTab === 'devices') && (
-            <div className="relative min-w-[240px]">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-ink"
-              />
-              <input
-                type="text"
-                placeholder="Search user, IP, device, reason…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-line-subtle bg-white/80 focus:bg-white"
-              />
-            </div>
-          )}
+            {currentTab === 'sessions' && (
+              <button
+                type="button"
+                onClick={() => setConfirmRevokeAll(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 text-xs font-semibold transition"
+              >
+                <LogOut size={13} />
+                <span>Revoke All Other Sessions</span>
+              </button>
+            )}
+
+            {(currentTab === 'logins' || currentTab === 'devices') && (
+              <div className="relative min-w-[220px]">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-ink"
+                />
+                <input
+                  type="text"
+                  placeholder="Search user, IP, device, reason…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-line-subtle bg-white/80 focus:bg-white"
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* TAB 1: ACTIVE SESSIONS */}
