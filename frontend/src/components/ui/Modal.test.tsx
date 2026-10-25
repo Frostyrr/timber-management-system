@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { Modal } from './Modal'
 
 describe('Modal', () => {
@@ -17,6 +17,11 @@ describe('Modal', () => {
         this.removeAttribute('open')
       }),
     })
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
   })
 
   it('renders title, children, and opens dialog with responsive full-screen mobile classes', () => {
