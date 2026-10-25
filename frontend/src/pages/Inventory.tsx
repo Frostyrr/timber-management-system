@@ -1,4 +1,4 @@
-import { SearchableCombobox } from '../components/SearchableCombobox'
+import { SearchableCombobox } from '../components/ui/SearchableCombobox'
 import { releaseDetailsSchema, USE_TYPES, type UseType } from '../demo/release'
 import { value, dateText, tomorrow, categoryClass } from '../components/format'
 import { useState } from 'react'
@@ -16,8 +16,15 @@ import {
   formatEventDetails,
   type Item,
 } from '../backend/model'
-import { Heading, Avatar } from '../components/layout'
-import { Badge, Empty, Modal, Field, Pagination, Select, ActionMenu } from '../components/ui'
+import { Heading } from '../components/layout/Heading'
+import { Avatar } from '../components/ui/Avatar'
+import { Badge } from '../components/ui/Badge'
+import { Empty } from '../components/ui/Empty'
+import { Modal } from '../components/ui/Modal'
+import { Field } from '../components/ui/Field'
+import { Pagination } from '../components/ui/Pagination'
+import { Select } from '../components/ui/Select'
+import { ActionMenu } from '../components/ui/ActionMenu'
 
 function getScheduleSummary(iso: string) {
   const targetTime = Date.parse(iso)

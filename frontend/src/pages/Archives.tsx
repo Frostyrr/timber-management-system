@@ -3,8 +3,11 @@ import { Navigate } from 'react-router-dom'
 import { useInventory } from '../backend/context'
 import { canInventory, borrowerName } from '../backend/model'
 import { staffCategory } from '../backend/staffCategories'
-import { Heading } from '../components/layout'
-import { Empty, Field, Modal, Pagination } from '../components/ui'
+import { Heading } from '../components/layout/Heading'
+import { Empty } from '../components/ui/Empty'
+import { Field } from '../components/ui/Field'
+import { Modal } from '../components/ui/Modal'
+import { Pagination } from '../components/ui/Pagination'
 import { dateText } from '../components/format'
 
 export function Archives() {

@@ -4,8 +4,12 @@ import { Search, Package, ShieldAlert, Clock3, RefreshCw } from 'lucide-react'
 import { dateText } from '../components/format'
 import { useInventory } from '../backend/context'
 import { visibleEvents as scopedEvents, formatEventDetails, auditActorName } from '../backend/model'
-import { Heading, Avatar } from '../components/layout'
-import { Badge, Empty, Pagination, Select } from '../components/ui'
+import { Heading } from '../components/layout/Heading'
+import { Avatar } from '../components/ui/Avatar'
+import { Badge } from '../components/ui/Badge'
+import { Empty } from '../components/ui/Empty'
+import { Pagination } from '../components/ui/Pagination'
+import { Select } from '../components/ui/Select'
 
 export function Logs() {
   const { state, person, refresh } = useInventory()

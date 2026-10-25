@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useInventory } from '../backend/context'
 import { type Profile } from '../backend/model'
-import { Heading } from '../components/layout'
-import { Modal, Field, Badge, Select } from '../components/ui'
+import { Heading } from '../components/layout/Heading'
+import { Modal } from '../components/ui/Modal'
+import { Field } from '../components/ui/Field'
+import { Badge } from '../components/ui/Badge'
+import { Select } from '../components/ui/Select'
 export function Access(){
  const {state,person,act,refresh}=useInventory()
  const [editing,setEditing]=useState<Profile|null>(null)

@@ -23,7 +23,7 @@ import {
 import { useInventory } from './backend/context'
 import { visibleIncidents, canInventory, isOverdue } from './backend/model'
 import { dateText } from './components/format'
-import { Avatar } from './components/layout'
+import { Avatar } from './components/ui/Avatar'
 import { Dashboard } from './pages/Dashboard'
 import { Inventory, Incidents } from './pages/Inventory'
 import { Logs } from './pages/Logs'

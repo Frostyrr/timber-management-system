@@ -4,7 +4,8 @@ import { Package, ArrowUpRight, Clock3, ShieldAlert, Boxes, RefreshCw } from 'lu
 import { dateText, categoryClass } from '../components/format'
 import { useInventory } from '../backend/context'
 import { available, canInventory, isOverdue, visibleIncidents, formatEventDetails } from '../backend/model'
-import { Badge, Empty } from '../components/ui'
+import { Badge } from '../components/ui/Badge'
+import { Empty } from '../components/ui/Empty'
 
 export function Dashboard() {
   const { state, person, refresh } = useInventory()

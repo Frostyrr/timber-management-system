@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { client } from '../backend/client'
-import { GoogleIcon } from '../components/auth'
+import { GoogleIcon } from '../components/ui/GoogleIcon'
 
 export function Login({ checkingSession = false }: { checkingSession?: boolean }) {
   const [busy, setBusy] = useState(false)

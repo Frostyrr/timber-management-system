@@ -1,4 +1,4 @@
-import { Heading } from '../components/layout'
+import { Heading } from '../components/layout/Heading'
 import { useInventory } from '../backend/context'
 export function Security() {
  const { person, state } = useInventory()
