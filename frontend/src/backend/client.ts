@@ -64,9 +64,14 @@ export async function fetchRecentPublicActivity(): Promise<PublicActivityLog[]> 
   if (!client) return []
   try {
     const { data, error } = await client.rpc('recent_public_activity')
-    if (error || !Array.isArray(data)) return []
+    if (error) {
+      console.warn('fetchRecentPublicActivity error:', error)
+      return []
+    }
+    if (!Array.isArray(data)) return []
     return data as PublicActivityLog[]
-  } catch {
+  } catch (err) {
+    console.warn('fetchRecentPublicActivity failed:', err)
     return []
   }
 }

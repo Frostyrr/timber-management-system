@@ -119,11 +119,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         })
 
         if (formatted.length > 0) {
-          const combined = [...formatted]
-          if (combined.length < 5) {
-            FALLBACK_USAGE_RETURNS.slice(combined.length, 5).forEach((item) => combined.push(item))
-          }
-          setLogs(combined)
+          setLogs(formatted)
         }
       } catch {
         // Fallback to initial mock usage and returns if DB query fails or unconfigured
