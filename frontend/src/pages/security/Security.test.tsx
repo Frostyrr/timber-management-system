@@ -4,7 +4,6 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SecurityThreats } from './SecurityThreats'
 import { SecuritySessions } from './SecuritySessions'
-import { SecurityPolicies } from './SecurityPolicies'
 import { InventoryContext } from '../../backend/context'
 import { seed } from '../../demo/model'
 import { getInitialSecurityState, saveSecurityState } from '../../backend/security'
@@ -40,10 +39,15 @@ beforeEach(() => {
   })
 })
 
-it('SecurityThreats: displays posture score and allows resolving an active threat', async () => {
+it('SecurityThreats (Hub 1): displays posture score and allows resolving an active threat', async () => {
+  const initial = seed()
   render(
-    <MemoryRouter>
-      <SecurityThreats />
+    <MemoryRouter initialEntries={['/security']}>
+      <InventoryContext.Provider
+        value={{ state: initial, person: initial.profiles[0], act: vi.fn(), warning: '', notice: '' }}
+      >
+        <SecurityThreats />
+      </InventoryContext.Provider>
     </MemoryRouter>,
   )
 
@@ -64,56 +68,14 @@ it('SecurityThreats: displays posture score and allows resolving an active threa
   expect(await screen.findByText(/Verified legitimate international travel/)).toBeTruthy()
 })
 
-it('SecuritySessions: switches between tabs and tracks login history & failed attempts', () => {
-  render(
-    <MemoryRouter initialEntries={['/security/sessions']}>
-      <SecuritySessions />
-    </MemoryRouter>,
-  )
-
-  expect(screen.getByText('Current Device (This Browser Session)')).toBeTruthy()
-  expect(screen.getByRole('button', { name: /Active Sessions/i })).toBeTruthy()
-
-  // Switch to Login History tab
-  fireEvent.click(screen.getByRole('button', { name: /Login History & Failures/i }))
-  expect(screen.getByText('unknown.intruder@gmail.com')).toBeTruthy()
-
-  // Filter to Failed logins
-  fireEvent.click(screen.getByRole('button', { name: /Failed \(/i }))
-  expect(screen.getAllByText('Unauthorized Email Domain').length).toBeGreaterThan(0)
-
-  // Switch to New Devices tab
-  fireEvent.click(screen.getByRole('button', { name: /New Devices/i }))
-  expect(screen.getAllByText('New Device').length).toBeGreaterThan(0)
-})
-
-it('SecuritySessions: identifies current browser session and terminates active remote sessions', () => {
-  render(
-    <MemoryRouter initialEntries={['/security/sessions']}>
-      <SecuritySessions />
-    </MemoryRouter>,
-  )
-
-  const revokeButtons = screen.getAllByRole('button', { name: 'Revoke Session' })
-  expect(revokeButtons.length).toBeGreaterThan(0)
-
-  fireEvent.click(revokeButtons[0])
-  expect(screen.getByRole('heading', { name: 'Revoke active bearer token?' })).toBeTruthy()
-
-  const terminateBtn = screen.getByRole('button', { name: 'Terminate session' })
-  fireEvent.submit(terminateBtn.closest('form')!)
-
-  expect(screen.getAllByText('Revoked').length).toBeGreaterThan(0)
-})
-
-it('SecurityPolicies: manages allowed domains and authorized email allowlist', async () => {
+it('SecurityThreats (Hub 1): manages allowed domains and authorized email allowlist', async () => {
   const initial = seed()
   render(
-    <MemoryRouter initialEntries={['/security/policies']}>
+    <MemoryRouter initialEntries={['/security?tab=domains']}>
       <InventoryContext.Provider
         value={{ state: initial, person: initial.profiles[0], act: vi.fn(), warning: '', notice: '' }}
       >
-        <SecurityPolicies />
+        <SecurityThreats />
       </InventoryContext.Provider>
     </MemoryRouter>,
   )
@@ -141,22 +103,19 @@ it('SecurityPolicies: manages allowed domains and authorized email allowlist', a
   expect(screen.getByText('Keynote Lecturer for Campus Press Fest')).toBeTruthy()
 })
 
-it('SecurityPolicies: locks down an account via Suspensions tab and allows reinstatement', async () => {
+it('SecurityThreats (Hub 1): locks down an account via Suspensions tab and allows reinstatement', async () => {
   const initial = seed()
   const act = vi.fn().mockResolvedValue(undefined)
 
   render(
-    <MemoryRouter initialEntries={['/security/policies?tab=suspensions']}>
+    <MemoryRouter initialEntries={['/security?tab=suspensions']}>
       <InventoryContext.Provider
         value={{ state: initial, person: initial.profiles[0], act, warning: '', notice: '' }}
       >
-        <SecurityPolicies />
+        <SecurityThreats />
       </InventoryContext.Provider>
     </MemoryRouter>,
   )
-
-  // Switch to Suspensions tab if not already on it
-  fireEvent.click(screen.getByRole('button', { name: /Account Suspensions & Killswitch/i }))
 
   expect(screen.getByRole('button', { name: /Suspended \(/i })).toBeTruthy()
 
@@ -183,4 +142,46 @@ it('SecurityPolicies: locks down an account via Suspensions tab and allows reins
   fireEvent.submit(screen.getByRole('button', { name: 'Reactivate account' }).closest('form')!)
 
   expect(screen.getAllByText('Good standing · No active security holds').length).toBeGreaterThan(0)
+})
+
+it('SecuritySessions (Hub 2): switches between tabs and tracks login history & failed attempts', () => {
+  render(
+    <MemoryRouter initialEntries={['/security/sessions']}>
+      <SecuritySessions />
+    </MemoryRouter>,
+  )
+
+  expect(screen.getByText('Current Device (This Browser Session)')).toBeTruthy()
+  expect(screen.getByRole('button', { name: /Active Sessions/i })).toBeTruthy()
+
+  // Switch to Login History tab
+  fireEvent.click(screen.getByRole('button', { name: /Login History & Failures/i }))
+  expect(screen.getByText('unknown.intruder@gmail.com')).toBeTruthy()
+
+  // Filter to Failed logins
+  fireEvent.click(screen.getByRole('button', { name: /Failed \(/i }))
+  expect(screen.getAllByText('Unauthorized Email Domain').length).toBeGreaterThan(0)
+
+  // Switch to New Devices tab
+  fireEvent.click(screen.getByRole('button', { name: /New Devices/i }))
+  expect(screen.getAllByText('New Device').length).toBeGreaterThan(0)
+})
+
+it('SecuritySessions (Hub 2): identifies current browser session and terminates active remote sessions', () => {
+  render(
+    <MemoryRouter initialEntries={['/security/sessions']}>
+      <SecuritySessions />
+    </MemoryRouter>,
+  )
+
+  const revokeButtons = screen.getAllByRole('button', { name: 'Revoke Session' })
+  expect(revokeButtons.length).toBeGreaterThan(0)
+
+  fireEvent.click(revokeButtons[0])
+  expect(screen.getByRole('heading', { name: 'Revoke active bearer token?' })).toBeTruthy()
+
+  const terminateBtn = screen.getByRole('button', { name: 'Terminate session' })
+  fireEvent.submit(terminateBtn.closest('form')!)
+
+  expect(screen.getAllByText('Revoked').length).toBeGreaterThan(0)
 })
