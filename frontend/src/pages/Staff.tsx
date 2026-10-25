@@ -1,13 +1,15 @@
+import { PositionCombobox } from '../components/PositionCombobox'
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { History, Pencil, Archive } from 'lucide-react'
 import { useInventory } from '../backend/context'
 import { canInventory, uid, type DirectoryPerson } from '../backend/model'
 import { Heading } from '../components/layout'
-import { Modal, Field, Badge, Empty, Select, ActionMenu } from '../components/ui'
+import { Modal, Field, Badge, Empty, ActionMenu, Pagination } from '../components/ui'
 import { dateText } from '../components/format'
 
 const publicationPositions = [
+  'Adviser',
   'Editor-in-Chief',
   'Associate Editor',
   'Multimedia Director',
@@ -28,11 +30,15 @@ const publicationPositions = [
   'Graphics Artist',
   'Cartoonist',
   'Staff Member',
+  'PICO Staff',
+  'External Personnel',
 ]
 
 export function Staff() {
   const { state, person, act, refresh } = useInventory()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 10
   const [editing, setEditing] = useState<DirectoryPerson | null>(null)
   const [archiving, setArchiving] = useState<DirectoryPerson | null>(null)
   const [history, setHistory] = useState<DirectoryPerson | null>(null)
@@ -44,12 +50,15 @@ export function Staff() {
     `${p.name} ${p.title}`.toLowerCase().includes(search.toLowerCase()),
   )
 
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(people.length / pageSize)))
+  const pagePeople = people.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
   return (
     <>
       <Heading
         eyebrow="PUBLICATION PEOPLE"
         title="Staff directory"
-        description="Record members responsible for equipment. Directory entries do not grant sign-in access."
+        description="Record publication members, advisers, PICO staff, and external personnel. Directory entries do not grant sign-in access."
       >
         <button
           className="secondary"
@@ -85,8 +94,8 @@ export function Staff() {
         <Field label="Search staff">
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name or position"
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Name, position, or category"
           />
         </Field>
 
@@ -95,7 +104,7 @@ export function Staff() {
             <thead>
               <tr>
                 <th>Member</th>
-                <th>Position</th>
+                <th>Position / category</th>
                 <th>Publication uses</th>
                 <th>Member borrowings</th>
                 <th>Active uses</th>
@@ -104,7 +113,7 @@ export function Staff() {
               </tr>
             </thead>
             <tbody>
-              {people.map((p) => {
+              {pagePeople.map((p) => {
                 const uses = state.loans.filter((l) => l.borrowerId === p.id)
                 return (
                   <tr key={p.id}>
@@ -151,6 +160,7 @@ export function Staff() {
         {!people.length && (
           <Empty text="No staff members match this view. Add a directory entry to record equipment use." />
         )}
+        <Pagination page={currentPage} total={people.length} pageSize={pageSize} onPageChange={setPage} label="directory entries" />
       </section>
 
       {editing && (
@@ -164,7 +174,7 @@ export function Staff() {
           onSubmit={async (f) => {
             const title = String(f.get('title') ?? '')
             if (!publicationPositions.includes(title)) {
-              throw Error('Choose a publication position.')
+              throw Error('Choose a position or category.')
             }
             await act({
               type: 'person-save',
@@ -185,24 +195,8 @@ export function Staff() {
               defaultValue={editing.name}
             />
           </Field>
-          <Field label="Position">
-            <Select
-              name="title"
-              required
-              placeholder="Select a publication position"
-              searchable
-              defaultValue={
-                publicationPositions.includes(editing.title)
-                  ? editing.title
-                  : ''
-              }
-              maxVisibleOptions={5}
-              menuClassName="slick-scroll-dark-green"
-              options={publicationPositions.map((position) => ({
-                value: position,
-                label: position,
-              }))}
-            />
+          <Field label="Position / category">
+            <PositionCombobox options={publicationPositions} defaultValue={publicationPositions.includes(editing.title) ? editing.title : ''} />
           </Field>
           {editing.title && !publicationPositions.includes(editing.title) && (
             <p className="hint">
@@ -211,7 +205,7 @@ export function Staff() {
             </p>
           )}
           <p className="hint">
-            This creates a directory entry only. No Google account is required.
+            This creates a directory entry only. No Google account is required. For outside borrowers, record the release as External borrowing and include the request-letter reference in its purpose.
           </p>
         </Modal>
       )}
