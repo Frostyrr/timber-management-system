@@ -287,7 +287,7 @@ export function Select({
         aria-label={ariaLabel}
         disabled={disabled}
         onClick={toggleDropdown}
-        className={`group relative flex w-full items-center justify-between gap-2 rounded-xl border border-[#dfe5de] bg-white/85 px-3.5 py-2.5 text-left text-[13px] font-[450] text-ink shadow-[0_1px_3px_rgba(24,34,29,0.04)] backdrop-blur-md transition-all duration-150 hover:border-primary/40 hover:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`group relative flex w-full items-center justify-between gap-2 rounded-xl border border-[#dfe5de] bg-white/85 px-3.5 py-2.5 min-h-[44px] sm:min-h-[38px] text-left text-[14.5px] sm:text-[13px] font-[450] text-ink shadow-[0_1px_3px_rgba(24,34,29,0.04)] backdrop-blur-md transition-all duration-150 hover:border-primary/40 hover:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
           isOpen ? 'border-primary ring-2 ring-primary/20' : ''
         } ${buttonClassName}`}
       >

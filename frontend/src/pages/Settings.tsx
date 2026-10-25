@@ -33,6 +33,7 @@ import { dateText } from '../components/format'
 import { formatEventDetails, type Action } from '../backend/model'
 import { useSecuritySuite } from '../backend/useSecuritySuite'
 import { detectCurrentDevice, type SecuritySession, type SecurityLoginEvent } from '../backend/security'
+import { useTouchSwipe } from '../hooks/useTouchSwipe'
 
 type SettingsTab = 'overview' | 'devices' | 'activity' | 'danger'
 
@@ -84,6 +85,17 @@ export function Settings() {
   }
 
   // Active sessions calculation
+  // Mobile touch swipe between tabs
+  const tabOrder: SettingsTab[] = ['overview', 'devices', 'activity', 'danger']
+  const handleSwipeLeft = () => {
+    const idx = tabOrder.indexOf(tab)
+    if (idx < tabOrder.length - 1) setTab(tabOrder[idx + 1])
+  }
+  const handleSwipeRight = () => {
+    const idx = tabOrder.indexOf(tab)
+    if (idx > 0) setTab(tabOrder[idx - 1])
+  }
+  const swipeHandlers = useTouchSwipe({ onSwipeLeft: handleSwipeLeft, onSwipeRight: handleSwipeRight })
   const currentDev = detectCurrentDevice()
   const activeSessions = useMemo(() => {
     const list = (sessions ?? []).filter(
@@ -249,12 +261,12 @@ export function Settings() {
         </button>
       </Heading>
 
-      {/* Tabs Navigation */}
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-line pb-3" role="tablist" aria-label="Account Settings Tabs">
+      {/* Tabs Navigation with Touch Slide */}
+      <div className="touch-slide-x mb-2 border-b border-line pb-3" role="tablist" aria-label="Account Settings Tabs">
         <button
           role="tab"
           aria-selected={tab === 'overview'}
-          className={tab === 'overview' ? 'primary' : 'secondary'}
+          className={`touch-slide-item ${tab === 'overview' ? 'primary' : 'secondary'}`}
           onClick={() => setTab('overview')}
         >
           <User size={14} className="mr-1.5 inline" />
@@ -263,7 +275,7 @@ export function Settings() {
         <button
           role="tab"
           aria-selected={tab === 'devices'}
-          className={tab === 'devices' ? 'primary' : 'secondary'}
+          className={`touch-slide-item ${tab === 'devices' ? 'primary' : 'secondary'}`}
           onClick={() => setTab('devices')}
         >
           <Laptop size={14} className="mr-1.5 inline" />
@@ -272,7 +284,7 @@ export function Settings() {
         <button
           role="tab"
           aria-selected={tab === 'activity'}
-          className={tab === 'activity' ? 'primary' : 'secondary'}
+          className={`touch-slide-item ${tab === 'activity' ? 'primary' : 'secondary'}`}
           onClick={() => setTab('activity')}
         >
           <History size={14} className="mr-1.5 inline" />
@@ -281,12 +293,18 @@ export function Settings() {
         <button
           role="tab"
           aria-selected={tab === 'danger'}
-          className={`${tab === 'danger' ? 'primary bg-[#963838] border-[#963838]' : 'secondary'} text-danger-text`}
+          className={`touch-slide-item ${tab === 'danger' ? 'primary bg-[#963838] border-[#963838]' : 'secondary'} text-danger-text`}
           onClick={() => setTab('danger')}
         >
           <AlertTriangle size={14} className="mr-1.5 inline" />
           <span>Account Security & Actions</span>
         </button>
+      </div>
+
+      {/* Mobile Swipe Navigation Indicator */}
+      <div className="mb-4 sm:hidden flex items-center justify-between text-[11px] text-muted-ink px-1 select-none">
+        <span>← Slide or swipe horizontally →</span>
+        <span className="font-medium text-forest">{tabOrder.indexOf(tab) + 1} of {tabOrder.length}</span>
       </div>
 
       {sessionToast && (
@@ -301,6 +319,7 @@ export function Settings() {
         </div>
       )}
 
+      <div {...swipeHandlers} className="touch-pan-y min-h-[300px]">
       {/* TAB 1: PROFILE & IDENTITY */}
       {tab === 'overview' && (
         <div className="space-y-6">
@@ -762,6 +781,8 @@ export function Settings() {
           </section>
         </div>
       )}
+
+      </div>
 
       {/* DELETE ACCOUNT CONFIRMATION MODAL */}
       {deleteModalOpen && (

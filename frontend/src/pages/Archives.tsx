@@ -1,4 +1,5 @@
 import { Select } from '../components/ui/Select'
+import { useTouchSwipe } from '../hooks/useTouchSwipe'
 import { equipmentSheet, staffSheet, releaseSheet, incidentSheet, activitySheet } from '../exports/reports'
 import { ExportButton } from '../components/ui/ExportButton'
 import { useState } from 'react'
@@ -151,7 +152,7 @@ export function Archives() {
     </Heading>
 
     <section className="panel p-5">
-      <div role="tablist" aria-label="Archive type" className="mb-5 flex gap-2">
+      <div role="tablist" aria-label="Archive type" className="touch-slide-x mb-4 pb-2 border-b border-line">
         {(['equipment', 'staff'] as const).map(value => (
           <button
             key={value}
@@ -161,7 +162,7 @@ export function Archives() {
             aria-selected={tab === value}
             aria-controls="archive-panel"
             tabIndex={tab === value ? 0 : -1}
-            className={tab === value ? 'primary' : 'secondary'}
+            className={`touch-slide-item ${tab === value ? 'primary' : 'secondary'}`}
             onClick={() => changeTab(value)}
             onKeyDown={event => {
               if (['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) {
@@ -177,7 +178,7 @@ export function Archives() {
         ))}
       </div>
 
-      <div role="tabpanel" id="archive-panel" aria-labelledby={`tab-${tab}`}>
+      <div role="tabpanel" id="archive-panel" aria-labelledby={`tab-${tab}`} {...swipeHandlers} className="touch-pan-y">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Search archives">
             <input
