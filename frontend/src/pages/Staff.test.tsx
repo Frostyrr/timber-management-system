@@ -52,3 +52,94 @@ it('combines category and status filters and sorts usage counts in both directio
  expect(screen.getAllByRole('row')).toHaveLength(4)
  cleanup();vi.restoreAllMocks()
 })
+
+it('detects duplicate staff names case-insensitively and blocks submission until confirmed', async () => {
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {configurable:true, value:vi.fn(function(this: HTMLDialogElement) { this.setAttribute('open','') })})
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', {configurable:true, value:vi.fn(function(this: HTMLDialogElement) { this.removeAttribute('open') })})
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({width:200,height:40,top:0,bottom:40,left:0,right:200,x:0,y:0,toJSON:()=>({})})
+
+  const initial = seed()
+  const act = vi.fn().mockResolvedValue(undefined)
+  const state = {
+    ...initial,
+    people: [
+      { id: 'p1', name: 'Marc Elson Rebato', title: 'Editor-in-Chief', department: 'Executives Department', archived: false },
+    ],
+  }
+
+  render(
+    <MemoryRouter>
+      <InventoryContext.Provider value={{ state, person: state.profiles[0], act, warning: '', notice: '' }}>
+        <Staff />
+      </InventoryContext.Provider>
+    </MemoryRouter>
+  )
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Add staff member' })[0])
+  expect(screen.getByRole('heading', { name: 'Add staff member' })).toBeTruthy()
+
+  const nameInput = screen.getByPlaceholderText('e.g. Juan Dela Cruz')
+  fireEvent.change(nameInput, { target: { value: '  marc elson REBATO  ' } })
+
+  expect(screen.getByRole('alert')).toBeTruthy()
+  expect(screen.getByText(/Existing staff member detected:/)).toBeTruthy()
+  expect(screen.getByText(/"Marc Elson Rebato"/)).toBeTruthy()
+
+  const positionInput = screen.getByRole('combobox', { name: 'Position / category' })
+  fireEvent.focus(positionInput)
+  fireEvent.change(positionInput, { target: { value: 'Associate Editor' } })
+
+  const submitBtn = screen.getByRole('button', { name: 'Save changes' })
+  fireEvent.submit(submitBtn.closest('form')!)
+
+  expect(act).not.toHaveBeenCalled()
+  expect(await screen.findByText(/Confirm the duplicate checkbox to proceed/)).toBeTruthy()
+
+  const confirmCheckbox = screen.getByRole('checkbox', {
+    name: /Confirm: I understand this name already exists/i,
+  })
+  fireEvent.click(confirmCheckbox)
+
+  fireEvent.submit(submitBtn.closest('form')!)
+  expect(act).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: 'person-save',
+      name: 'marc elson REBATO',
+      title: 'Associate Editor',
+      department: 'Executives Department',
+    })
+  )
+
+  cleanup(); vi.restoreAllMocks()
+})
+
+it('filters positions when category is selected and infers category from position', () => {
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {configurable:true, value:vi.fn(function(this: HTMLDialogElement) { this.setAttribute('open','') })})
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', {configurable:true, value:vi.fn(function(this: HTMLDialogElement) { this.removeAttribute('open') })})
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({width:200,height:40,top:0,bottom:40,left:0,right:200,x:0,y:0,toJSON:()=>({})})
+
+  const initial = seed()
+  const state = { ...initial, people: [] }
+
+  render(
+    <MemoryRouter>
+      <InventoryContext.Provider value={{ state, person: state.profiles[0], act: vi.fn(), warning: '', notice: '' }}>
+        <Staff />
+      </InventoryContext.Provider>
+    </MemoryRouter>
+  )
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Add staff member' })[0])
+
+  const categorySelect = screen.getByRole('combobox', { name: 'Department / Category' })
+  fireEvent.click(categorySelect)
+  fireEvent.click(screen.getByRole('option', { name: 'Writers Department' }))
+
+  const positionInput = screen.getByRole('combobox', { name: 'Position / category' })
+  fireEvent.focus(positionInput)
+
+  expect(screen.getByRole('option', { name: 'News Writer' })).toBeTruthy()
+  expect(screen.queryByRole('option', { name: 'Editor-in-Chief' })).toBeNull()
+
+  cleanup(); vi.restoreAllMocks()
+})

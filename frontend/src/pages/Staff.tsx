@@ -5,7 +5,7 @@ import { publicationPositions, staffCategories, staffCategory } from '../backend
 import { PositionCombobox } from '../components/ui/PositionCombobox'
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { History, Pencil, Archive } from 'lucide-react'
+import { History, Pencil, Archive, AlertTriangle } from 'lucide-react'
 import { useInventory } from '../backend/context'
 import { canInventory, uid, type DirectoryPerson } from '../backend/model'
 import { Heading } from '../components/layout/Heading'
@@ -28,6 +28,10 @@ export function Staff() {
   const [page, setPage] = useState(1)
   const pageSize = 10
   const [editing, setEditing] = useState<DirectoryPerson | null>(null)
+  const [editingName, setEditingName] = useState('')
+  const [editingCategory, setEditingCategory] = useState('')
+  const [editingTitle, setEditingTitle] = useState('')
+  const [allowDuplicate, setAllowDuplicate] = useState(false)
   const [archiving, setArchiving] = useState<DirectoryPerson | null>(null)
   const [history, setHistory] = useState<DirectoryPerson | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -82,7 +86,11 @@ export function Staff() {
         </button>
         <button
           className="primary"
-          onClick={() =>
+          onClick={() => {
+            setEditingName('')
+            setEditingCategory('')
+            setEditingTitle('')
+            setAllowDuplicate(false)
             setEditing({
               id: uid(),
               name: '',
@@ -90,7 +98,7 @@ export function Staff() {
               department: '',
               archived: false,
             })
-          }
+          }}
         >
           Add staff member
         </button>
@@ -176,7 +184,13 @@ export function Staff() {
                             !p.archived && {
                               label: 'Edit details & position',
                               icon: <Pencil size={14} className="text-muted-ink" />,
-                              onClick: () => setEditing(p),
+                              onClick: () => {
+                                setEditingName(p.name)
+                                setEditingCategory(p.department || staffCategory(p.title))
+                                setEditingTitle(p.title)
+                                setAllowDuplicate(false)
+                                setEditing(p)
+                              },
                             },
                             !p.archived && {
                               label: 'Archive staff member…',
@@ -201,52 +215,181 @@ export function Staff() {
         <Pagination page={currentPage} total={people.length} pageSize={pageSize} onPageChange={setPage} label="directory entries" />
       </section>
 
-      {editing && (
-        <Modal
-          title={
-            state.people?.some((p) => p.id === editing.id)
-              ? 'Edit staff member'
-              : 'Add staff member'
-          }
-          onClose={() => setEditing(null)}
-          onSubmit={async (f) => {
-            const title = String(f.get('title') ?? '')
-            if (!publicationPositions.includes(title)) {
-              throw Error('Choose a position or category.')
+      {editing && (() => {
+        const normalizedEditingName = editingName.trim().toLowerCase()
+        const duplicateMember =
+          normalizedEditingName
+            ? (state.people ?? []).find(
+                (p) =>
+                  p.id !== editing.id &&
+                  p.name.trim().toLowerCase() === normalizedEditingName,
+              )
+            : null
+
+        return (
+          <Modal
+            title={
+              state.people?.some((p) => p.id === editing.id)
+                ? 'Edit staff member'
+                : 'Add staff member'
             }
-            await act({
-              type: 'person-save',
-              id: editing.id,
-              name: String(f.get('name')),
-              department: staffCategory(title),
-              title,
-            })
-          }}
-        >
-          <Field label="Full name">
-            <input
-              name="name"
-              placeholder="e.g. Juan Dela Cruz"
-              autoComplete="name"
-              required
-              maxLength={160}
-              defaultValue={editing.name}
-            />
-          </Field>
-          <Field label="Position / category">
-            <PositionCombobox options={publicationPositions} defaultValue={publicationPositions.includes(editing.title) ? editing.title : ''} />
-          </Field>
-          {editing.title && !publicationPositions.includes(editing.title) && (
+            onClose={() => setEditing(null)}
+            onSubmit={async (f) => {
+              const name = String(f.get('name') ?? '').trim()
+              const title = String(f.get('title') ?? '')
+              const normalized = name.toLowerCase()
+
+              const duplicate = (state.people ?? []).find(
+                (p) =>
+                  p.id !== editing.id &&
+                  p.name.trim().toLowerCase() === normalized,
+              )
+
+              if (duplicate && !allowDuplicate) {
+                throw Error(
+                  `A staff member named "${duplicate.name}" already exists in the directory (${duplicate.title || 'No position'}, ${staffCategory(duplicate.title)}). Confirm the duplicate checkbox to proceed.`,
+                )
+              }
+
+              if (!publicationPositions.includes(title)) {
+                throw Error('Choose a position or category.')
+              }
+
+              const department = editingCategory || staffCategory(title)
+              await act({
+                type: 'person-save',
+                id: editing.id,
+                name,
+                department,
+                title,
+              })
+            }}
+          >
+            <Field label="Full name">
+              <input
+                name="name"
+                placeholder="e.g. Juan Dela Cruz"
+                autoComplete="name"
+                required
+                maxLength={160}
+                value={editingName}
+                onChange={(e) => {
+                  setEditingName(e.target.value)
+                  setAllowDuplicate(false)
+                }}
+              />
+            </Field>
+
+            {duplicateMember && (
+              <div
+                role="alert"
+                className="rounded-2xl border border-amber-200 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-sm"
+              >
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle
+                    size={16}
+                    className="mt-0.5 shrink-0 text-amber-600"
+                  />
+                  <div className="flex-1 space-y-1.5">
+                    <strong className="block text-[13px] font-semibold text-amber-950">
+                      Existing staff member detected:
+                    </strong>
+                    <p className="text-amber-900 leading-normal">
+                      <strong>"{duplicateMember.name}"</strong> is currently
+                      recorded in the directory as{' '}
+                      <span className="font-medium text-amber-950">
+                        {duplicateMember.title || 'Not recorded'}
+                      </span>{' '}
+                      ({staffCategory(duplicateMember.title)})
+                      {duplicateMember.archived ? ' · Archived' : ' · Active'}.
+                    </p>
+                    <label className="mt-2.5 flex items-center gap-2 cursor-pointer font-medium text-amber-950 pt-2 border-t border-amber-200/80">
+                      <input
+                        type="checkbox"
+                        checked={allowDuplicate}
+                        onChange={(e) => setAllowDuplicate(e.target.checked)}
+                        className="rounded border-amber-300 text-primary focus:ring-primary h-4 w-4"
+                      />
+                      <span>
+                        Confirm: I understand this name already exists and want to
+                        add a duplicate entry.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Field label="Department / Category">
+              <Select
+                name="category"
+                aria-label="Department / Category"
+                value={editingCategory}
+                onChange={(e) => {
+                  const nextCategory = e.target.value
+                  setEditingCategory(nextCategory)
+                  if (
+                    nextCategory &&
+                    editingTitle &&
+                    staffCategory(editingTitle) !== nextCategory
+                  ) {
+                    setEditingTitle('')
+                  }
+                }}
+                options={[
+                  { value: '', label: 'All categories' },
+                  ...Object.keys(staffCategories).map((name) => ({
+                    value: name,
+                    label: name,
+                  })),
+                ]}
+              />
+            </Field>
+
+            <Field label="Position">
+              <PositionCombobox
+                key={`${editingCategory}-${editingTitle}`}
+                options={
+                  editingCategory && editingCategory in staffCategories
+                    ? staffCategories[
+                        editingCategory as keyof typeof staffCategories
+                      ]
+                    : publicationPositions
+                }
+                defaultValue={
+                  editingTitle &&
+                  (!editingCategory ||
+                    staffCategory(editingTitle) === editingCategory)
+                    ? editingTitle
+                    : ''
+                }
+                onChange={(newPosition) => {
+                  setEditingTitle(newPosition)
+                  const inferredCategory = staffCategory(newPosition)
+                  if (
+                    inferredCategory !== 'Uncategorized' &&
+                    !editingCategory
+                  ) {
+                    setEditingCategory(inferredCategory)
+                  }
+                }}
+              />
+            </Field>
+
+            {editingTitle && !publicationPositions.includes(editingTitle) && (
+              <p className="hint">
+                Previously recorded position: {editingTitle}. Select a current
+                position to save changes.
+              </p>
+            )}
             <p className="hint">
-              Previously recorded position: {editing.title}. Select a current
-              position to save changes.
+              This creates a directory entry only. No Google account is required.
+              For outside borrowers, record the release as External borrowing and
+              include the request-letter reference in its purpose.
             </p>
-          )}
-          <p className="hint">
-            This creates a directory entry only. No Google account is required. For outside borrowers, record the release as External borrowing and include the request-letter reference in its purpose.
-          </p>
-        </Modal>
-      )}
+          </Modal>
+        )
+      })()}
 
       {archiving && (
         <Modal

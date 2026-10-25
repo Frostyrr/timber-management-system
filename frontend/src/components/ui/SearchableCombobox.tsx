@@ -3,7 +3,8 @@ import { useId, useRef, useState } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 
 type Option = { value: string; label: string }
-export function SearchableCombobox({ options, defaultValue = '', name, label, placeholder = 'Type to search…' }: {
+export function SearchableCombobox({ options, defaultValue = '', name, label, placeholder = 'Type to search…', onChange }: {
+  onChange?: (value: string) => void
   options: Option[]
   defaultValue?: string
   name: string
@@ -26,6 +27,7 @@ export function SearchableCombobox({ options, defaultValue = '', name, label, pl
   const choose = (option: Option) => {
     setSelectedValue(option.value); setText(option.label); setOpen(false); setFiltering(false); setActive(-1)
     input.current?.setCustomValidity('')
+    onChange?.(option.value)
   }
   return <div className="relative w-full" onBlur={event => {
     if (!event.currentTarget.contains(event.relatedTarget)) { setOpen(false); setActive(-1) }
@@ -41,8 +43,10 @@ export function SearchableCombobox({ options, defaultValue = '', name, label, pl
         onClick={() => setOpen(true)}
         onChange={event => {
           const next = event.target.value
-          setSelectedValue(exactMatch(next)?.value ?? ''); setText(next); setFiltering(true); setOpen(true); setActive(-1)
-          event.target.setCustomValidity(exactMatch(next) ? '' : 'Choose an option from the list.')
+          const match = exactMatch(next)
+          setSelectedValue(match?.value ?? ''); setText(next); setFiltering(true); setOpen(true); setActive(-1)
+          event.target.setCustomValidity(match ? '' : 'Choose an option from the list.')
+          if (match) onChange?.(match.value)
         }}
         onKeyDown={event => {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
