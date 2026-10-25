@@ -127,7 +127,7 @@ describe('Login Page', () => {
     expect(secondLogButton).toBeTruthy()
 
     fireEvent.click(secondLogButton)
-    expect(secondLogButton.className).toContain('translate-x-1.5')
+    expect(secondLogButton.className).toContain('scale-[1.01]')
   })
 
   it('invokes client.auth.signInWithOAuth when clicking Continue with Google', async () => {

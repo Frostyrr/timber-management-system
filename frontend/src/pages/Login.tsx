@@ -72,19 +72,6 @@ const FALLBACK_USAGE_RETURNS: PublicLogItem[] = [
   },
 ]
 
-function formatActionBadge(action: string): { label: string; badgeClass: string } {
-  if (action.toLowerCase() === 'return') {
-    return {
-      label: 'RETURN',
-      badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
-    }
-  }
-  return {
-    label: 'CHECKOUT',
-    badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300/80',
-  }
-}
-
 function formatIsoTime(iso?: string): string {
   if (!iso) return '12:00 PM'
   try {
@@ -112,7 +99,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         const rawLogs = await fetchRecentPublicActivity()
         if (!active || !rawLogs || rawLogs.length === 0) return
 
-        // Filter for actual equipment usage (checkout) and returns
+        // Filter strictly for actual equipment usage (checkout) and returns
         const filtered = rawLogs.filter(
           (l) => l.action.toLowerCase() === 'checkout' || l.action.toLowerCase() === 'return'
         )
@@ -120,15 +107,14 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         const targetList = filtered.length > 0 ? filtered : rawLogs
         const formatted: PublicLogItem[] = targetList.slice(0, 5).map((l: PublicActivityLog, idx: number) => {
           const action = l.action.toLowerCase() === 'return' ? 'return' : 'checkout'
-          const badge = formatActionBadge(action)
           return {
             id: l.id || `db-${idx}`,
             tag: l.tag || 'TP-EQP',
             name: l.itemName || 'Equipment item',
             category: l.category || 'Gear',
             action,
-            actionLabel: badge.label,
-            details: l.details || (action === 'return' ? 'Returned in Good condition' : 'Checked out for editorial assignment'),
+            actionLabel: action === 'return' ? 'RETURN' : 'CHECKOUT',
+            details: l.details || (action === 'return' ? 'Returned in Good condition' : 'Checked out for assignment coverage'),
             timeStr: formatIsoTime(l.at),
           }
         })
@@ -242,7 +228,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
           </div>
         </div>
 
-        {/* Right Column: Chatbox with Logo Icon Avatar & Staggered Incoming Bubbles */}
+        {/* Right Column: Messenger/iMessage-Style Chatbox with Blue Bubbles & Logo Avatars */}
         <div className="flex flex-col lg:col-span-6">
           <section
             aria-label="Recent equipment usage and returns chatbox"
@@ -284,11 +270,10 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
               </div>
             </div>
 
-            {/* Chat Messages Body - Staggered speech bubbles with logo avatar */}
+            {/* Chat Messages Body - Blue speech bubbles with logo avatars and bottom-right tail */}
             <div className="p-4 sm:p-5 flex flex-col gap-3 min-h-[380px] max-h-[460px] overflow-hidden">
               {logs.map((item, index) => {
                 const isSelected = index === activeIndex
-                const badge = formatActionBadge(item.actionLabel)
 
                 return (
                   <div
@@ -302,19 +287,62 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                         setActiveIndex(index)
                       }
                     }}
-                    aria-label={`${item.tag} ${badge.label} ${item.name}`}
-                    className={`group relative flex items-start gap-3 transition-all duration-300 cursor-pointer ${
-                      isSelected ? 'translate-x-1.5' : ''
+                    aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
+                    className={`group relative flex items-end justify-end gap-2.5 transition-all duration-300 cursor-pointer ${
+                      isSelected ? 'scale-[1.01]' : 'hover:scale-[1.005]'
                     }`}
                     style={{
                       animation: `messagePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
                     }}
                   >
-                    {/* Publication Logo Icon Avatar */}
+                    {/* Blue Chat Speech Bubble with iconic tail */}
                     <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-300 shadow-2xs ${
+                      className={`relative flex flex-col gap-1 rounded-[20px] rounded-br-[4px] bg-[#007aff] px-4 py-3 text-white shadow-xs transition-all duration-300 max-w-[85%] sm:max-w-[80%] ${
                         isSelected
-                          ? 'border-primary ring-2 ring-primary/20 scale-105 shadow-xs'
+                          ? 'bg-[#0071eb] ring-2 ring-[#007aff]/30 shadow-[0_6px_18px_rgba(0,122,255,0.28)]'
+                          : 'hover:bg-[#0075f5]'
+                      }`}
+                    >
+                      {/* Top Row: Tag, Action Badge & Time */}
+                      <div className="flex items-center justify-between gap-2.5 border-b border-white/20 pb-1 text-[11px] font-['Geist_Mono',monospace]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold tracking-tight bg-white/25 px-2 py-0.5 rounded-full text-[10.5px]">
+                            {item.tag}
+                          </span>
+                          <span className="text-[10px] font-bold tracking-wide uppercase bg-black/15 px-1.5 py-0.5 rounded">
+                            {item.actionLabel}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-[11px] opacity-90">
+                          <span>{item.timeStr}</span>
+                          <CheckCheck size={13} className="text-white" />
+                        </div>
+                      </div>
+
+                      {/* Chat Message Content */}
+                      <div className="text-[13px] leading-snug pt-0.5 text-white">
+                        <strong className="font-semibold block">{item.name}</strong>
+                        <p className="mt-0.5 text-xs text-white/90 leading-normal">
+                          {item.details}
+                        </p>
+                      </div>
+
+                      {/* Iconic Bottom-Right Curved Speech Tail */}
+                      <svg
+                        className="absolute -bottom-[1px] -right-[5px] h-3.5 w-2.5 text-[#007aff] fill-current pointer-events-none group-hover:text-[#0075f5] transition-colors"
+                        viewBox="0 0 10 14"
+                        aria-hidden="true"
+                      >
+                        <path d="M0,0 C0,7 2,14 10,14 C4,14 0,10 0,0 Z" />
+                      </svg>
+                    </div>
+
+                    {/* Logo Icon Avatar beside the chat bubble */}
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white p-1 transition-all duration-300 shadow-2xs mb-0.5 ${
+                        isSelected
+                          ? 'border-[#007aff] ring-2 ring-[#007aff]/20 scale-105'
                           : 'border-[#dce6df] group-hover:border-[#cbd8cf]'
                       }`}
                     >
@@ -323,42 +351,6 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                         alt="Timberland avatar"
                         className="h-full w-full object-contain"
                       />
-                    </div>
-
-                    {/* Chat Speech Bubble */}
-                    <div
-                      className={`relative flex flex-1 flex-col gap-1 rounded-2xl rounded-tl-xs border p-3.5 transition-all duration-300 ${
-                        isSelected
-                          ? 'border-primary/40 bg-[#f0f6f2] shadow-xs'
-                          : 'border-[#e2eae4] bg-[#f8faf9] hover:border-[#cbd8cf] hover:bg-white'
-                      }`}
-                    >
-                      {/* Top Bubble Row: Tag, Action Badge & Time */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-['Geist_Mono',monospace] text-[11px] font-bold text-primary bg-pale px-2 py-0.5 rounded-full">
-                            {item.tag}
-                          </span>
-                          <span
-                            className={`font-['Geist_Mono',monospace] text-[10px] font-bold px-1.5 py-0.5 rounded ${badge.badgeClass}`}
-                          >
-                            {badge.label}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1 text-[11px] font-['Geist_Mono',monospace] text-muted-ink">
-                          <span>{item.timeStr}</span>
-                          <CheckCheck size={13} className="text-primary" />
-                        </div>
-                      </div>
-
-                      {/* Chat Message Content */}
-                      <div className="text-[13px] leading-snug text-ink pt-0.5">
-                        <strong className="font-semibold text-ink">{item.name}</strong>
-                        <p className="mt-0.5 text-xs text-muted-ink leading-normal">
-                          {item.details}
-                        </p>
-                      </div>
                     </div>
                   </div>
                 )
