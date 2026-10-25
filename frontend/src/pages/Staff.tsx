@@ -1,3 +1,4 @@
+import { publicationPositions, staffCategories, staffCategory } from '../backend/staffCategories'
 import { PositionCombobox } from '../components/PositionCombobox'
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
@@ -8,35 +9,12 @@ import { Heading } from '../components/layout'
 import { Modal, Field, Badge, Empty, ActionMenu, Pagination } from '../components/ui'
 import { dateText } from '../components/format'
 
-const publicationPositions = [
-  'Adviser',
-  'Editor-in-Chief',
-  'Associate Editor',
-  'Multimedia Director',
-  'Head Photojournalist',
-  'Head Videojournalist',
-  'Head Video Editor',
-  'Head Cartoonist',
-  'Head Graphics Artist',
-  'News Writer',
-  'Column Writer',
-  'Editorial Writer',
-  'Feature Writer',
-  'Sports Writer',
-  'Literary Writer',
-  'Photojournalist',
-  'Videojournalist',
-  'Video Editor',
-  'Graphics Artist',
-  'Cartoonist',
-  'Staff Member',
-  'PICO Staff',
-  'External Personnel',
-]
+
 
 export function Staff() {
   const { state, person, act, refresh } = useInventory()
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('')
   const [page, setPage] = useState(1)
   const pageSize = 10
   const [editing, setEditing] = useState<DirectoryPerson | null>(null)
@@ -47,7 +25,7 @@ export function Staff() {
   if (!canInventory(person)) return <Navigate to="/" replace />
 
   const people = (state.people ?? []).filter((p) =>
-    `${p.name} ${p.title}`.toLowerCase().includes(search.toLowerCase()),
+    `${p.name} ${p.title} ${staffCategory(p.title)}`.toLowerCase().includes(search.toLowerCase()) && (!category || staffCategory(p.title) === category),
   )
 
   const currentPage = Math.min(page, Math.max(1, Math.ceil(people.length / pageSize)))
@@ -99,12 +77,19 @@ export function Staff() {
           />
         </Field>
 
+        <Field label="Staff category">
+          <select value={category} onChange={event => { setCategory(event.target.value); setPage(1) }}>
+            <option value="">All categories</option>
+            {[...Object.keys(staffCategories), 'Uncategorized'].map(name => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </Field>
         <div className="table-wrap mt-4">
           <table>
             <thead>
               <tr>
                 <th>Member</th>
-                <th>Position / category</th>
+                <th>Position</th>
+                <th>Category</th>
                 <th>Publication uses</th>
                 <th>Member borrowings</th>
                 <th>Active uses</th>
@@ -119,6 +104,7 @@ export function Staff() {
                   <tr key={p.id}>
                     <td>{p.name}</td>
                     <td>{p.title || 'Not recorded'}</td>
+                    <td>{staffCategory(p.title)}</td>
                     <td>{uses.filter((l) => l.useType === 'publication_use').length}</td>
                     <td>{uses.filter((l) => l.useType === 'member_borrowing').length}</td>
                     <td>{uses.filter((l) => !l.returned).length}</td>
@@ -180,7 +166,7 @@ export function Staff() {
               type: 'person-save',
               id: editing.id,
               name: String(f.get('name')),
-              department: editing.department,
+              department: staffCategory(title),
               title,
             })
           }}

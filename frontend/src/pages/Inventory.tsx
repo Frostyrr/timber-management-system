@@ -1,3 +1,4 @@
+import { SearchableCombobox } from '../components/SearchableCombobox'
 import { releaseDetailsSchema, USE_TYPES, type UseType } from '../demo/release'
 import { value, dateText, tomorrow, categoryClass } from '../components/format'
 import { useState } from 'react'
@@ -926,13 +927,7 @@ export function Inventory() {
             <>
               {!item && (
                 <Field label="Equipment to release">
-                  <Select name="item" required defaultValue={availableItems[0]?.id}>
-                    {availableItems.map((ai) => (
-                      <option key={ai.id} value={ai.id}>
-                        {ai.name} ({ai.tag}) · {ai.category}
-                      </option>
-                    ))}
-                  </Select>
+                  <SearchableCombobox name="item" label="Equipment to release" placeholder="Search equipment, asset tag, or category…" options={availableItems.map(ai => ({ value: ai.id, label: `${ai.name} (${ai.tag}) · ${ai.category}` }))} />
                 </Field>
               )}
               <Field label="Release type">
@@ -958,13 +953,7 @@ export function Inventory() {
                 </>
               ) : (
                 <Field label="Responsible editorial staff / borrower">
-                  <Select name="borrower" defaultValue={state.people?.find(p=>!p.archived)?.id}>
-                    {(state.people ?? []).filter(p=>!p.archived).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} — {p.title || 'Member'}
-                      </option>
-                    ))}
-                  </Select>
+                  <SearchableCombobox name="borrower" label="Responsible editorial staff / borrower" placeholder="Search name or position…" options={(state.people ?? []).filter(p => !p.archived).map(p => ({ value: p.id, label: `${p.name} — ${p.title || 'Position not recorded'}` }))} />
                 </Field>
               )}
               <Field label="Purpose / event name">
