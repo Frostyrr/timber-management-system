@@ -822,22 +822,35 @@ select {
   animation: shimmer 1.6s infinite ease-in-out;
 }
 
-/* Smooth Pop Out Entrance Animation for Chat Speech Bubbles */
+/* 60fps / 120fps Hardware-Accelerated Smooth Pop Out Animation */
+.chat-bubble-pop {
+  transform-origin: bottom right;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+}
+
 @keyframes messagePop {
   0% {
     opacity: 0;
-    transform: scale(0.68) translateY(16px);
-    transform-origin: bottom right;
+    transform: translate3d(8px, 16px, 0) scale3d(0.72, 0.72, 1);
   }
   65% {
     opacity: 1;
-    transform: scale(1.03) translateY(-2px);
-    transform-origin: bottom right;
+    transform: translate3d(-1px, -2px, 0) scale3d(1.025, 1.025, 1);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
-    transform-origin: bottom right;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble-pop {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
   }
 }
 

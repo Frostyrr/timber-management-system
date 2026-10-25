@@ -216,11 +216,11 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                       }
                     }}
                     aria-label={`${item.tag} ${item.actionLabel} ${item.name}`}
-                    className={`group relative flex items-end justify-end gap-2.5 transition-all duration-300 cursor-pointer ${
+                    className={`chat-bubble-pop group relative flex items-end justify-end gap-2.5 transition-transform duration-200 cursor-pointer ${
                       isSelected ? 'scale-[1.01]' : 'hover:scale-[1.005]'
                     }`}
                     style={{
-                      animation: `messagePop 0.46s cubic-bezier(0.16, 1, 0.3, 1) ${index * 130}ms both`,
+                      animation: `messagePop 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${index * 120}ms both`,
                     }}
                   >
                   {/* Primary Dark Green Chat Speech Bubble with iconic tail */}
