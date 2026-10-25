@@ -152,7 +152,7 @@ export function SecurityThreats() {
 
         {/* Quarantined Accounts */}
         <Link
-          to="/security/suspensions"
+          to="/security/policies?tab=suspensions"
           className="panel p-5 group hover:border-primary/40 transition-all cursor-pointer"
         >
           <div className="flex items-center justify-between">

@@ -3,10 +3,8 @@ import { it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SecurityThreats } from './SecurityThreats'
-import { SecurityLogins } from './SecurityLogins'
 import { SecuritySessions } from './SecuritySessions'
 import { SecurityPolicies } from './SecurityPolicies'
-import { SecuritySuspensions } from './SecuritySuspensions'
 import { InventoryContext } from '../../backend/context'
 import { seed } from '../../demo/model'
 import { getInitialSecurityState, saveSecurityState } from '../../backend/security'
@@ -53,11 +51,9 @@ it('SecurityThreats: displays posture score and allows resolving an active threa
   expect(screen.getByText('Active Threats')).toBeTruthy()
   expect(screen.getByText('Impossible Geolocation Travel Detected')).toBeTruthy()
 
-  // Click Resolve Alert on the first active threat
   const resolveButtons = screen.getAllByRole('button', { name: 'Resolve Alert' })
   fireEvent.click(resolveButtons[0])
 
-  // Dialog opens with audit note field
   expect(screen.getByRole('dialog')).toBeTruthy()
   const noteInput = screen.getByPlaceholderText(/Verified with staff member/i)
   fireEvent.change(noteInput, { target: { value: 'Verified legitimate international travel' } })
@@ -65,60 +61,55 @@ it('SecurityThreats: displays posture score and allows resolving an active threa
   const confirmBtn = screen.getByRole('button', { name: 'Confirm resolution' })
   fireEvent.submit(confirmBtn.closest('form')!)
 
-  // Threat is resolved
   expect(await screen.findByText(/Verified legitimate international travel/)).toBeTruthy()
 })
 
-it('SecurityLogins: tracks failed logins and identifies new device detections', () => {
+it('SecuritySessions: switches between tabs and tracks login history & failed attempts', () => {
   render(
-    <MemoryRouter>
-      <SecurityLogins />
-    </MemoryRouter>,
-  )
-
-  expect(screen.getByText('Failed Logins')).toBeTruthy()
-  expect(screen.getByText('New Devices Flagged')).toBeTruthy()
-  expect(screen.getByText('Domain Blocks')).toBeTruthy()
-
-  // Filter to Failed logins only
-  fireEvent.click(screen.getByRole('button', { name: /Failed \(/i }))
-  expect(screen.getByText('unknown.intruder@gmail.com')).toBeTruthy()
-  expect(screen.getAllByText('Unauthorized Email Domain').length).toBeGreaterThan(0)
-
-  // Filter to New Devices only
-  fireEvent.click(screen.getByRole('button', { name: /New Devices \(/i }))
-  expect(screen.getAllByText('New Device').length).toBeGreaterThan(0)
-})
-
-it('SecuritySessions: identifies current browser session and terminates active remote sessions', () => {
-  render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/security/sessions']}>
       <SecuritySessions />
     </MemoryRouter>,
   )
 
   expect(screen.getByText('Current Device (This Browser Session)')).toBeTruthy()
-  expect(screen.getByText('Active Sessions')).toBeTruthy()
+  expect(screen.getByRole('button', { name: /Active Sessions/i })).toBeTruthy()
 
-  // Find a Revoke Session button
+  // Switch to Login History tab
+  fireEvent.click(screen.getByRole('button', { name: /Login History & Failures/i }))
+  expect(screen.getByText('unknown.intruder@gmail.com')).toBeTruthy()
+
+  // Filter to Failed logins
+  fireEvent.click(screen.getByRole('button', { name: /Failed \(/i }))
+  expect(screen.getAllByText('Unauthorized Email Domain').length).toBeGreaterThan(0)
+
+  // Switch to New Devices tab
+  fireEvent.click(screen.getByRole('button', { name: /New Devices/i }))
+  expect(screen.getAllByText('New Device').length).toBeGreaterThan(0)
+})
+
+it('SecuritySessions: identifies current browser session and terminates active remote sessions', () => {
+  render(
+    <MemoryRouter initialEntries={['/security/sessions']}>
+      <SecuritySessions />
+    </MemoryRouter>,
+  )
+
   const revokeButtons = screen.getAllByRole('button', { name: 'Revoke Session' })
   expect(revokeButtons.length).toBeGreaterThan(0)
 
-  // Click Revoke Session
   fireEvent.click(revokeButtons[0])
   expect(screen.getByRole('heading', { name: 'Revoke active bearer token?' })).toBeTruthy()
 
   const terminateBtn = screen.getByRole('button', { name: 'Terminate session' })
   fireEvent.submit(terminateBtn.closest('form')!)
 
-  // Revocation reflected
   expect(screen.getAllByText('Revoked').length).toBeGreaterThan(0)
 })
 
 it('SecurityPolicies: manages allowed domains and authorized email allowlist', async () => {
   const initial = seed()
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/security/policies']}>
       <InventoryContext.Provider
         value={{ state: initial, person: initial.profiles[0], act: vi.fn(), warning: '', notice: '' }}
       >
@@ -127,17 +118,17 @@ it('SecurityPolicies: manages allowed domains and authorized email allowlist', a
     </MemoryRouter>,
   )
 
-  expect(screen.getByText('Authorized Domain Restrictions')).toBeTruthy()
-  expect(screen.getByText('thetimberland.pub')).toBeTruthy()
+  expect(screen.getByText('Strict Institutional Domain Enforcement')).toBeTruthy()
+  expect(screen.getByText('@thetimberland.pub')).toBeTruthy()
 
   // Add new domain
   const domainInput = screen.getByPlaceholderText(/publication\.university\.edu/i)
   fireEvent.change(domainInput, { target: { value: 'journalism.edu' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Add Domain' }))
-  expect(screen.getByText('journalism.edu')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /Add Domain/i }))
+  expect(screen.getByText('@journalism.edu')).toBeTruthy()
 
   // Authorize individual email
-  fireEvent.click(screen.getByRole('button', { name: 'Authorize Email' }))
+  fireEvent.click(screen.getByRole('button', { name: /Authorize Email/i }))
   expect(screen.getByRole('heading', { name: 'Authorize Individual Email' })).toBeTruthy()
 
   const emailInput = screen.getByPlaceholderText(/adviser\.external@gmail\.com/i)
@@ -150,22 +141,24 @@ it('SecurityPolicies: manages allowed domains and authorized email allowlist', a
   expect(screen.getByText('Keynote Lecturer for Campus Press Fest')).toBeTruthy()
 })
 
-it('SecuritySuspensions: locks down an account with required reason and allows reinstatement', async () => {
+it('SecurityPolicies: locks down an account via Suspensions tab and allows reinstatement', async () => {
   const initial = seed()
   const act = vi.fn().mockResolvedValue(undefined)
 
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/security/policies?tab=suspensions']}>
       <InventoryContext.Provider
         value={{ state: initial, person: initial.profiles[0], act, warning: '', notice: '' }}
       >
-        <SecuritySuspensions />
+        <SecurityPolicies />
       </InventoryContext.Provider>
     </MemoryRouter>,
   )
 
-  expect(screen.getByText('Active Accounts')).toBeTruthy()
-  expect(screen.getByText('Quarantined / Suspended')).toBeTruthy()
+  // Switch to Suspensions tab if not already on it
+  fireEvent.click(screen.getByRole('button', { name: /Account Suspensions & Killswitch/i }))
+
+  expect(screen.getByRole('button', { name: /Suspended \(/i })).toBeTruthy()
 
   // Find an enabled user to suspend (non-self)
   const suspendButtons = screen.getAllByRole('button', { name: 'Suspend Account' })
@@ -180,7 +173,6 @@ it('SecuritySuspensions: locks down an account with required reason and allows r
   const confirmSuspendBtn = screen.getByRole('button', { name: 'Quarantine & lock account' })
   fireEvent.submit(confirmSuspendBtn.closest('form')!)
 
-  // User should now be marked Suspended and show Reactivate button
   expect(await screen.findByText('Credential leak suspected; quarantined by admin.')).toBeTruthy()
   const reactivateBtn = screen.getByRole('button', { name: 'Reactivate' })
   expect(reactivateBtn).toBeTruthy()

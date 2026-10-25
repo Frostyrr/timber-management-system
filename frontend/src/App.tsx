@@ -22,8 +22,6 @@ import {
   Archive,
   Radio,
   Lock,
-  UserX,
-  History,
 } from 'lucide-react'
 import { useInventory } from './backend/context'
 import { visibleIncidents, canInventory, isOverdue } from './backend/model'
@@ -37,10 +35,8 @@ import { Access } from './pages/Access'
 import { Login } from './pages/Login'
 import { Settings } from './pages/Settings'
 import { SecurityThreats } from './pages/security/SecurityThreats'
-import { SecurityLogins } from './pages/security/SecurityLogins'
 import { SecuritySessions } from './pages/security/SecuritySessions'
 import { SecurityPolicies } from './pages/security/SecurityPolicies'
-import { SecuritySuspensions } from './pages/security/SecuritySuspensions'
 import './App.css'
 
 export default function App() {
@@ -62,11 +58,9 @@ export default function App() {
   ]
 
   const securityLinks = [
-    { to: '/security', name: 'Cybersecurity posture', icon: ShieldCheck },
-    { to: '/security/logins', name: 'Login & devices', icon: History },
-    { to: '/security/sessions', name: 'Active sessions', icon: Radio },
-    { to: '/security/policies', name: 'Access policies', icon: Lock },
-    { to: '/security/suspensions', name: 'Account suspension', icon: UserX },
+    { to: '/security', name: 'Threat monitoring', icon: ShieldCheck },
+    { to: '/security/sessions', name: 'Sessions & logins', icon: Radio },
+    { to: '/security/policies', name: 'Policies & suspensions', icon: Lock },
     ...(person.role === 'Administrator' ? [{ to: '/access', name: 'System access', icon: KeyRound }] : []),
     { to: '/settings', name: 'My account', icon: SettingsIcon },
   ]
@@ -508,10 +502,10 @@ export default function App() {
                 <Route path="/archives" element={<Archives />} />
                   <Route path="/access" element={<Access />} />
                 <Route path="/security" element={<SecurityThreats />} />
-                <Route path="/security/logins" element={<SecurityLogins />} />
                 <Route path="/security/sessions" element={<SecuritySessions />} />
                 <Route path="/security/policies" element={<SecurityPolicies />} />
-                <Route path="/security/suspensions" element={<SecuritySuspensions />} />
+                <Route path="/security/logins" element={<Navigate to="/security/sessions?tab=logins" replace />} />
+                <Route path="/security/suspensions" element={<Navigate to="/security/policies?tab=suspensions" replace />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
