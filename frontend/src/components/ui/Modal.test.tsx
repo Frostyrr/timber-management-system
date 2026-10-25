@@ -24,7 +24,7 @@ describe('Modal', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders title, children, and opens dialog with responsive full-screen mobile classes', () => {
+  it('renders title, children, and opens dialog with desktop classes and mobile full-screen overrides', () => {
     const handleClose = vi.fn()
     const handleSubmit = vi.fn()
 
@@ -39,12 +39,13 @@ describe('Modal', () => {
     expect(screen.getByText('Test Modal Title')).toBeTruthy()
     expect(screen.getByText('Modal content body')).toBeTruthy()
 
-    // Verifies full-screen mobile classes and responsive desktop classes
-    expect(dialog.className).toContain('fixed inset-0')
-    expect(dialog.className).toContain('h-[100dvh]')
-    expect(dialog.className).toContain('w-screen')
-    expect(dialog.className).toContain('sm:max-w-[540px]')
-    expect(dialog.className).toContain('sm:rounded-2xl')
+    // Verifies desktop native centering and mobile full-screen overrides
+    expect(dialog.className).toContain('m-auto')
+    expect(dialog.className).toContain('max-w-[540px]')
+    expect(dialog.className).toContain('rounded-2xl')
+    expect(dialog.className).toContain('max-sm:fixed')
+    expect(dialog.className).toContain('max-sm:h-[100dvh]')
+    expect(dialog.className).toContain('max-sm:w-screen')
   })
 
   it('invokes onClose when clicking the close X button or Cancel', () => {

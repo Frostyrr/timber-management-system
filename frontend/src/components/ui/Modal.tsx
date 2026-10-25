@@ -8,7 +8,6 @@ export function Modal({
   onSubmit,
   submit = 'Save changes',
   destructive = false,
-  maxWidth = 'sm:max-w-[540px]',
 }: {
   title: string
   children: ReactNode
@@ -16,7 +15,6 @@ export function Modal({
   onSubmit: (data: FormData) => void | Promise<void>
   submit?: string
   destructive?: boolean
-  maxWidth?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
@@ -59,16 +57,16 @@ export function Modal({
         else onClose()
       }}
       aria-labelledby={titleId}
-      className={`fixed inset-0 m-0 h-[100dvh] w-screen max-h-none max-w-none rounded-none border-0 bg-canvas p-0 text-ink shadow-none overflow-hidden sm:m-auto sm:h-auto sm:max-h-[90vh] sm:w-[calc(100vw-32px)] ${maxWidth} sm:rounded-2xl sm:border sm:border-line sm:shadow-[0_20px_56px_rgba(24,34,29,0.16)] backdrop:bg-[rgba(24,34,29,0.4)] backdrop:backdrop-blur-[2px]`}
+      className="m-auto max-h-[92vh] w-[calc(100vw-24px)] max-w-[540px] rounded-2xl border border-line bg-canvas p-0 text-ink shadow-[0_20px_56px_rgba(24,34,29,0.16)] backdrop:bg-[rgba(24,34,29,0.4)] backdrop:backdrop-blur-[2px] overflow-visible max-sm:fixed max-sm:inset-0 max-sm:m-0 max-sm:h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:max-h-none max-sm:rounded-none max-sm:border-0"
     >
-      <form onSubmit={handle} className="flex h-full sm:h-auto sm:max-h-[90vh] flex-col overflow-hidden">
-        <div className="dialog-heading flex-shrink-0 flex items-center justify-between border-b border-line-subtle bg-canvas/95 px-4 py-3 sm:px-6 sm:py-[18px] backdrop-blur-md">
-          <h2 id={titleId} className="text-[16px] sm:text-[15px] font-semibold sm:font-medium text-ink truncate pr-2">
+      <form onSubmit={handle} className="flex max-h-[92vh] flex-col overflow-visible max-sm:h-[100dvh] max-sm:max-h-none">
+        <div className="dialog-heading flex items-center justify-between border-b border-line-subtle px-4 py-3.5 sm:px-6 sm:py-[18px] max-sm:shrink-0 max-sm:bg-canvas">
+          <h2 id={titleId} className="text-[15px] font-medium text-ink">
             {title}
           </h2>
           <button
             type="button"
-            className="icon-button flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-full"
+            className="icon-button flex h-9 w-9 items-center justify-center rounded-full"
             aria-label="Close dialog"
             disabled={saving}
             onClick={onClose}
@@ -76,7 +74,7 @@ export function Modal({
             <X size={18} />
           </button>
         </div>
-        <div className="dialog-body flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 overscroll-contain no-scrollbar sm:[scrollbar-width:thin]">
+        <div className="dialog-body flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {children}
           {error && (
             <p role="alert" className="error">
@@ -84,7 +82,7 @@ export function Modal({
             </p>
           )}
         </div>
-        <div className="dialog-footer flex-shrink-0 flex flex-col-reverse justify-end gap-2 border-t border-line-subtle bg-surface/95 px-4 py-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:flex-row sm:gap-2.5 sm:px-6 sm:py-3.5 sm:pb-3.5">
+        <div className="dialog-footer flex flex-col-reverse justify-end gap-2 border-t border-line-subtle bg-surface px-4 py-3 sm:flex-row sm:gap-2.5 sm:px-6 sm:py-3.5 max-sm:shrink-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             className="secondary min-h-[44px] w-full sm:min-h-0 sm:w-auto"
