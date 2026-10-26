@@ -1,81 +1,194 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { InventoryContext } from '../backend/context'
 import { type Action, type Profile, type State } from '../backend/model'
+import type { ToastItem, ToastType } from '../types/notification'
 import { client, identity, mutate, snapshot } from './client'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Login } from '../pages/Login'
 
-function getActionSuccessMessage(action: Action, state: State | null): string {
+export function getActionToastDetails(
+  action: Action,
+  state: State | null
+): { title: string; message: string; actionLabel?: string; actionUrl?: string; type?: ToastType } {
   switch (action.type) {
-    case 'person-save': return 'Staff directory entry saved.'
-    case 'person-archive': return 'Staff directory entry archived. Usage history retained.'
-    case 'person-unarchive': return 'Staff directory entry restored from archives.'
-    case 'unarchive': return 'Equipment restored from archives to active catalog.'
-    case 'purge-archive': return 'Archived record permanently purged.'
-    case 'purge-all-archives': return 'Archived mock records purged successfully.'
-    case 'archive-note': return 'Archive disposition note updated.'
+    case 'person-save':
+      return {
+        title: 'Staff member saved',
+        message: `Directory entry for "${action.name}" saved successfully.`,
+        actionLabel: 'View in Staff',
+        actionUrl: '/staff',
+        type: 'success',
+      }
+    case 'person-archive':
+      return {
+        title: 'Staff member archived',
+        message: 'Staff directory entry moved to archives with usage history retained.',
+        actionLabel: 'View Archives',
+        actionUrl: '/archives',
+        type: 'success',
+      }
+    case 'person-unarchive':
+      return {
+        title: 'Staff member restored',
+        message: 'Staff directory entry restored from archives to active staff.',
+        actionLabel: 'View in Staff',
+        actionUrl: '/staff',
+        type: 'success',
+      }
+    case 'unarchive':
+      return {
+        title: 'Equipment restored',
+        message: 'Equipment restored from archives to active catalog.',
+        actionLabel: 'View in Catalog',
+        actionUrl: '/inventory',
+        type: 'success',
+      }
+    case 'purge-archive':
+    case 'purge-all-archives':
+      return {
+        title: 'Archives purged',
+        message: 'Archived records permanently purged.',
+        actionLabel: 'View Archives',
+        actionUrl: '/archives',
+        type: 'success',
+      }
+    case 'archive-note':
+      return {
+        title: 'Archive note updated',
+        message: 'Archive disposition note updated.',
+        actionLabel: 'View Archives',
+        actionUrl: '/archives',
+        type: 'success',
+      }
     case 'checkout': {
       const item = state?.items.find((i) => i.id === action.itemId)
-      return item
-        ? `Equipment release for ${item.name} recorded successfully.`
-        : 'Equipment release recorded successfully.'
+      return {
+        title: 'Equipment released',
+        message: item
+          ? `Equipment release for ${item.name} recorded successfully.`
+          : 'Equipment release recorded successfully.',
+        actionLabel: 'View in Logs',
+        actionUrl: '/logs',
+        type: 'success',
+      }
     }
     case 'return': {
       const loan = state?.loans.find((l) => l.id === action.loanId)
       const item = loan ? state?.items.find((i) => i.id === loan.itemId) : null
-      return item
-        ? `Equipment return for ${item.name} recorded successfully.`
-        : 'Equipment return recorded successfully.'
+      return {
+        title: 'Equipment returned',
+        message: item
+          ? `Equipment return for ${item.name} recorded successfully.`
+          : 'Equipment return recorded successfully.',
+        actionLabel: 'View in Catalog',
+        actionUrl: '/inventory',
+        type: 'success',
+      }
     }
     case 'item': {
       const isExisting = state?.items.some((i) => i.id === action.item.id)
-      return isExisting
-        ? `Equipment details for ${action.item.name} updated successfully.`
-        : `New equipment "${action.item.name}" registered successfully.`
+      return {
+        title: isExisting ? 'Equipment updated' : 'Equipment registered',
+        message: isExisting
+          ? `Equipment details for "${action.item.name}" updated successfully.`
+          : `New equipment "${action.item.name}" registered successfully.`,
+        actionLabel: 'View in Catalog',
+        actionUrl: `/inventory?q=${encodeURIComponent(action.item.name)}`,
+        type: 'success',
+      }
     }
     case 'incident': {
       const item = state?.items.find((i) => i.id === action.itemId)
-      return item
-        ? `Incident report for ${item.name} submitted for review.`
-        : 'Incident report submitted for review.'
+      return {
+        title: 'Incident reported',
+        message: item
+          ? `Incident report for ${item.name} submitted for review.`
+          : 'Incident report submitted for review.',
+        actionLabel: 'View Incidents',
+        actionUrl: '/incidents',
+        type: 'warning',
+      }
     }
     case 'resolve': {
       const inc = state?.incidents.find((i) => i.id === action.id)
       const item = inc ? state?.items.find((i) => i.id === inc.itemId) : null
-      return item
-        ? `Incident review for ${item.name} resolved successfully.`
-        : 'Incident review resolved successfully.'
+      return {
+        title: 'Incident resolved',
+        message: item
+          ? `Incident review for ${item.name} resolved successfully.`
+          : 'Incident review resolved successfully.',
+        actionLabel: 'View Incidents',
+        actionUrl: '/incidents',
+        type: 'success',
+      }
     }
     case 'archive': {
       const item = state?.items.find((i) => i.id === action.itemId)
-      return item
-        ? `Equipment "${item.name}" decommissioned successfully.`
-        : 'Equipment decommissioned successfully.'
+      return {
+        title: 'Equipment archived',
+        message: item
+          ? `Equipment "${item.name}" decommissioned successfully.`
+          : 'Equipment decommissioned successfully.',
+        actionLabel: 'View Archives',
+        actionUrl: '/archives',
+        type: 'info',
+      }
     }
-    case 'correct': {
-      return 'Loan schedule and details updated successfully.'
-    }
+    case 'correct':
+      return {
+        title: 'Loan schedule adjusted',
+        message: 'Loan schedule and details updated successfully.',
+        actionLabel: 'View in Logs',
+        actionUrl: '/logs',
+        type: 'success',
+      }
     case 'membership': {
       const target = state?.profiles.find((p) => p.id === action.id)
-      return target
-        ? `Access permissions for ${target.name} updated successfully.`
-        : 'Member access permissions updated successfully.'
+      return {
+        title: 'Access updated',
+        message: target
+          ? `Access permissions for ${target.name} updated successfully.`
+          : 'Member access permissions updated successfully.',
+        actionLabel: 'View Access',
+        actionUrl: '/access',
+        type: 'success',
+      }
     }
     case 'update-profile': {
       const target = state?.profiles.find((p) => p.id === action.id)
-      return target
-        ? `Staff details for ${target.name} updated successfully.`
-        : 'Staff details updated successfully.'
+      return {
+        title: 'Staff details updated',
+        message: target
+          ? `Staff details for ${target.name} updated successfully.`
+          : 'Staff details updated successfully.',
+        actionLabel: 'View in Staff',
+        actionUrl: '/staff',
+        type: 'success',
+      }
     }
     case 'delete-profile': {
       const target = state?.profiles.find((p) => p.id === action.id)
-      return target
-        ? `Access for ${target.name} suspended successfully.`
-        : 'Staff access suspended successfully.'
+      return {
+        title: 'Access suspended',
+        message: target
+          ? `Access for ${target.name} suspended successfully.`
+          : 'Staff access suspended successfully.',
+        actionLabel: 'View Access',
+        actionUrl: '/access',
+        type: 'warning',
+      }
     }
     default:
-      return 'Changes saved successfully.'
+      return {
+        title: 'Changes saved',
+        message: 'Changes saved successfully.',
+        type: 'success',
+      }
   }
+}
+
+function getActionSuccessMessage(action: Action, state: State | null): string {
+  return getActionToastDetails(action, state).message
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -88,6 +201,8 @@ function LiveProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(!!client)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [toasts, setToasts] = useState<ToastItem[]>([])
+  const [activityHistory, setActivityHistory] = useState<ToastItem[]>([])
   const [signedIn, setSignedIn] = useState(false)
   const generation = useRef(0)
   const userId = useRef<string | null>(null)
@@ -100,6 +215,14 @@ function LiveProvider({ children }: { children: ReactNode }) {
       if (noticeTimeout.current) clearTimeout(noticeTimeout.current)
     }
   }, [])
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  const clearActivityHistory = () => {
+    setActivityHistory([])
+  }
 
   const loadWorkspace = async (token: number, sequence: number) => {
     try {
@@ -131,7 +254,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
         currentUser.current = nextUser
         gen.current++
         pending.current.clear()
-        setState(null); setPerson(null); setError(''); setNotice('')
+        setState(null); setPerson(null); setError(''); setNotice(''); setToasts([])
       }
       setSignedIn(!!session)
       if (!session) { sequence.current++; setLoading(false); return }
@@ -159,21 +282,63 @@ function LiveProvider({ children }: { children: ReactNode }) {
     const requestId = pending.current.get(payload) ?? crypto.randomUUID()
     pending.current.set(payload, requestId)
     const token = generation.current
-    await mutate(action, requestId)
-    pending.current.delete(payload)
-    if (token !== generation.current) return
-    const msg = getActionSuccessMessage(action, state)
-    setNotice(msg)
-    if (noticeTimeout.current) clearTimeout(noticeTimeout.current)
-    noticeTimeout.current = setTimeout(() => setNotice(''), 6000)
-    const loaded = await loadWorkspace(generation.current, ++requestSequence.current)
-    if (!loaded && token === generation.current) setNotice('Saved, but the latest data could not be loaded. Refresh to retry; do not submit the change again.')
+    try {
+      await mutate(action, requestId)
+      pending.current.delete(payload)
+      if (token !== generation.current) return
+      const toastDetails = getActionToastDetails(action, state)
+      const toastId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())
+      const newToast: ToastItem = {
+        id: toastId,
+        type: toastDetails.type ?? 'success',
+        title: toastDetails.title,
+        message: toastDetails.message,
+        timestamp: Date.now(),
+        actionLabel: toastDetails.actionLabel,
+        actionUrl: toastDetails.actionUrl,
+      }
+
+      setToasts((prev) => [...prev.slice(-3), newToast])
+      setActivityHistory((prev) => [newToast, ...prev].slice(0, 30))
+
+      const msg = getActionSuccessMessage(action, state)
+      setNotice(msg)
+      if (noticeTimeout.current) clearTimeout(noticeTimeout.current)
+      noticeTimeout.current = setTimeout(() => setNotice(''), 6000)
+
+      const loaded = await loadWorkspace(generation.current, ++requestSequence.current)
+      if (!loaded && token === generation.current) {
+        const warningMsg = 'Saved, but the latest data could not be loaded. Refresh to retry; do not submit the change again.'
+        setNotice(warningMsg)
+        const warnToast: ToastItem = {
+          id: String(Date.now()),
+          type: 'warning',
+          title: 'Sync Delayed',
+          message: warningMsg,
+          timestamp: Date.now(),
+        }
+        setToasts((prev) => [...prev.slice(-3), warnToast])
+      }
+    } catch (err) {
+      pending.current.delete(payload)
+      const errText = err instanceof Error ? err.message : 'Action failed to save.'
+      const errorToast: ToastItem = {
+        id: String(Date.now()),
+        type: 'error',
+        title: 'Action Failed',
+        message: errText,
+        timestamp: Date.now(),
+      }
+      setToasts((prev) => [...prev.slice(-3), errorToast])
+      throw err
+    }
   }
   if (loading) return <div className="app-backdrop min-h-screen bg-workspace" />
 
   if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
   if (state && person) return <InventoryContext.Provider value={{ state, person, act, mode: 'live', refresh, signOut,
-    warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '', notice }}>{children}</InventoryContext.Provider>
+    warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '', notice,
+    toasts, dismissToast, activityHistory, clearActivityHistory }}>{children}</InventoryContext.Provider>
   if (!signedIn) return <>
     {location.pathname !== '/login' && <Navigate to="/login" replace />}
     <main className="min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10"><div className="w-full max-w-[1240px] flex justify-center"><Login checkingSession={false} /></div></main>

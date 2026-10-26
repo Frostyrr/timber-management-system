@@ -20,11 +20,13 @@ import {
   Clock3,
   CheckCheck,
   Archive,
+  ArrowRight,
 } from 'lucide-react'
 import { useInventory } from './backend/context'
 import { visibleIncidents, canInventory, isOverdue } from './backend/model'
 import { dateText } from './components/format'
 import { Avatar } from './components/ui/Avatar'
+import { ToastContainer } from './components/ui/ToastContainer'
 import { Dashboard } from './pages/Dashboard'
 import { Inventory, Incidents } from './pages/Inventory'
 import { Logs } from './pages/Logs'
@@ -36,10 +38,11 @@ import { SecurityHub } from './pages/security/SecurityHub'
 import './App.css'
 
 export default function App() {
-  const { state, person, warning, notice, signOut } = useInventory()
+  const { state, person, warning, notice, signOut, toasts, dismissToast, activityHistory, clearActivityHistory } = useInventory()
   const [menu, setMenu] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notifTab, setNotifTab] = useState<'alerts' | 'activity'>('alerts')
   const [allRead, setAllRead] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -173,6 +176,9 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
+                  if (!notificationsOpen && unreadCount === 0 && (activityHistory?.length ?? 0) > 0) {
+                    setNotifTab('activity')
+                  }
                   setNotificationsOpen(!notificationsOpen)
                   setProfileDropdownOpen(false)
                 }}
@@ -198,85 +204,193 @@ export default function App() {
                   />
                   <div className="notification-dropdown-menu" style={{ zIndex: 99999 }}>
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-[13.5px] font-medium text-ink">Notifications</strong>
-                        {unreadCount > 0 && !allRead && (
-                          <span className="rounded-full bg-pale px-2 py-0.5 font-mono text-[10.5px] font-medium text-primary">
-                            {unreadCount} pending
-                          </span>
+                    <div className="border-b border-line-subtle px-4 pt-3 pb-2.5">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-[13.5px] font-semibold text-ink">Notifications</strong>
+                        {notifTab === 'alerts' ? (
+                          <button
+                            type="button"
+                            onClick={() => setAllRead(true)}
+                            className="cursor-pointer text-[11.5px] font-medium text-primary hover:underline"
+                          >
+                            Mark all read
+                          </button>
+                        ) : (
+                          (activityHistory?.length ?? 0) > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => clearActivityHistory?.()}
+                              className="cursor-pointer text-[11.5px] font-medium text-muted-ink transition-colors hover:text-ink hover:underline"
+                            >
+                              Clear activity
+                            </button>
+                          )
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setAllRead(true)}
-                        className="cursor-pointer text-[11.5px] font-medium text-primary hover:underline"
-                      >
-                        Mark all read
-                      </button>
+
+                      {/* Segmented Tab Bar */}
+                      <div className="mt-2.5 flex rounded-xl bg-surface/80 p-0.5 border border-line-subtle/50">
+                        <button
+                          type="button"
+                          onClick={() => setNotifTab('alerts')}
+                          className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11.5px] font-medium transition-all ${
+                            notifTab === 'alerts'
+                              ? 'bg-white text-ink shadow-xs font-semibold'
+                              : 'text-muted-ink hover:text-ink'
+                          }`}
+                        >
+                          <span>Alerts</span>
+                          {unreadCount > 0 && !allRead && (
+                            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/15 text-[#b7791f] px-1 font-mono text-[9.5px] font-bold">
+                              {unreadCount}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNotifTab('activity')}
+                          className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11.5px] font-medium transition-all ${
+                            notifTab === 'activity'
+                              ? 'bg-white text-ink shadow-xs font-semibold'
+                              : 'text-muted-ink hover:text-ink'
+                          }`}
+                        >
+                          <span>Recent Activity</span>
+                          {(activityHistory?.length ?? 0) > 0 && (
+                            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/10 text-primary px-1 font-mono text-[9.5px] font-bold">
+                              {activityHistory!.length}
+                            </span>
+                          )}
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Notification List */}
-                    <div className="flex max-h-[360px] flex-col gap-1 overflow-y-auto no-scrollbar sm:slick-scroll-dark-green p-2">
-                      {overdueLoans.map((l) => {
-                        const item = state.items.find((i) => i.id === l.itemId)
-                        const borrower = (state.people ?? []).find((p) => p.id === l.borrowerId)
-                        return (
-                          <Link
-                            key={`notif-overdue-${l.id}`}
-                            to={manager ? `/inventory?action=return&loan=${l.id}` : '/inventory?status=overdue'}
-                            onClick={() => setNotificationsOpen(false)}
+                    {/* Tab 1: Alerts */}
+                    {notifTab === 'alerts' && (
+                      <div className="flex max-h-[360px] flex-col gap-1 overflow-y-auto no-scrollbar sm:slick-scroll-dark-green p-2">
+                        {overdueLoans.map((l) => {
+                          const item = state.items.find((i) => i.id === l.itemId)
+                          const borrower = (state.people ?? []).find((p) => p.id === l.borrowerId)
+                          return (
+                            <Link
+                              key={`notif-overdue-${l.id}`}
+                              to={manager ? `/inventory?action=return&loan=${l.id}` : '/inventory?status=overdue'}
+                              onClick={() => setNotificationsOpen(false)}
+                              className="notification-item group flex items-start gap-2.5 rounded-2xl p-2.5 transition-colors hover:bg-surface/80"
+                            >
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-warning-border bg-warning-bg text-warning-text">
+                                <Clock3 size={15} />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-1">
+                                  <strong className="truncate text-xs font-medium text-ink">Overdue return</strong>
+                                  <span className="text-[10.5px] font-medium text-warning-text">Overdue</span>
+                                </div>
+                                <p className="mt-0.5 text-xs text-muted-ink">
+                                  <strong>{item?.name}</strong> was due on {dateText(l.due)}{borrower ? ` (${borrower.name}${borrower.title ? ` — ${borrower.title}` : ''})` : ''}.
+                                </p>
+                              </div>
+                            </Link>
+                          )
+                        })}
+
+                        {openIncidents.map((inc) => {
+                          const item = state.items.find((i) => i.id === inc.itemId)
+                          return (
+                            <Link
+                              key={`notif-inc-${inc.id}`}
+                              to="/incidents"
+                              onClick={() => setNotificationsOpen(false)}
+                              className="notification-item group flex items-start gap-2.5 rounded-2xl p-2.5 transition-colors hover:bg-surface/80"
+                            >
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-danger-border bg-danger-bg text-danger-text">
+                                <ShieldAlert size={15} />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-1">
+                                  <strong className="truncate text-xs font-medium text-ink">Open incident review</strong>
+                                  <span className="text-[10.5px] font-medium text-danger-text">{inc.kind}</span>
+                                </div>
+                                <p className="mt-0.5 text-xs text-muted-ink">
+                                  <strong>{item?.name}</strong>: {inc.notes}
+                                </p>
+                              </div>
+                            </Link>
+                          )
+                        })}
+
+                        {unreadCount === 0 && (
+                          <div className="flex flex-col items-center justify-center py-8 text-center text-muted-ink">
+                            <CheckCheck size={28} className="mb-2 text-primary opacity-60" />
+                            <strong className="text-xs font-medium text-ink">You're all caught up!</strong>
+                            <span className="mt-0.5 text-[11px]">No overdue returns or pending incidents.</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Tab 2: Recent Activity */}
+                    {notifTab === 'activity' && (
+                      <div className="flex max-h-[360px] flex-col gap-1 overflow-y-auto no-scrollbar sm:slick-scroll-dark-green p-2">
+                        {(activityHistory ?? []).map((item) => (
+                          <div
+                            key={item.id}
                             className="notification-item group flex items-start gap-2.5 rounded-2xl p-2.5 transition-colors hover:bg-surface/80"
                           >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-warning-border bg-warning-bg text-warning-text">
-                              <Clock3 size={15} />
+                            <span
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
+                                item.type === 'error'
+                                  ? 'border-red-500/25 bg-red-500/10 text-red-600'
+                                  : item.type === 'warning'
+                                  ? 'border-amber-500/25 bg-amber-500/10 text-[#b7791f]'
+                                  : 'border-primary/20 bg-primary/10 text-primary'
+                              }`}
+                            >
+                              {item.type === 'error' ? (
+                                <ShieldAlert size={15} />
+                              ) : item.type === 'warning' ? (
+                                <Clock3 size={15} />
+                              ) : (
+                                <CheckCheck size={15} />
+                              )}
                             </span>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-1">
-                                <strong className="truncate text-xs font-medium text-ink">Overdue return</strong>
-                                <span className="text-[10.5px] font-medium text-warning-text">Overdue</span>
+                                <strong className="truncate text-xs font-medium text-ink">{item.title}</strong>
+                                <span className="text-[10px] text-muted-ink shrink-0">
+                                  {Math.max(0, Math.floor((Date.now() - item.timestamp) / 1000)) < 60
+                                    ? 'Just now'
+                                    : Math.floor((Date.now() - item.timestamp) / 60000) < 60
+                                    ? `${Math.floor((Date.now() - item.timestamp) / 60000)}m ago`
+                                    : `${Math.floor((Date.now() - item.timestamp) / 3600000)}h ago`}
+                                </span>
                               </div>
-                              <p className="mt-0.5 text-xs text-muted-ink">
-                                <strong>{item?.name}</strong> was due on {dateText(l.due)}{borrower ? ` (${borrower.name}${borrower.title ? ` — ${borrower.title}` : ''})` : ''}.
+                              <p className="mt-0.5 text-xs text-muted-ink leading-relaxed">
+                                {item.message}
                               </p>
+                              {item.actionUrl && (
+                                <Link
+                                  to={item.actionUrl}
+                                  onClick={() => setNotificationsOpen(false)}
+                                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline group/link"
+                                >
+                                  <span>{item.actionLabel ?? 'View record'}</span>
+                                  <ArrowRight size={11} className="transition-transform group-hover/link:translate-x-0.5" />
+                                </Link>
+                              )}
                             </div>
-                          </Link>
-                        )
-                      })}
+                          </div>
+                        ))}
 
-                      {openIncidents.map((inc) => {
-                        const item = state.items.find((i) => i.id === inc.itemId)
-                        return (
-                          <Link
-                            key={`notif-inc-${inc.id}`}
-                            to="/incidents"
-                            onClick={() => setNotificationsOpen(false)}
-                            className="notification-item group flex items-start gap-2.5 rounded-2xl p-2.5 transition-colors hover:bg-surface/80"
-                          >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-danger-border bg-danger-bg text-danger-text">
-                              <ShieldAlert size={15} />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-1">
-                                <strong className="truncate text-xs font-medium text-ink">Open incident review</strong>
-                                <span className="text-[10.5px] font-medium text-danger-text">{inc.kind}</span>
-                              </div>
-                              <p className="mt-0.5 text-xs text-muted-ink">
-                                <strong>{item?.name}</strong>: {inc.notes}
-                              </p>
-                            </div>
-                          </Link>
-                        )
-                      })}
-
-                      {unreadCount === 0 && (
-                        <div className="flex flex-col items-center justify-center py-8 text-center text-muted-ink">
-                          <CheckCheck size={28} className="mb-2 text-primary opacity-60" />
-                          <strong className="text-xs font-medium text-ink">You're all caught up!</strong>
-                          <span className="mt-0.5 text-[11px]">No overdue returns or pending incidents.</span>
-                        </div>
-                      )}
-                    </div>
+                        {(activityHistory ?? []).length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-8 text-center text-muted-ink">
+                            <ScrollText size={28} className="mb-2 text-primary opacity-50" />
+                            <strong className="text-xs font-medium text-ink">No recent activity</strong>
+                            <span className="mt-0.5 text-[11px]">Actions performed during this session will be logged here.</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Footer */}
                     <div className="border-t border-line-subtle bg-surface/50 px-4 py-2.5 text-center">
@@ -478,13 +592,9 @@ export default function App() {
 
           {/* Page Main Content with bottom padding for mobile dock */}
           <main id="main" className="workspace-main flex min-w-0 flex-1 flex-col pb-24 md:pb-12">
-            <div className="notice" role="status" aria-live="polite">
-              {notice ? (
-                <span className="flex items-center gap-2">
-                  <CheckCheck size={16} className="shrink-0 text-primary" />
-                  <span>{notice}</span>
-                </span>
-              ) : null}
+            {/* Screen reader live region without visual CLS layout shift */}
+            <div className="sr-only" role="status" aria-live="polite">
+              {notice}
             </div>
             <div key={person.id} className="page-content mx-auto w-full max-w-[1400px] flex-1">
               <Routes>
@@ -745,6 +855,9 @@ export default function App() {
           <span>Menu</span>
         </button>
       </nav>
+
+      {/* Floating Non-Blocking Toast Notification Container */}
+      <ToastContainer toasts={toasts ?? []} onDismiss={dismissToast ?? (() => {})} />
     </div>
   )
 }
