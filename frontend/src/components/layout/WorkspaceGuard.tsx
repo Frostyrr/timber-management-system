@@ -91,12 +91,13 @@ export function WorkspaceGuard({
       document.removeEventListener('visibilitychange', visible)
     }
   }, [locked])
+  const showLock = locked || initiallyLocked;
   return (
     <>
-      <div ref={content} hidden={locked} inert={locked}>
+      <div ref={content} hidden={showLock} inert={showLock}>
         {children}
       </div>
-      {locked ? (
+      {showLock ? (
         <main className="fixed inset-0 z-[200000] flex items-center justify-center overflow-y-auto bg-workspace p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             {error && <p role="alert">{error}</p>}

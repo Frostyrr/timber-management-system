@@ -68,6 +68,7 @@ begin
  select factor_id into trusted_factor from timber.operator_factors where user_id=auth.uid();
  if trusted_factor is not null and trusted_factor<>verified_factor then raise exception 'Authenticator changed. Contact the project owner for verified recovery.'; end if;
  insert into timber.operator_factors values(auth.uid(),verified_factor) on conflict do nothing;
+ if found then insert into timber.mfa_events(user_id,session_id,event) values(auth.uid(),sid,'authenticator registered'); end if;
  insert into timber.mfa_proofs values(sid,proof) on conflict do nothing;
  if not found then raise exception 'Verification already used. Enter a new code.'; end if;
  if ticket.scope='unlock' then
@@ -137,6 +138,7 @@ end $$;
 create function public.security_snapshot() returns jsonb language plpgsql security definer set search_path='' as $$begin perform timber.require_operator_mfa(); return timber.security_snapshot_before_mfa(); end $$;
 create function public.security_mutate(action jsonb, request_id uuid) returns void language plpgsql security definer set search_path='' as $$begin
  perform timber.require_operator_mfa();
+ if action->>'type'='update-policy' and action->'patch'->>'requireAdminMFA'='false' then raise exception 'Authenticator verification is mandatory for operators.'; end if;
  if action->>'type'<>'register-session' then perform timber.consume_mfa('security',action); end if;
  perform timber.security_mutate_before_mfa(action,request_id);
 end $$;
