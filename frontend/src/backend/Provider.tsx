@@ -345,7 +345,10 @@ function LiveProvider({ children }: { children: ReactNode }) {
     }
   }
   if (loading) {
-    if (location.pathname === '/login') {
+    const isAuthRoute = location.pathname === '/login' || location.pathname === '/auth/callback'
+    const isVerifiedWorkspace = signedIn && !mfaRequired && person !== null
+
+    if (isAuthRoute || !isVerifiedWorkspace) {
       return (
         <main className="min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10">
           <div className="w-full max-w-[1240px] flex justify-center">
@@ -357,15 +360,78 @@ function LiveProvider({ children }: { children: ReactNode }) {
     return <WorkspaceSkeleton />
   }
 
-  if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
-  if (state && person) return <WorkspaceGuard operatorName={person.name} state={state} initiallyLocked={mfaRequired} onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}><InventoryContext.Provider value={{ state, person, act, refreshing: activeLoads > 0, mode: 'live', refresh, signOut,
-    warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '', notice,
-    toasts, dismissToast, activityHistory, clearActivityHistory }}>{children}</InventoryContext.Provider></WorkspaceGuard>
-  if (signedIn && mfaRequired && person) return <WorkspaceGuard operatorName={person.name} initiallyLocked onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}>{null}</WorkspaceGuard>
-  if (!signedIn) return <>
-    {location.pathname !== '/login' && <Navigate to="/login" replace />}
-    <main className="min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10"><div className="w-full max-w-[1240px] flex justify-center"><Login checkingSession={false} /></div></main>
-  </>
+  // 1. Awaiting second-factor authentication (MFA).
+  // The protected dashboard and its children are strictly omitted ({null}) until MFA verification completes.
+  if (signedIn && mfaRequired && person) {
+    return (
+      <WorkspaceGuard
+        operatorName={person.name}
+        initiallyLocked
+        onUnlocked={async () => {
+          if (!await loadWorkspace(generation.current, ++requestSequence.current)) {
+            throw Error('Unable to unlock. Retry verification or reconnect.')
+          }
+        }}
+      >
+        {null}
+      </WorkspaceGuard>
+    )
+  }
+
+  // 2. Redirect back to root dashboard once fully authenticated, verified, and workspace state is loaded.
+  if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) {
+    return <Navigate to="/" replace />
+  }
+
+  // 3. Fully authenticated, verified, and loaded operator workspace.
+  if (state && person && !mfaRequired) {
+    return (
+      <WorkspaceGuard
+        operatorName={person.name}
+        state={state}
+        initiallyLocked={false}
+        onUnlocked={async () => {
+          if (!await loadWorkspace(generation.current, ++requestSequence.current)) {
+            throw Error('Unable to unlock. Retry verification or reconnect.')
+          }
+        }}
+      >
+        <InventoryContext.Provider
+          value={{
+            state,
+            person,
+            act,
+            refreshing: activeLoads > 0,
+            mode: 'live',
+            refresh,
+            signOut,
+            warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '',
+            notice,
+            toasts,
+            dismissToast,
+            activityHistory,
+            clearActivityHistory,
+          }}
+        >
+          {children}
+        </InventoryContext.Provider>
+      </WorkspaceGuard>
+    )
+  }
+
+  // 4. Unauthenticated user -> redirect to login view.
+  if (!signedIn) {
+    return (
+      <>
+        {location.pathname !== '/login' && <Navigate to="/login" replace />}
+        <main className="min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10">
+          <div className="w-full max-w-[1240px] flex justify-center">
+            <Login checkingSession={false} />
+          </div>
+        </main>
+      </>
+    )
+  }
   return <main className="min-h-screen bg-workspace flex items-center justify-center p-4">
     <div className="w-full max-w-[440px] rounded-[32px] border border-white/90 bg-white/85 p-8 shadow-[0_24px_64px_rgba(21,63,50,0.12)] backdrop-blur-2xl text-center animate-enter">
       <img src="/logo.png" alt="The Timberland logo" className="h-16 w-auto mx-auto mb-4 object-contain" />

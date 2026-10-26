@@ -81,4 +81,48 @@ describe('live session and loading behavior',()=>{
   await waitFor(()=>expect(screen.queryByText(/Could not refresh inventory/)).toBeNull())
   expect(api.mutate).toHaveBeenCalledTimes(1)
  })
+
+ it('never renders the workspace skeleton or protected content on /auth/callback while awaiting MFA', async () => {
+  cleanup()
+  api.access.mockResolvedValue(false)
+  render(
+   <MemoryRouter initialEntries={['/auth/callback']}>
+    <DataProvider>
+     <Workspace />
+    </DataProvider>
+   </MemoryRouter>
+  )
+  expect(screen.queryByLabelText('Loading workspace')).toBeNull()
+  expect(screen.queryByLabelText('Draft')).toBeNull()
+
+  await auth('admin')
+  expect(api.snapshot).not.toHaveBeenCalled()
+  expect(screen.queryByLabelText('Loading workspace')).toBeNull()
+  expect(screen.queryByLabelText('Draft')).toBeNull()
+ })
+
+ it('does not render workspace skeleton on initial navigation to / before session and MFA are verified', async () => {
+  cleanup()
+  api.access.mockResolvedValue(false)
+  render(
+   <MemoryRouter initialEntries={['/']}>
+    <DataProvider>
+     <Workspace />
+    </DataProvider>
+   </MemoryRouter>
+  )
+  expect(screen.queryByLabelText('Loading workspace')).toBeNull()
+  expect(screen.queryByLabelText('Draft')).toBeNull()
+
+  await auth('admin')
+  expect(api.snapshot).not.toHaveBeenCalled()
+  expect(screen.queryByLabelText('Draft')).toBeNull()
+ })
+
+ it('keeps workspace inaccessible when MFA verification fails or remains incomplete', async () => {
+  api.access.mockResolvedValue(false)
+  await auth('admin')
+  expect(api.snapshot).not.toHaveBeenCalled()
+  expect(screen.queryByLabelText('Draft')).toBeNull()
+ })
 })

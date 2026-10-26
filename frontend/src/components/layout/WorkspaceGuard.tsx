@@ -101,7 +101,12 @@ export function WorkspaceGuard({
   const showLock = locked || initiallyLocked
   return (
     <>
-      <div ref={content} hidden={showLock} inert={showLock}>
+      <div
+        ref={content}
+        hidden={showLock}
+        inert={showLock}
+        style={{ display: showLock ? 'none' : undefined }}
+      >
         <WorkspaceLockContext.Provider value={() => void lock()}>
           {children}
         </WorkspaceLockContext.Provider>
