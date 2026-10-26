@@ -1,3 +1,5 @@
+import { WorkspaceLockContext } from '../../backend/workspaceLock'
+import type { State } from '../../backend/model'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { lockWorkspace, workspaceAccess } from '../../backend/client'
 import { AuthenticatorForm } from '../ui/AuthenticatorForm'
@@ -6,7 +8,11 @@ export function WorkspaceGuard({
   children,
   initiallyLocked = false,
   onUnlocked,
+  operatorName,
+  state,
 }: {
+  operatorName?: string
+  state?: State
   children: ReactNode
   initiallyLocked?: boolean
   onUnlocked: () => Promise<void>
@@ -91,17 +97,20 @@ export function WorkspaceGuard({
       document.removeEventListener('visibilitychange', visible)
     }
   }, [locked])
-  const showLock = locked || initiallyLocked;
+  const showLock = locked || initiallyLocked
   return (
     <>
       <div ref={content} hidden={showLock} inert={showLock}>
-        {children}
+        <WorkspaceLockContext.Provider value={() => void lock()}>
+          {children}
+        </WorkspaceLockContext.Provider>
       </div>
       {showLock ? (
-        <main className="fixed inset-0 z-[200000] flex items-center justify-center overflow-y-auto bg-workspace p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <main className="mfa-screen fixed inset-0 z-[200000] overflow-y-auto bg-workspace p-4 sm:p-8">
+          <div className="mfa-card mx-auto w-full max-w-[440px]">
             {error && <p role="alert">{error}</p>}
             <AuthenticatorForm
+              operatorName={operatorName}
               onVerified={async () => {
                 await onUnlocked()
                 setError('')
@@ -112,9 +121,6 @@ export function WorkspaceGuard({
         </main>
       ) : (
         <>
-          <button className="secondary fixed bottom-24 right-4 z-40" onClick={() => void lock()}>
-            Lock workspace
-          </button>
           {warning && (
             <p
               role="status"
@@ -123,7 +129,7 @@ export function WorkspaceGuard({
               Workspace locks in 30 seconds without interaction.
             </p>
           )}
-          <MfaActionHost />
+          <MfaActionHost state={state} />
         </>
       )}
     </>

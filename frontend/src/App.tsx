@@ -1,3 +1,4 @@
+import { LockWorkspaceButton } from './components/ui/LockWorkspaceButton'
 import { TopLoadingBar } from './components/ui/TopLoadingBar'
 import { Archives } from './pages/Archives'
 import { useState, useRef, useEffect } from 'react'
@@ -176,6 +177,7 @@ export default function App() {
 
           {/* Right Floating Header Controls */}
           <div className="topbar-right flex items-center gap-2 sm:gap-2.5">
+            <LockWorkspaceButton />
             {/* Notification Center */}
             <div className="relative">
               <button

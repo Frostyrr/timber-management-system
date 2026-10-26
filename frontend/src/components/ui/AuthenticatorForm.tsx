@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { client } from '../../backend/client'
-import { Field } from './Field'
+import { AuthenticatorCodeField } from './AuthenticatorCodeField'
+import { Skeleton } from './Skeleton'
+import { LockKeyhole, ShieldCheck, Smartphone, ArrowRight, LoaderCircle } from 'lucide-react'
+import { summarizeMfaAction, type MfaSummary } from '../../backend/mfaSummary'
 
 export function AuthenticatorForm({
   scope = 'unlock',
   payload = {},
   onVerified,
   onCancel,
+  operatorName,
+  summary,
 }: {
+  operatorName?: string
+  summary?: MfaSummary
   scope?: 'unlock' | 'inventory' | 'security'
   payload?: unknown
   onVerified: () => void | Promise<void>
@@ -60,9 +67,12 @@ export function AuthenticatorForm({
       }
     })()
   }, [scope, payload, attempt])
+  const actionSummary = summary ?? summarizeMfaAction(payload)
+  const preparing = !factor && !error
   return (
     <form
-      className="flex flex-col gap-4"
+      className="mfa-form"
+      aria-busy={busy || preparing}
       onSubmit={async (e) => {
         e.preventDefault()
         if (busy || !factor || !intent) return
@@ -90,92 +100,165 @@ export function AuthenticatorForm({
         }
       }}
     >
-      <h1 className="text-xl font-semibold">
-        {setup
-          ? 'Set up authenticator'
-          : scope === 'unlock'
-            ? 'Unlock workspace'
-            : 'Verify this action'}
-      </h1>
-      <p className="text-sm text-muted-ink">
-        {setup
-          ? 'Scan this QR code in your phone’s authenticator app, then enter its six-digit code.'
-          : 'Enter the current six-digit code from your phone’s authenticator.'}
-      </p>
-      {setup && (
+      <div className="mfa-brand">
+        <img src="/logo.png" alt="The Timberland" />
+        <span>
+          TIMBER<span>Publication inventory</span>
+        </span>
+      </div>
+      {preparing ? (
+        <div className="mfa-preparing" aria-label="Preparing verification">
+          <Skeleton className="mx-auto h-12 w-12 rounded-2xl" />
+          <Skeleton className="mx-auto mt-5 h-7 w-52" />
+          <Skeleton className="mt-3 h-4 w-full" />
+          <Skeleton className="mt-7 h-16 w-full" />
+          <Skeleton className="mt-5 h-12 w-full" />
+        </div>
+      ) : (
         <>
-          <img
-            src={setup.qr_code}
-            alt="Authenticator setup QR code"
-            className="mx-auto h-48 w-48"
+          <div className="mfa-intro">
+            <span className="mfa-emblem" aria-hidden="true">
+              {setup ? (
+                <Smartphone size={23} />
+              ) : scope === 'unlock' ? (
+                <LockKeyhole size={23} />
+              ) : (
+                <ShieldCheck size={23} />
+              )}
+            </span>
+            <p className="mfa-eyebrow">
+              {setup
+                ? 'ACCOUNT PROTECTION'
+                : scope === 'unlock'
+                  ? 'SECURE WORKSPACE'
+                  : 'CONFIRM YOUR IDENTITY'}
+            </p>
+            <h1>
+              {setup
+                ? 'Secure your account'
+                : scope === 'unlock'
+                  ? 'Unlock workspace'
+                  : 'Verify this action'}
+            </h1>
+            <p>
+              {setup
+                ? 'Link your phone’s authenticator to keep your publication account protected.'
+                : scope === 'unlock'
+                  ? 'Your workspace is protected. Verify to pick up where you left off.'
+                  : 'One more check before this change takes effect.'}
+            </p>
+            {operatorName && scope === 'unlock' && !setup && (
+              <span className="mfa-identity">{operatorName}</span>
+            )}
+          </div>
+          {setup && (
+            <section className="mfa-setup" aria-label="Authenticator setup">
+              <p className="mfa-step">
+                <span>1</span> Scan with your authenticator app
+              </p>
+              <div className="mfa-qr">
+                <img
+                  src={setup.qr_code}
+                  alt="Authenticator setup QR code"
+                  width="192"
+                  height="192"
+                />
+              </div>
+              <details className="mfa-disclosure">
+                <summary>Can’t scan? Use a setup key</summary>
+                <p>Enter this key in your authenticator app. Keep it private.</p>
+                <code className="mfa-secret">{setup.secret}</code>
+              </details>
+              <p className="mfa-step">
+                <span>2</span> Enter the code from your phone
+              </p>
+            </section>
+          )}
+          {scope !== 'unlock' && (
+            <section
+              className={`mfa-action-summary ${actionSummary.destructive ? 'is-destructive' : ''}`}
+              aria-label="Action summary"
+            >
+              <strong>{actionSummary.title}</strong>
+              {actionSummary.records.length > 0 && (
+                <ul>
+                  {actionSummary.records.map((name, index) => (
+                    <li key={index}>{name}</li>
+                  ))}
+                </ul>
+              )}
+              <p>{actionSummary.consequence}</p>
+            </section>
+          )}
+          <AuthenticatorCodeField
+            value={code}
+            onChange={setCode}
+            disabled={busy || !factor}
+            error={error}
           />
-          <details>
-            <summary>Enter setup key manually</summary>
-            <code className="break-all select-all">{setup.secret}</code>
-          </details>
-        </>
-      )}
-      {scope !== 'unlock' && (
-        <details>
-          <summary>Action details</summary>
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-xs">
-            {JSON.stringify(payload, null, 2)}
-          </pre>
-        </details>
-      )}
-      <Field label="Authenticator code">
-        <input
-          autoComplete="one-time-code"
-          inputMode="numeric"
-          pattern="[0-9]{6}"
-          maxLength={6}
-          required
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-        />
-      </Field>
-      {error && (
-        <>
-          <p role="alert" className="error">
-            {error}
-          </p>
+          {error && (
+            <button
+              type="button"
+              className="mfa-text-button"
+              disabled={busy}
+              onClick={() => {
+                started.current = false
+                setSetup(null)
+                setFactor('')
+                setIntent('')
+                setCode('')
+                setError('')
+                setAttempt((value) => value + 1)
+              }}
+            >
+              Restart verification
+            </button>
+          )}
           <button
-            type="button"
-            className="secondary"
-            disabled={busy}
-            onClick={() => {
-              started.current = false
-              setSetup(null)
-              setFactor('')
-              setIntent('')
-              setCode('')
-              setError('')
-              setAttempt((value) => value + 1)
-            }}
+            className="primary mfa-submit"
+            disabled={busy || !factor || !intent || code.length !== 6}
           >
-            Restart verification
+            {busy ? (
+              <>
+                <LoaderCircle size={16} className="animate-spin motion-reduce:animate-none" />
+                Verifying…
+              </>
+            ) : (
+              <>
+                {setup
+                  ? 'Finish setup'
+                  : scope === 'unlock'
+                    ? 'Unlock workspace'
+                    : 'Verify and continue'}
+                <ArrowRight size={16} />
+              </>
+            )}
           </button>
         </>
       )}
-      <button className="primary" disabled={busy || !factor || !intent}>
-        {busy ? 'Verifying…' : 'Verify'}
-      </button>
-      {onCancel && (
-        <button type="button" className="secondary" disabled={busy} onClick={onCancel}>
-          Cancel
-        </button>
-      )}
-      <button
-        type="button"
-        className="secondary"
-        disabled={busy}
-        onClick={() => void client!.auth.signOut()}
-      >
-        Sign out
-      </button>
-      <p className="text-xs text-muted-ink">
-        Lost access to your phone? Contact the project owner for identity-verified recovery.
-      </p>
+      <div className="mfa-secondary-actions">
+        {onCancel ? (
+          <button type="button" className="mfa-text-button" disabled={busy} onClick={onCancel}>
+            Cancel and go back
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="mfa-text-button"
+            disabled={busy}
+            onClick={() => void client!.auth.signOut()}
+          >
+            Sign out
+          </button>
+        )}
+      </div>
+      <details className="mfa-disclosure mfa-recovery">
+        <summary>Can’t access your authenticator?</summary>
+        <p>
+          Contact the project owner to verify your identity and recover access. Your equipment
+          records will be preserved.
+        </p>
+      </details>
     </form>
   )
 }

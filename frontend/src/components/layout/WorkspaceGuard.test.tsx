@@ -1,3 +1,4 @@
+import { LockWorkspaceButton } from '../ui/LockWorkspaceButton'
 // @vitest-environment jsdom
 import { afterEach, it, expect, vi } from 'vitest'
 import { cleanup, render, screen, fireEvent, act } from '@testing-library/react'
@@ -17,7 +18,7 @@ afterEach(() => {
 it('preserves drafts while hiding and disabling the locked workspace', async () => {
   render(
     <WorkspaceGuard onUnlocked={async () => {}}>
-      <input aria-label="Draft" defaultValue="Keep this" />
+      <LockWorkspaceButton/><input aria-label="Draft" defaultValue="Keep this" />
     </WorkspaceGuard>,
   )
   fireEvent.click(screen.getByRole('button', { name: 'Lock workspace' }))

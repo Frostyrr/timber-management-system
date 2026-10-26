@@ -347,10 +347,10 @@ function LiveProvider({ children }: { children: ReactNode }) {
   if (loading) return <WorkspaceSkeleton />
 
   if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
-  if (state && person) return <WorkspaceGuard initiallyLocked={mfaRequired} onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}><InventoryContext.Provider value={{ state, person, act, refreshing: activeLoads > 0, mode: 'live', refresh, signOut,
+  if (state && person) return <WorkspaceGuard operatorName={person.name} state={state} initiallyLocked={mfaRequired} onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}><InventoryContext.Provider value={{ state, person, act, refreshing: activeLoads > 0, mode: 'live', refresh, signOut,
     warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '', notice,
     toasts, dismissToast, activityHistory, clearActivityHistory }}>{children}</InventoryContext.Provider></WorkspaceGuard>
-  if (signedIn && mfaRequired && person) return <WorkspaceGuard initiallyLocked onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}>{null}</WorkspaceGuard>
+  if (signedIn && mfaRequired && person) return <WorkspaceGuard operatorName={person.name} initiallyLocked onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}>{null}</WorkspaceGuard>
   if (!signedIn) return <>
     {location.pathname !== '/login' && <Navigate to="/login" replace />}
     <main className="min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10"><div className="w-full max-w-[1240px] flex justify-center"><Login checkingSession={false} /></div></main>

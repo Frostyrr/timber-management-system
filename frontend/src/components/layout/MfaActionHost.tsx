@@ -1,7 +1,9 @@
+import type { State } from '../../backend/model'
+import { summarizeMfaAction } from '../../backend/mfaSummary'
 import { useEffect, useRef, useState } from 'react'
 import { listenForMfa, type MfaRequest } from '../../backend/mfaPrompt'
 import { AuthenticatorForm } from '../ui/AuthenticatorForm'
-export function MfaActionHost() {
+export function MfaActionHost({ state }: { state?: State }) {
   const [request, setRequest] = useState<MfaRequest | null>(null)
   const pending = useRef<MfaRequest | null>(null)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -34,13 +36,15 @@ export function MfaActionHost() {
     request && (
       <dialog
         ref={dialog}
-        className="m-auto w-[calc(100%-32px)] max-w-md rounded-2xl bg-white p-6 backdrop:bg-black/50"
+        aria-label="Verify sensitive action"
+        className="mfa-card m-auto max-h-[90dvh] w-[calc(100vw-32px)] max-w-[440px] overflow-y-auto backdrop:bg-black/40 backdrop:backdrop-blur-sm"
         onCancel={(e) => {
           e.preventDefault()
           finish(false)
         }}
       >
         <AuthenticatorForm
+          summary={summarizeMfaAction(request.payload, state)}
           scope={request.scope}
           payload={request.payload}
           onVerified={() => finish(true)}
