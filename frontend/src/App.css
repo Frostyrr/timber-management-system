@@ -892,8 +892,8 @@ select {
 }
 
 .stagger-item {
-  animation: enterFadeUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--stagger-i, 0) * 45ms);
+  animation: enterFadeUp 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--stagger-i, 0) * var(--stagger-step, 55ms));
 }
 
 /* Translated rows extend a table's scrollable bounds during entry.

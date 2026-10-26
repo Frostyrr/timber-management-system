@@ -176,19 +176,27 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         <div className="flex flex-col gap-8 lg:col-span-6">
           {/* Masthead Header without card background */}
           <div className="flex flex-col gap-4">
-            <Link to="/" className="inline-flex items-center transition-transform hover:scale-105 w-fit">
-              <img
-                src="/logo.png"
-                alt="The Timberland publication logo"
-                className="h-14 w-auto object-contain drop-shadow-xs sm:h-16"
-              />
-            </Link>
+            <div className="stagger-item" style={{ '--stagger-i': 0 } as React.CSSProperties}>
+              <Link to="/" className="inline-flex items-center transition-transform hover:scale-105 w-fit">
+                <img
+                  src="/logo.png"
+                  alt="The Timberland publication logo"
+                  className="h-14 w-auto object-contain drop-shadow-xs sm:h-16"
+                />
+              </Link>
+            </div>
 
-            <h1 className="text-[32px] font-bold tracking-[-0.03em] text-ink sm:text-[40px] lg:text-[44px] leading-[1.12]">
+            <h1
+              className="stagger-item text-[32px] font-bold tracking-[-0.03em] text-ink sm:text-[40px] lg:text-[44px] leading-[1.12]"
+              style={{ '--stagger-i': 1 } as React.CSSProperties}
+            >
               The Timberland
             </h1>
 
-            <p className="max-w-[500px] text-[15px] leading-relaxed text-muted-ink sm:text-[16px]">
+            <p
+              className="stagger-item max-w-[500px] text-[15px] leading-relaxed text-muted-ink sm:text-[16px]"
+              style={{ '--stagger-i': 2 } as React.CSSProperties}
+            >
               Equipping campus journalists, photographers, and editors with reliable gear.
               Real-time checkout, return verification, and transparent student custodian accountability.
             </p>
@@ -196,33 +204,38 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
 
           {/* Action Area directly below hero text */}
           <div className="flex flex-col gap-4 max-w-[420px]">
-            <button
-              type="button"
-              onClick={handleSignIn}
-              disabled={isLoading}
-              className="google-official-btn w-full py-3.5 transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer shadow-[0_4px_16px_rgba(21,63,50,0.08)] hover:shadow-[0_6px_20px_rgba(21,63,50,0.12)] active:scale-[0.99]"
-            >
-              {isLoading ? (
-                <RefreshCw size={19} className="animate-spin text-primary" />
-              ) : (
-                <GoogleIcon size={19} />
-              )}
-              <span className="font-medium text-[14.5px] text-ink">
-                {isLoading ? 'Connecting to Google…' : 'Continue with Google'}
-              </span>
-            </button>
+            <div className="stagger-item" style={{ '--stagger-i': 3 } as React.CSSProperties}>
+              <button
+                type="button"
+                onClick={handleSignIn}
+                disabled={isLoading}
+                className="google-official-btn w-full py-3.5 transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer shadow-[0_4px_16px_rgba(21,63,50,0.08)] hover:shadow-[0_6px_20px_rgba(21,63,50,0.12)] active:scale-[0.99]"
+              >
+                {isLoading ? (
+                  <RefreshCw size={19} className="animate-spin text-primary" />
+                ) : (
+                  <GoogleIcon size={19} />
+                )}
+                <span className="font-medium text-[14.5px] text-ink">
+                  {isLoading ? 'Connecting to Google…' : 'Continue with Google'}
+                </span>
+              </button>
+            </div>
 
             {error && (
               <div
                 role="alert"
-                className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/90 p-3 text-left text-xs text-red-700"
+                className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/90 p-3 text-left text-xs text-red-700 animate-enter"
               >
                 <AlertCircle size={15} className="shrink-0 text-red-600" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="flex items-center gap-2 text-[12px] text-muted-ink">
+            <div
+              className="stagger-item flex items-center gap-2 text-[12px] text-muted-ink"
+              style={{ '--stagger-i': 4 } as React.CSSProperties}
+            >
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
               <span>Authorized operators only · Student publication Google Workspace</span>
             </div>
@@ -230,7 +243,10 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         </div>
 
         {/* Right Column: Vertical Carousel with Center Spotlight & Ambient Gradient Blur */}
-        <div className="flex flex-col justify-center lg:col-span-6">
+        <div
+          className="stagger-item flex flex-col justify-center lg:col-span-6"
+          style={{ '--stagger-i': 2 } as React.CSSProperties}
+        >
           <section
             ref={containerRef}
             aria-label="Recent equipment usage and returns chatbox"
@@ -249,7 +265,7 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
             {isLoaded && logs.length === 0 ? (
               <div
                 data-testid="chatbox-empty-state"
-                className="flex h-full flex-col items-center justify-center text-center p-8 sm:p-11 rounded-3xl border border-[#dce6df] bg-white/75 backdrop-blur-md shadow-xs max-w-[460px] mx-auto lg:mx-0 lg:ml-auto"
+                className="animate-enter flex h-full flex-col items-center justify-center text-center p-8 sm:p-11 rounded-3xl border border-[#dce6df] bg-white/75 backdrop-blur-md shadow-xs max-w-[460px] mx-auto lg:mx-0 lg:ml-auto"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pale text-primary border border-primary/15 shadow-2xs mb-3.5">
                   <PackageOpen size={24} className="text-primary" />
@@ -300,7 +316,9 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
                             : 'scale-[0.78] opacity-15 filter blur-[3px] hover:opacity-60 hover:blur-[0.5px] hover:scale-[0.84]'
                       }`}
                       style={{
-                        animation: `messagePop 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${(index % logs.length) * 110}ms both`,
+                        animation: `messagePop 0.48s cubic-bezier(0.16, 1, 0.3, 1) ${
+                          (index % Math.max(logs.length, 1)) * 90 + 160
+                        }ms both`,
                       }}
                     >
                       {/* Primary Dark Green Chat Speech Bubble with iconic tail - No redundant avatar */}
