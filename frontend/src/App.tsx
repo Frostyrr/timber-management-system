@@ -22,12 +22,15 @@ import {
   CheckCheck,
   Archive,
   ArrowRight,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import { useInventory } from './backend/context'
 import { visibleIncidents, canInventory, isOverdue } from './backend/model'
 import { dateText } from './components/format'
 import { Avatar } from './components/ui/Avatar'
 import { ToastContainer } from './components/ui/ToastContainer'
+import { sound } from './utils/sound'
 import { Dashboard } from './pages/Dashboard'
 import { Inventory, Incidents } from './pages/Inventory'
 import { Logs } from './pages/Logs'
@@ -44,6 +47,7 @@ export default function App() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifTab, setNotifTab] = useState<'alerts' | 'activity'>('alerts')
+  const [soundMuted, setSoundMuted] = useState(() => sound.isMuted())
   const [allRead, setAllRead] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -207,7 +211,22 @@ export default function App() {
                     {/* Header */}
                     <div className="border-b border-line-subtle px-4 pt-3 pb-2.5">
                       <div className="flex items-center justify-between">
-                        <strong className="text-[13.5px] font-semibold text-ink">Notifications</strong>
+                        <div className="flex items-center gap-2">
+                          <strong className="text-[13.5px] font-semibold text-ink">Notifications</strong>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = !soundMuted
+                              sound.setMuted(next)
+                              setSoundMuted(next)
+                            }}
+                            className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-muted-ink hover:text-ink hover:bg-black/5 transition-colors"
+                            title={soundMuted ? 'Notification sound muted (click to unmute)' : 'Notification sound enabled (click to mute)'}
+                            aria-label={soundMuted ? 'Unmute notification sound' : 'Mute notification sound'}
+                          >
+                            {soundMuted ? <VolumeX size={13} className="text-muted-ink/60" /> : <Volume2 size={13} className="text-primary" />}
+                          </button>
+                        </div>
                         {notifTab === 'alerts' ? (
                           <button
                             type="button"

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, AlertTriangle, AlertCircle, Info, X, ArrowRight } from 'lucide-react'
 import type { ToastItem } from '../../types/notification'
+import { sound } from '../../utils/sound'
 
 interface ToastProps {
   toast: ToastItem
@@ -16,6 +17,15 @@ export function Toast({ toast, onDismiss, duration = 5000 }: ToastProps) {
   const startTimeRef = useRef(Date.now())
   const remainingTimeRef = useRef(duration)
   const animationFrameRef = useRef<number | null>(null)
+  const soundPlayedRef = useRef(false)
+
+  // Tactile audio feedback on notification entry
+  useEffect(() => {
+    if (!soundPlayedRef.current) {
+      soundPlayedRef.current = true
+      sound.play(toast.type)
+    }
+  }, [toast.type])
 
   const handleDismiss = () => {
     setIsExiting(true)

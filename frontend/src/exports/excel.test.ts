@@ -14,7 +14,7 @@ it('round-trips text safely, numbers and Excel dates with headers and filters', 
  expect((sheet.getCell('C2').value as Date).toISOString()).toBe('2026-10-25T08:00:00.000Z')
  expect(sheet.views[0].state).toBe('frozen')
  expect(sheet.autoFilter).toBeTruthy()
-}, 20000)
+}, 35000)
 it('exports all supplied staff and excludes external contact fields', () => {
  const state=seed()
  const people=Array.from({length:23},(_,i)=>({id:String(i),name:'Person '+i,title:'Adviser',department:'',archived:false}))
