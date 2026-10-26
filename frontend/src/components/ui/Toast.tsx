@@ -87,7 +87,8 @@ export function Toast({ toast, onDismiss, duration = 5000 }: ToastProps) {
       aria-live="polite"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`group relative overflow-hidden rounded-[20px] border border-white/90 bg-white/95 p-3.5 shadow-[0_16px_36px_rgba(21,63,50,0.14),0_2px_8px_rgba(21,63,50,0.04)] backdrop-blur-2xl transition-all duration-200 ease-out sm:p-4 ${
+      style={{ zIndex: 2147483647 }}
+      className={`toast-item group relative overflow-hidden rounded-[20px] border border-white/90 bg-white/95 p-3.5 shadow-[0_16px_36px_rgba(21,63,50,0.14),0_2px_8px_rgba(21,63,50,0.04)] backdrop-blur-2xl transition-all duration-200 ease-out sm:p-4 z-[2147483647] ${
         isExiting
           ? 'scale-95 opacity-0 translate-y-2'
           : 'scale-100 opacity-100 translate-y-0 animate-enter'

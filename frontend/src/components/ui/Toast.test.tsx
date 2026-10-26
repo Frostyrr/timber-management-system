@@ -88,6 +88,23 @@ describe('Toast & ToastContainer', () => {
     )
     expect(container.firstChild).toBeNull()
   })
+
+  it('applies the maximum z-index (2147483647) and toast-item class', () => {
+    const onDismiss = vi.fn()
+    const { container } = render(
+      <BrowserRouter>
+        <ToastContainer toasts={[sampleToast]} onDismiss={onDismiss} />
+      </BrowserRouter>
+    )
+
+    const toastContainer = container.querySelector('.toast-container') as HTMLElement
+    expect(toastContainer).toBeTruthy()
+    expect(toastContainer.style.zIndex).toBe('2147483647')
+
+    const toastItem = container.querySelector('.toast-item') as HTMLElement
+    expect(toastItem).toBeTruthy()
+    expect(toastItem.style.zIndex).toBe('2147483647')
+  })
 })
 
 describe('getActionToastDetails', () => {

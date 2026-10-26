@@ -1017,6 +1017,16 @@ tr:has([role="menu"]) {
   @apply flex items-start gap-2.5 rounded-2xl p-2.5 transition-colors hover:bg-surface/80;
 }
 
+/* Toast Notifications - Highest Layer Priority in Viewport */
+.toast-container {
+  z-index: 2147483647 !important;
+  isolation: isolate;
+}
+
+.toast-item {
+  z-index: 2147483647 !important;
+}
+
 /* Modern Slick Green Scrollbar (Emerald / Timberland theme) */
 .slick-scroll-green,
 .slick-scroll {
