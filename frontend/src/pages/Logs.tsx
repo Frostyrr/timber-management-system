@@ -417,15 +417,15 @@ export function Logs() {
             </div>
 
             {/* Desktop High-Density Table */}
-            <div className="table-wrap hidden md:block">
-              <table>
+            <div className="table-wrap hidden md:block !overflow-x-hidden">
+              <table className="w-full">
                 <thead>
                   <tr>
-                    <th>Timestamp</th>
-                    <th>Actor</th>
+                    <th className="w-[140px] lg:w-[155px]">Timestamp</th>
+                    <th className="w-[150px] lg:w-[180px]">Actor</th>
                     <th>Action details</th>
-                    <th>Target equipment</th>
-                    <th>Outcome / Type</th>
+                    <th className="w-[180px] lg:w-[230px] xl:w-[270px]">Target equipment</th>
+                    <th className="w-[130px] lg:w-[155px]">Outcome / Type</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -451,27 +451,34 @@ export function Logs() {
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <div className="flex items-center gap-2.5">
+                        <td className="min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <Avatar name={actor?.name ?? 'System'} />
-                            <div>
-                              <strong>{actor?.name ?? 'System'}</strong>
-                              <small>{actor?.role ?? 'Role'}</small>
+                            <div className="min-w-0">
+                              <strong className="block truncate max-w-[110px] lg:max-w-[140px]" title={actor?.name ?? 'System'}>
+                                {actor?.name ?? 'System'}
+                              </strong>
+                              <small className="block truncate text-muted-ink">{actor?.role ?? 'Role'}</small>
                             </div>
                           </div>
                         </td>
-                        <td className="long-cell">
-                          <p className="font-medium text-ink leading-relaxed">{actionDetails}</p>
+                        <td className="long-cell min-w-0">
+                          <p className="font-medium text-ink leading-relaxed break-words">{actionDetails}</p>
                         </td>
-                        <td>
+                        <td className="min-w-0 max-w-[180px] lg:max-w-[230px] xl:max-w-[270px]">
                           {item ? (
-                            <div className="cell-title">
-                              <span className="equipment-icon" aria-hidden="true">
+                            <div className="cell-title min-w-0">
+                              <span className="equipment-icon shrink-0" aria-hidden="true">
                                 <Package size={16} />
                               </span>
-                              <div>
-                                <strong>{item.name}</strong>
-                                <small>
+                              <div className="min-w-0 flex-1">
+                                <strong
+                                  className="block truncate max-w-[140px] lg:max-w-[180px] xl:max-w-[220px]"
+                                  title={item.name}
+                                >
+                                  {item.name}
+                                </strong>
+                                <small className="block truncate max-w-[140px] lg:max-w-[180px] xl:max-w-[220px] text-muted-ink">
                                   <span className="asset-code">{item.tag}</span> · {item.category}
                                 </small>
                               </div>
@@ -480,7 +487,7 @@ export function Logs() {
                             <span className="muted">—</span>
                           )}
                         </td>
-                        <td>
+                        <td className="whitespace-nowrap">
                           <Badge>
                             {isIncident ? 'Incident' : isLoan ? 'Release / Return' : isEquipment ? 'Inventory update' : e.action?.startsWith('people.') ? 'Staff directory' : 'Member access'}
                           </Badge>
