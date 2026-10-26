@@ -28,12 +28,22 @@ export async function identity() {
   if (!client) throw Error('Supabase is not configured.')
   const { data, error } = await client.rpc('inventory_identity')
   if (error) throw error
-  if (data && typeof data === 'object' && !('email' in data && data.email)) {
-    try {
-      const { data: userData } = await client.auth.getUser()
-      if (userData?.user?.email) (data as Record<string, unknown>).email = userData.user.email
-    } catch {
-      // fallback to database profile
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>
+    if (!record.email || !record.avatar_url) {
+      try {
+        const { data: userData } = await client.auth.getUser()
+        const user = userData?.user
+        if (user) {
+          if (!record.email && user.email) record.email = user.email
+          if (!record.avatar_url) {
+            const googleAvatar = (user.user_metadata?.avatar_url || user.user_metadata?.picture) as string | undefined
+            if (googleAvatar) record.avatar_url = googleAvatar
+          }
+        }
+      } catch {
+        // fallback to database profile
+      }
     }
   }
   return profileSchema.parse(data)

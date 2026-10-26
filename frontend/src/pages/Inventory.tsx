@@ -1402,7 +1402,7 @@ export function Inventory() {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle pb-2.5">
                       <div className="flex items-center gap-2.5">
-                        <Avatar name={borrowerName(state, l)} />
+                        <Avatar name={borrowerName(state, l)} url={state.profiles?.find((p) => p.id === l.borrowerId)?.avatar_url} />
                         <div>
                           <strong className="block text-[13.5px] font-medium text-ink">
                             {borrowerName(state, l)}

@@ -26,6 +26,7 @@ import {
 import { useInventory } from '../backend/context'
 import { Heading } from '../components/layout/Heading'
 import { Badge } from '../components/ui/Badge'
+import { Avatar } from '../components/ui/Avatar'
 import { Modal } from '../components/ui/Modal'
 import { Empty } from '../components/ui/Empty'
 import { Pagination } from '../components/ui/Pagination'
@@ -327,13 +328,11 @@ export function Settings() {
           <section className="panel p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-line pb-6">
               <div className="flex items-center gap-4">
-                <div className="h-16 w-16 shrink-0 rounded-2xl bg-gradient-to-br from-primary to-forest flex items-center justify-center text-white text-xl font-bold tracking-tight shadow-md border-2 border-white/60">
-                  {person.name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join('')}
-                </div>
+                <Avatar
+                  name={person.name}
+                  url={person.avatar_url}
+                  className="h-16 w-16 text-xl rounded-2xl shadow-md border-2 border-white/60"
+                />
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold text-ink">{person.name}</h2>

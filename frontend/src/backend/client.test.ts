@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }))
+const { rpc, getUser } = vi.hoisted(() => ({ rpc: vi.fn(), getUser: vi.fn() }))
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({
     rpc,
     auth: {
       onAuthStateChange: vi.fn(),
-      getUser: vi.fn(),
+      getUser,
       signInWithOAuth: vi.fn(),
       signOut: vi.fn(),
       mfa: {
@@ -23,7 +23,7 @@ vi.mock('./bffClient', () => ({
     rpc,
     auth: {
       onAuthStateChange: vi.fn(),
-      getUser: vi.fn(),
+      getUser,
       signInWithOAuth: vi.fn(),
       signOut: vi.fn(),
       mfa: {
@@ -56,5 +56,26 @@ describe('backend-only persistence', () => {
     const action = { type: 'checkout', itemId: 'asset' }
     await expect(api.mutate(action, 'request')).rejects.toThrow('Equipment unavailable.')
     expect(rpc).toHaveBeenCalledWith('inventory_mutate', { action, request_id: 'request' })
+  })
+
+  it('retrieves identity profile with avatar_url synchronized from Google identity', async () => {
+    rpc.mockResolvedValue({
+      data: { id: 'u1', name: 'Operator', role: 'Administrator', department: 'Editorial', avatar_url: null },
+      error: null,
+    })
+    getUser.mockResolvedValue({
+      data: {
+        user: {
+          id: 'u1',
+          email: 'operator@thetimberland.pub',
+          user_metadata: { avatar_url: 'https://lh3.googleusercontent.com/a/google_avatar' },
+        },
+      },
+      error: null,
+    })
+    const api = await import('./client')
+    const profile = await api.identity()
+    expect(profile.avatar_url).toBe('https://lh3.googleusercontent.com/a/google_avatar')
+    expect(profile.email).toBe('operator@thetimberland.pub')
   })
 })

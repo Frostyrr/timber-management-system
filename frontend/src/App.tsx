@@ -438,7 +438,7 @@ export default function App() {
                 aria-expanded={profileDropdownOpen}
                 aria-label="User profile and settings"
               >
-                <Avatar name={person.name} />
+                <Avatar name={person.name} url={person.avatar_url} />
                 <span className="hidden max-w-[120px] truncate text-xs font-medium text-ink sm:inline">
                   {person.name.split(' ')[0]}
                 </span>
@@ -455,7 +455,7 @@ export default function App() {
                   <div className="profile-dropdown-menu" style={{ zIndex: 99999 }}>
                     <div className="border-b border-line-subtle px-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <Avatar name={person.name} />
+                        <Avatar name={person.name} url={person.avatar_url} />
                         <div className="min-w-0 flex-1">
                           <strong className="block truncate text-[13.5px] font-semibold text-ink leading-tight">
                             {person.name}
@@ -782,7 +782,7 @@ export default function App() {
               {/* User Profile & Logout Footer */}
               <div className="mt-2 flex items-center justify-between border-t border-line-subtle pt-3">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Avatar name={person.name} />
+                  <Avatar name={person.name} url={person.avatar_url} />
                   <div className="min-w-0 flex-1">
                     <strong className="block truncate text-xs font-medium text-ink">{person.name}</strong>
                     <span className="block truncate text-[11px] text-muted-ink">{person.role}</span>

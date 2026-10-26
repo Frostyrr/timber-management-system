@@ -8,6 +8,7 @@ export const profileSchema = z.object({
   status: z.enum(['pending','active','suspended']).optional(),
   title: z.string().optional(),
   email: z.string().optional(),
+  avatar_url: z.string().nullable().optional(),
 })
 const itemSchema = z.object({
   id: z.string(),

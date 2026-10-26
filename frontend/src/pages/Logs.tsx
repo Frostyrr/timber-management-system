@@ -370,7 +370,12 @@ export function Logs() {
             <div className="mobile-logs-cards flex flex-col gap-3 md:hidden">
               {paginatedEvents.map((e, idx) => {
                 const item = state.items.find((i) => i.id === e.entityId)
-                const actor = {name:auditActorName(e,state),role:e.actorRole}
+                const actorProfile = state.profiles?.find((p) => p.id === e.actor)
+                const actor = {
+                  name: auditActorName(e, state),
+                  role: e.actorRole,
+                  avatar_url: actorProfile?.avatar_url,
+                }
                 const actionDetails = formatEventDetails(e, state)
                 const isIncident = isIncidentEvent(e, actionDetails)
                 const isLoan = isLoanEvent(e, actionDetails)
@@ -392,7 +397,7 @@ export function Logs() {
                     </div>
 
                     <div className="flex items-center gap-2.5 border-t border-line-subtle pt-2">
-                      <Avatar name={actor?.name ?? 'System'} />
+                      <Avatar name={actor?.name ?? 'System'} url={actor?.avatar_url} />
                       <div className="min-w-0 flex-1">
                         <strong className="block truncate text-xs font-medium text-ink">{actor?.name ?? 'System'}</strong>
                         <span className="block text-[11px] text-muted-ink">{actor?.role ?? 'Role'}</span>
@@ -431,7 +436,12 @@ export function Logs() {
                 <tbody>
                   {paginatedEvents.map((e, idx) => {
                     const item = state.items.find((i) => i.id === e.entityId)
-                    const actor = {name:auditActorName(e,state),role:e.actorRole}
+                    const actorProfile = state.profiles?.find((p) => p.id === e.actor)
+                    const actor = {
+                      name: auditActorName(e, state),
+                      role: e.actorRole,
+                      avatar_url: actorProfile?.avatar_url,
+                    }
                     const actionDetails = formatEventDetails(e, state)
                     const isIncident = isIncidentEvent(e, actionDetails)
                     const isLoan = isLoanEvent(e, actionDetails)
@@ -453,7 +463,7 @@ export function Logs() {
                         </td>
                         <td className="min-w-0">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <Avatar name={actor?.name ?? 'System'} />
+                            <Avatar name={actor?.name ?? 'System'} url={actor?.avatar_url} />
                             <div className="min-w-0">
                               <strong className="block truncate max-w-[110px] lg:max-w-[140px]" title={actor?.name ?? 'System'}>
                                 {actor?.name ?? 'System'}
