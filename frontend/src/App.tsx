@@ -1,3 +1,4 @@
+import { TopLoadingBar } from './components/ui/TopLoadingBar'
 import { Archives } from './pages/Archives'
 import { useState, useRef, useEffect } from 'react'
 import { Link, NavLink, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
@@ -38,7 +39,7 @@ import { SecurityHub } from './pages/security/SecurityHub'
 import './App.css'
 
 export default function App() {
-  const { state, person, warning, notice, signOut, toasts, dismissToast, activityHistory, clearActivityHistory } = useInventory()
+  const { state, person, warning, notice, refreshing, signOut, toasts, dismissToast, activityHistory, clearActivityHistory } = useInventory()
   const [menu, setMenu] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -483,6 +484,7 @@ export default function App() {
               )}
             </div>
           </div>
+          <TopLoadingBar active={!!refreshing} />
         </header>
 
         {warning && (

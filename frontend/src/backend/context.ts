@@ -7,6 +7,7 @@ export const InventoryContext = createContext<{
   person: Profile
   act: (a: Action) => void | Promise<void>
   mode?: 'live'
+  refreshing?: boolean
   refresh?: () => Promise<void>
   signOut?: () => Promise<void>
   warning: string

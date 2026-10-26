@@ -1098,3 +1098,31 @@ tr:has([role="menu"]) {
 .slick-scroll-dark-green::-webkit-scrollbar-thumb:active {
   background: #071a13;
 }
+
+/* Overlay progress without changing navbar or content geometry. */
+.top-loading-track {
+  position: absolute;
+  bottom: 0;
+  left: 24px;
+  right: 24px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(21, 63, 50, 0.08);
+  pointer-events: none;
+}
+.top-loading-line {
+  display: block;
+  width: 35%;
+  height: 100%;
+  border-radius: inherit;
+  background: #153f32;
+  animation: topLoadingSweep 1.2s ease-in-out infinite;
+}
+@keyframes topLoadingSweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(390%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .top-loading-line { animation: none; width: 100%; opacity: 0.7; }
+}

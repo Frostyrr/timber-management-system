@@ -1,3 +1,4 @@
+import { WorkspaceSkeleton } from '../components/layout/WorkspaceSkeleton'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { InventoryContext } from '../backend/context'
 import { type Action, type Profile, type State } from '../backend/model'
@@ -199,6 +200,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
   const [person, setPerson] = useState<Profile | null>(null)
   const [state, setState] = useState<State | null>(null)
   const [loading, setLoading] = useState(!!client)
+  const [activeLoads, setActiveLoads] = useState(0)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -225,6 +227,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
   }
 
   const loadWorkspace = async (token: number, sequence: number) => {
+    setActiveLoads(count => count + 1)
     try {
       const p = await identity()
       const permitted = p.status === 'active' && ['Administrator','Inventory Custodian'].includes(p.role)
@@ -238,6 +241,8 @@ function LiveProvider({ children }: { children: ReactNode }) {
       if (/Approved .* required|permission denied/i.test(message)) setState(null)
       setError(message)
       return false
+    } finally {
+      setActiveLoads(count => Math.max(0, count - 1))
     }
   }
   const refresh = async () => { await loadWorkspace(generation.current, ++requestSequence.current) }
@@ -333,10 +338,10 @@ function LiveProvider({ children }: { children: ReactNode }) {
       throw err
     }
   }
-  if (loading) return <div className="app-backdrop min-h-screen bg-workspace" />
+  if (loading) return <WorkspaceSkeleton />
 
   if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
-  if (state && person) return <InventoryContext.Provider value={{ state, person, act, mode: 'live', refresh, signOut,
+  if (state && person) return <InventoryContext.Provider value={{ state, person, act, refreshing: activeLoads > 0, mode: 'live', refresh, signOut,
     warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '', notice,
     toasts, dismissToast, activityHistory, clearActivityHistory }}>{children}</InventoryContext.Provider>
   if (!signedIn) return <>
