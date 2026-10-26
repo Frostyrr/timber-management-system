@@ -410,6 +410,7 @@ export function Inventory() {
   const { state, person, act, refresh } = useInventory()
   const query = new URLSearchParams(useLocation().search)
   const [useType, setUseType] = useState<UseType>('publication_use')
+  const [contactMethod, setContactMethod] = useState<'email' | 'phone' | 'social'>('email')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState(query.get('status') ?? 'all')
   const [locationFilter, setLocationFilter] = useState('all')
@@ -1119,7 +1120,10 @@ export function Inventory() {
                   : `${item?.name} · usage history`
           }
           submit={modal.type === 'history' ? 'Done' : 'Save changes'}
-          onClose={() => setModal(null)}
+          onClose={() => {
+            setModal(null)
+            setContactMethod('email')
+          }}
           onSubmit={async (f) => {
             if (modal.type === 'item')
               await act({
@@ -1256,20 +1260,49 @@ export function Inventory() {
               {useType === 'external_borrowing' ? (
                 <>
                   <Field label="Borrower name">
-                    <input name="externalName" required maxLength={120} />
+                    <input
+                      name="externalName"
+                      required
+                      maxLength={120}
+                      placeholder="e.g. Maria Santos"
+                    />
                   </Field>
                   <Field label="Organization (optional)">
-                    <input name="organization" maxLength={160} />
+                    <input
+                      name="organization"
+                      maxLength={160}
+                      placeholder="e.g. Student Council, Media Partner, PICO"
+                    />
                   </Field>
-                  <Field label="Contact method">
-                    <Select name="contactMethod" defaultValue="email">
-                      <option value="email">Email</option>
-                      <option value="phone">Phone</option>
-                    </Select>
-                  </Field>
-                  <Field label="Contact details">
-                    <input name="contact" required maxLength={160} />
-                  </Field>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[160px_1fr]">
+                    <Field label="Contact method">
+                      <Select
+                        name="contactMethod"
+                        value={contactMethod}
+                        onChange={(e) =>
+                          setContactMethod(e.target.value as 'email' | 'phone' | 'social')
+                        }
+                      >
+                        <option value="email">Email</option>
+                        <option value="phone">Phone</option>
+                        <option value="social">Social Media</option>
+                      </Select>
+                    </Field>
+                    <Field label="Contact details">
+                      <input
+                        name="contact"
+                        required
+                        maxLength={160}
+                        placeholder={
+                          contactMethod === 'email'
+                            ? 'e.g. name@organization.org'
+                            : contactMethod === 'phone'
+                            ? 'e.g. +63 912 345 6789'
+                            : 'e.g. @username or profile URL'
+                        }
+                      />
+                    </Field>
+                  </div>
                 </>
               ) : (
                 <Field label="Responsible editorial staff / borrower">

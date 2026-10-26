@@ -42,6 +42,43 @@ describe('equipment workflows', () => {
       transition(returned, 'admin', { type: 'return', loanId: out.loans[0].id, condition: 'Good' }),
     ).toThrow('already closed')
   })
+  it('supports external borrowing release with social media, email, and phone contact methods', () => {
+    const s = seed()
+    const outSocial = transition(s, 'custodian', {
+      type: 'checkout',
+      useType: 'external_borrowing',
+      purpose: 'Guest photojournalism workshop',
+      itemId: 'i1',
+      due: due(),
+      condition: 'Good',
+      external: {
+        name: 'Maria Santos',
+        organization: 'Independent Press',
+        contactMethod: 'social',
+        contact: '@maria_photos',
+      },
+    })
+    expect(outSocial.loans[0].external?.contactMethod).toBe('social')
+    expect(outSocial.loans[0].external?.contact).toBe('@maria_photos')
+
+    // Empty contact should throw
+    expect(() =>
+      transition(s, 'custodian', {
+        type: 'checkout',
+        useType: 'external_borrowing',
+        purpose: 'Guest workshop',
+        itemId: 'i1',
+        due: due(),
+        condition: 'Good',
+        external: {
+          name: 'Maria Santos',
+          organization: 'Independent Press',
+          contactMethod: 'social',
+          contact: '   ',
+        },
+      }),
+    ).toThrow()
+  })
   it('opens an incident on damaged return and requires an outcome', () => {
     const s = transition(seed(), 'admin', { type: 'return', loanId: 'l0', condition: 'Damaged' })
     expect(s.incidents[0].itemId).toBe('i0')
