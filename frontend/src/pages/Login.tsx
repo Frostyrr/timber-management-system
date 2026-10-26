@@ -162,7 +162,8 @@ export function Login({ checkingSession = false }: { checkingSession?: boolean }
         throw Error('Sign-in is not configured. Contact the publication administrator.')
       }
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Unable to connect to Google Workspace. Please try again.')
+      const msg = failure instanceof Error ? failure.message : (failure as { message?: string })?.message || 'Unable to connect to Google Workspace. Please try again.'
+      setError(msg)
       setBusy(false)
     }
   }

@@ -1,6 +1,23 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }))
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({
+    rpc,
+    auth: {
+      onAuthStateChange: vi.fn(),
+      getUser: vi.fn(),
+      signInWithOAuth: vi.fn(),
+      signOut: vi.fn(),
+      mfa: {
+        listFactors: vi.fn(),
+        enroll: vi.fn(),
+        unenroll: vi.fn(),
+        challengeAndVerify: vi.fn(),
+      },
+    },
+  })),
+}))
 vi.mock('./bffClient', () => ({
   bffClient: {
     rpc,

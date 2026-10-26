@@ -1,19 +1,37 @@
 import { requestMfa } from './mfaPrompt'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { bffClient } from './bffClient'
 import { profileSchema, stateSchema } from './model'
 import type { SecurityState } from './security'
 
-// Authentication is server-managed. Never instantiate a browser Supabase auth client.
-export const client = bffClient
+const url = import.meta.env.VITE_SUPABASE_URL
+const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+
+const supabaseClient =
+  url?.startsWith('https://') &&
+  key &&
+  !key.includes('REPLACE_ME') &&
+  !url.includes('YOUR_PROJECT')
+    ? createClient(url, key, {
+        auth: {
+          flowType: 'pkce',
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      })
+    : null
+
+export const client = (supabaseClient || bffClient) as unknown as SupabaseClient<any, 'public', any>
 
 export async function identity() {
   if (!client) throw Error('Supabase is not configured.')
-  const { data, error } = await client.rpc<Record<string,unknown>>('inventory_identity')
+  const { data, error } = await client.rpc('inventory_identity')
   if (error) throw error
-  if (data && !data.email) {
+  if (data && typeof data === 'object' && !('email' in data && data.email)) {
     try {
       const { data: userData } = await client.auth.getUser()
-      if (userData?.user?.email) data.email = userData.user.email
+      if (userData?.user?.email) (data as Record<string, unknown>).email = userData.user.email
     } catch {
       // fallback to database profile
     }
@@ -23,9 +41,11 @@ export async function identity() {
 
 export async function snapshot() {
   if (!client) throw Error('Supabase is not configured.')
-  const { data, error } = await client.rpc<Record<string,unknown>>('inventory_snapshot')
+  const { data, error } = await client.rpc('inventory_snapshot')
   if (error) throw error
-  if (!Array.isArray(data?.people)) throw Error('The staff directory database upgrade is required. Apply migration 202610240003_people_directory.sql in Supabase.')
+  if (!data || typeof data !== 'object' || !Array.isArray((data as Record<string, unknown>).people)) {
+    throw Error('The staff directory database upgrade is required. Apply migration 202610240003_people_directory.sql in Supabase.')
+  }
   return stateSchema.parse(data)
 }
 
@@ -35,11 +55,13 @@ export async function workspaceAccess(renew = false): Promise<boolean> {
   if (error) throw Error(error.message)
   return data === true
 }
+
 export async function lockWorkspace() {
   if (!client) return
   const { error } = await client.rpc('operator_lock')
   if (error) throw Error(error.message)
 }
+
 export async function mutate(action: unknown, requestId: string) {
   if (!client) throw Error('Supabase is not configured.')
   if (['purge-archive','purge-all-archives','membership','delete-profile','self-delete'].includes((action as {type:string}).type)) await requestMfa('inventory',action)
