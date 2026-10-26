@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { client } from '../../backend/client'
 import { AuthenticatorCodeField } from './AuthenticatorCodeField'
 import { Skeleton } from './Skeleton'
-import { LockKeyhole, ShieldCheck, Smartphone, ArrowRight, LoaderCircle } from 'lucide-react'
+import { LockKeyhole, ShieldCheck, Smartphone, ArrowRight, LoaderCircle, Copy, Check } from 'lucide-react'
 import { summarizeMfaAction, type MfaSummary } from '../../backend/mfaSummary'
 
 export function AuthenticatorForm({
