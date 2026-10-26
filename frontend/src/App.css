@@ -896,6 +896,17 @@ select {
   animation-delay: calc(var(--stagger-i, 0) * 45ms);
 }
 
+/* Translated rows extend a table's scrollable bounds during entry.
+   Fade rows in place so wide tables can still scroll without a vertical flash. */
+@keyframes tableRowFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.table-wrap tr.stagger-item {
+  animation-name: tableRowFadeIn;
+}
+
 .stagger-1 { animation-delay: 40ms; }
 .stagger-2 { animation-delay: 80ms; }
 .stagger-3 { animation-delay: 120ms; }
