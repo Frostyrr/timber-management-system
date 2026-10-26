@@ -785,21 +785,18 @@ export function Inventory() {
             </div>
           </div>
 
-          {/* Results Count & Reset Filters Toolbar Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-subtle/50 pt-2 text-xs text-muted-ink">
-            <span>
-              {items.length} matching {items.length === 1 ? 'equipment asset' : 'equipment assets'}
-            </span>
-            {hasActiveFilters && (
+          {/* Reset Filters Toolbar Bar */}
+          {hasActiveFilters && (
+            <div className="flex items-center justify-end border-t border-line-subtle/50 pt-2">
               <button
                 type="button"
                 onClick={resetFilters}
-                className="cursor-pointer font-medium text-primary hover:underline hover:text-forest-deep transition-colors"
+                className="cursor-pointer text-xs font-medium text-primary hover:underline hover:text-forest-deep transition-colors"
               >
                 Reset all filters
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Mobile Equipment Cards List (Touch-Friendly Card View for Phones & Small Tablets) */}
