@@ -1,19 +1,16 @@
 import { requestMfa } from './mfaPrompt'
-import { createClient } from '@supabase/supabase-js'
+import { bffClient } from './bffClient'
 import { profileSchema, stateSchema } from './model'
 import type { SecurityState } from './security'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-export const client = url?.startsWith('https://') && key && !key.includes('REPLACE_ME') && !url.includes('YOUR_PROJECT')
-  ? createClient(url, key, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
-  : null
+// Authentication is server-managed. Never instantiate a browser Supabase auth client.
+export const client = bffClient
 
 export async function identity() {
   if (!client) throw Error('Supabase is not configured.')
-  const { data, error } = await client.rpc('inventory_identity')
+  const { data, error } = await client.rpc<Record<string,unknown>>('inventory_identity')
   if (error) throw error
-  if (!data?.email) {
+  if (data && !data.email) {
     try {
       const { data: userData } = await client.auth.getUser()
       if (userData?.user?.email) data.email = userData.user.email
@@ -26,7 +23,7 @@ export async function identity() {
 
 export async function snapshot() {
   if (!client) throw Error('Supabase is not configured.')
-  const { data, error } = await client.rpc('inventory_snapshot')
+  const { data, error } = await client.rpc<Record<string,unknown>>('inventory_snapshot')
   if (error) throw error
   if (!Array.isArray(data?.people)) throw Error('The staff directory database upgrade is required. Apply migration 202610240003_people_directory.sql in Supabase.')
   return stateSchema.parse(data)
