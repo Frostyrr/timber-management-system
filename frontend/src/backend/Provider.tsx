@@ -344,7 +344,18 @@ function LiveProvider({ children }: { children: ReactNode }) {
       throw err
     }
   }
-  if (loading) return <WorkspaceSkeleton />
+  if (loading) {
+    if (location.pathname === '/login') {
+      return (
+        <main className="min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10">
+          <div className="w-full max-w-[1240px] flex justify-center">
+            <Login checkingSession={true} />
+          </div>
+        </main>
+      )
+    }
+    return <WorkspaceSkeleton />
+  }
 
   if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
   if (state && person) return <WorkspaceGuard operatorName={person.name} state={state} initiallyLocked={mfaRequired} onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}><InventoryContext.Provider value={{ state, person, act, refreshing: activeLoads > 0, mode: 'live', refresh, signOut,
