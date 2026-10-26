@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { lockWorkspace, workspaceAccess } from '../../backend/client'
 import { AuthenticatorForm } from '../ui/AuthenticatorForm'
 import { MfaActionHost } from './MfaActionHost'
+import { Clock3 } from 'lucide-react'
 export function WorkspaceGuard({
   children,
   initiallyLocked = false,
@@ -122,12 +123,30 @@ export function WorkspaceGuard({
       ) : (
         <>
           {warning && (
-            <p
+            <div
               role="status"
-              className="fixed bottom-40 right-4 z-40 rounded-xl bg-white p-3 shadow-lg"
+              className="fixed bottom-6 right-6 z-[100000] flex max-w-sm items-center gap-3 rounded-2xl border border-amber-200/90 bg-white/95 p-3.5 shadow-[0_12px_36px_-6px_rgba(21,63,50,0.18)] backdrop-blur-md animate-in slide-in-from-bottom-4 duration-200"
             >
-              Workspace locks in 30 seconds without interaction.
-            </p>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <Clock3 size={18} className="animate-pulse" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <strong className="block text-xs font-semibold text-ink">Inactivity warning</strong>
+                <p className="text-[11.5px] leading-tight text-muted-ink mt-0.5">
+                  Workspace locks in 30 seconds without interaction.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 px-3 py-1.5 text-xs font-medium bg-[#153f32] text-white rounded-xl hover:bg-[#1b4d3e] transition-all active:scale-95 shadow-sm"
+                onClick={() => {
+                  lastActivity.current = Date.now()
+                  setWarning(false)
+                }}
+              >
+                Stay active
+              </button>
+            </div>
           )}
           <MfaActionHost state={state} />
         </>

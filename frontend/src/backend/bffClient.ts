@@ -5,7 +5,10 @@ type Listener = (event:string,session:UserSession|null)=>void
 const listeners=new Set<Listener>()
 export async function request<T>(op:string,extra:Record<string,unknown>={}):Promise<Result<T>> {
  try {
-  const response=await fetch('/api/bff',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Timber-Request':'1'},body:JSON.stringify({op,...extra}),cache:'no-store'})
+  const endpoint = typeof window !== 'undefined' && window.location?.origin
+    ? new URL('/api/bff', window.location.origin).href
+    : 'http://localhost/api/bff'
+  const response=await fetch(endpoint,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Timber-Request':'1'},body:JSON.stringify({op,...extra}),cache:'no-store'})
   if(!response.headers.get('content-type')?.includes('application/json'))throw Error('Server endpoints are unavailable. Check the deployment configuration.')
   return await response.json() as Result<T>
  }catch(error){return {data:null,error:{message:error instanceof Error?error.message:'Unable to reach the server.'}}}

@@ -53,12 +53,13 @@ export async function handler(req:Request,res:ServerResponse) {
   const hash=sessionHash(id);const owner=randomUUID()
   let stored:{ciphertext:string;expires_at:string}|null=null
   for(let attempt=0;attempt<15;attempt++){
-   stored=await vaultRpc('bff_acquire',{session_hash:hash,owner_id:owner}) as typeof stored
+   stored=await vaultRpc('bff_acquire',{session_hash:hash,owner_id:owner}) as {ciphertext:string;expires_at:string}|null
    if(stored)break
    await new Promise(resolve=>setTimeout(resolve,150))
   }
   if(!stored){send(409,null,'Session expired or busy. Retry, or sign in again.');return}
-  const record=unseal<Vault>(stored.ciphertext,encryption,hash)
+  const sessionEntry=stored as {ciphertext:string;expires_at:string}
+  const record=unseal<Vault>(sessionEntry.ciphertext,encryption,hash)
   if(record.kind!==(callback?'oauth':'session'))throw Error('Invalid session type.')
   const auth=newClient(record.storage)
   let deleted=false

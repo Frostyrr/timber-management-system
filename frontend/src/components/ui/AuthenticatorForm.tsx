@@ -27,7 +27,18 @@ export function AuthenticatorForm({
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [copiedKey, setCopiedKey] = useState(false)
   const started = useRef(false)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  const handleCodeChange = (newCode: string) => {
+    setCode(newCode)
+    if (newCode.length === 6 && !busy && factor && intent) {
+      setTimeout(() => {
+        formRef.current?.requestSubmit()
+      }, 50)
+    }
+  }
   useEffect(() => {
     if (started.current) return
     started.current = true
@@ -37,7 +48,7 @@ export function AuthenticatorForm({
         if (ticket.error) throw ticket.error
         setIntent(ticket.data as string)
         const listed = await client!.auth.mfa.listFactors()
-        if (listed.error) throw listed.error
+        if (listed.error || !listed.data) throw listed.error || new Error('Failed to list factors')
         const existing = listed.data.totp.find((f) => f.status === 'verified')
         if (existing) {
           setFactor(existing.id)
@@ -55,7 +66,7 @@ export function AuthenticatorForm({
           friendlyName: 'Timber authenticator',
           issuer: 'Timber',
         })
-        if (enrolled.error) throw enrolled.error
+        if (enrolled.error || !enrolled.data) throw enrolled.error || new Error('Failed to enroll factor')
         setFactor(enrolled.data.id)
         setSetup(enrolled.data.totp)
       } catch (e) {
@@ -71,6 +82,7 @@ export function AuthenticatorForm({
   const preparing = !factor && !error
   return (
     <form
+      ref={formRef}
       className="mfa-form"
       aria-busy={busy || preparing}
       onSubmit={async (e) => {
@@ -167,7 +179,30 @@ export function AuthenticatorForm({
               <details className="mfa-disclosure">
                 <summary>Can’t scan? Use a setup key</summary>
                 <p>Enter this key in your authenticator app. Keep it private.</p>
-                <code className="mfa-secret">{setup.secret}</code>
+                <div className="flex items-center gap-2 mt-2">
+                  <code className="mfa-secret flex-1">{setup.secret}</code>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border border-line-subtle bg-[#f3f6f2] hover:bg-[#edf4ee] text-ink transition-colors shrink-0"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(setup.secret)
+                      setCopiedKey(true)
+                      setTimeout(() => setCopiedKey(false), 2000)
+                    }}
+                  >
+                    {copiedKey ? (
+                      <>
+                        <Check size={14} className="text-forest" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} className="text-muted-ink" />
+                        <span>Copy key</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </details>
               <p className="mfa-step">
                 <span>2</span> Enter the code from your phone
@@ -192,7 +227,7 @@ export function AuthenticatorForm({
           )}
           <AuthenticatorCodeField
             value={code}
-            onChange={setCode}
+            onChange={handleCodeChange}
             disabled={busy || !factor}
             error={error}
           />

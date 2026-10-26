@@ -34,7 +34,9 @@ it('verifies an existing factor before completing server authorization', async (
   expect(api.rpc).toHaveBeenCalledWith('operator_complete', { intent_id: 'intent' })
   expect(api.enroll).not.toHaveBeenCalled()
 })
-it('shows QR and manual key for initial setup', async () => {
+it('shows QR and manual key for initial setup and copies to clipboard', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined)
+  Object.assign(navigator, { clipboard: { writeText } })
   api.listFactors.mockResolvedValue({ data: { totp: [], all: [] }, error: null })
   api.enroll.mockResolvedValue({
     data: { id: 'new', totp: { qr_code: 'data:image/svg+xml,test', secret: 'SETUPKEY' } },
@@ -43,6 +45,17 @@ it('shows QR and manual key for initial setup', async () => {
   render(<AuthenticatorForm onVerified={() => {}} />)
   expect(await screen.findByAltText('Authenticator setup QR code')).toBeTruthy()
   expect(screen.getByText('SETUPKEY')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Copy key' }))
+  expect(writeText).toHaveBeenCalledWith('SETUPKEY')
+  expect(await screen.findByText('Copied!')).toBeTruthy()
+})
+it('auto-submits verification upon typing the 6th digit', async () => {
+  const done = vi.fn()
+  render(<AuthenticatorForm onVerified={done} />)
+  await screen.findByLabelText('Authenticator code')
+  fireEvent.change(screen.getByLabelText('Authenticator code'), { target: { value: '654321' } })
+  await waitFor(() => expect(done).toHaveBeenCalledOnce())
+  expect(api.challengeAndVerify).toHaveBeenCalledWith({ factorId: 'factor', code: '654321' })
 })
 it('does not approve a rejected code or store it in the form', async () => {
   api.challengeAndVerify.mockResolvedValue({ error: new Error('Invalid code') })

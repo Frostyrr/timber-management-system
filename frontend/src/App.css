@@ -1128,8 +1128,28 @@ tr:has([role="menu"]) {
 }
 
 /* Shared authenticator setup, unlock, and action verification surfaces. */
-.mfa-screen { display: flex; align-items: safe center; justify-content: center; background-image: radial-gradient(ellipse at top, rgba(21,63,50,.07), transparent 65%); }
-.mfa-card { padding: clamp(24px,5vw,36px); border: 1px solid #e1e8e2; border-radius: 28px; background: #fff; color: #24372c; box-shadow: 0 18px 60px -24px rgba(21,63,50,.22); }
+.mfa-screen {
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  background-color: #f4f7f4;
+  background-image:
+    radial-gradient(ellipse at 50% 15%, rgba(21, 63, 50, 0.12), transparent 65%),
+    radial-gradient(circle at bottom right, rgba(46, 125, 87, 0.07), transparent 50%),
+    radial-gradient(circle at top left, rgba(21, 63, 50, 0.05), transparent 45%);
+}
+.mfa-card {
+  padding: clamp(24px, 5vw, 36px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #24372c;
+  box-shadow:
+    0 24px 70px -20px rgba(21, 63, 50, 0.2),
+    0 4px 20px -2px rgba(21, 63, 50, 0.04);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
 .mfa-form { display: flex; flex-direction: column; gap: 20px; }
 .mfa-brand { display: flex; align-items: center; justify-content: center; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid #edf0eb; }
 .mfa-brand img { height: 34px; width: 34px; object-fit: contain; }
@@ -1151,10 +1171,6 @@ tr:has([role="menu"]) {
 .mfa-secret { display: block; padding: 12px; background: #f3f6f2; border-radius: 10px; overflow-wrap: anywhere; user-select: all; }
 .mfa-setup > .mfa-step:last-child { margin-top: 18px; }
 .mfa-code-field label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 8px; }
-.mfa-code-field input { width: 100%; height: 60px; text-align: center; font-size: 25px; font-variant-numeric: tabular-nums; letter-spacing: .32em; padding-left: .32em; border: 1px solid #cbd8ce; border-radius: 14px; background: #fafcf9; }
-.mfa-code-field input:focus { outline: 2px solid #153f32; outline-offset: 2px; }
-.mfa-code-field input::placeholder { color: #a5b3a9; }
-.mfa-code-field input[aria-invalid=true] { border-color: #a23b38; }
 .mfa-hint { margin-top: 8px; font-size: 11px; color: #617067; }
 .mfa-error { margin-top: 10px; font-size: 12px; line-height: 1.6; color: #963838; }
 .mfa-submit { width: 100%; min-height: 46px; justify-content: center; gap: 8px; border-radius: 14px; }
@@ -1170,3 +1186,12 @@ tr:has([role="menu"]) {
 .mfa-action-summary.is-destructive { border-color: #ecd5cf; background: #fdf6f3; }
 .mfa-action-summary.is-destructive strong { color: #963838; }
 .mfa-preparing { min-height: 260px; }
+
+@keyframes mfaShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.mfa-shake {
+  animation: mfaShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
