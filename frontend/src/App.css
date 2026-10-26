@@ -1140,27 +1140,32 @@ tr:has([role="menu"]) {
 }
 .mfa-card {
   padding: clamp(24px, 5vw, 36px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.92);
   border-radius: 28px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   color: #24372c;
   box-shadow:
-    0 24px 70px -20px rgba(21, 63, 50, 0.2),
+    0 24px 70px -20px rgba(21, 63, 50, 0.18),
     0 4px 20px -2px rgba(21, 63, 50, 0.04);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
 }
-.mfa-form { display: flex; flex-direction: column; gap: 20px; }
-.mfa-brand { display: flex; align-items: center; justify-content: center; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid #edf0eb; }
-.mfa-brand img { height: 34px; width: 34px; object-fit: contain; }
-.mfa-brand > span { font-size: 12px; font-weight: 650; letter-spacing: .14em; }
-.mfa-brand > span > span { display: block; margin-top: 3px; color: #617067; font-size: 10px; font-weight: 400; letter-spacing: .02em; }
+.mfa-form { display: flex; flex-direction: column; gap: 18px; }
 .mfa-intro { text-align: center; }
-.mfa-emblem { display: inline-flex; align-items: center; justify-content: center; height: 48px; width: 48px; border-radius: 16px; background: #edf4ee; color: #153f32; margin-bottom: 14px; }
-.mfa-eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .14em; color: #52685a; }
-.mfa-intro h1 { font-size: 25px; line-height: 1.2; letter-spacing: -.035em; font-weight: 600; margin: 8px 0 10px; }
-.mfa-intro > p:last-of-type { font-size: 13px; line-height: 1.65; color: #617067; }
-.mfa-identity { display: inline-block; margin-top: 12px; border: 1px solid #e1e8e2; border-radius: 999px; padding: 5px 12px; font-size: 12px; }
+.mfa-masked-email {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 500;
+  color: #52685a;
+  background: rgba(244, 247, 244, 0.85);
+  border: 1px solid #e1e8e2;
+  border-radius: 9999px;
+  padding: 3.5px 11px;
+  letter-spacing: 0.01em;
+}
 .mfa-step { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; }
 .mfa-step span { display: inline-flex; justify-content: center; align-items: center; width: 22px; height: 22px; border-radius: 50%; background: #edf4ee; color: #153f32; }
 .mfa-qr { width: fit-content; padding: 14px; margin: 16px auto; border: 1px solid #e1e8e2; border-radius: 18px; background: white; }

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, it, expect, vi } from 'vitest'
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { AuthenticatorForm } from './AuthenticatorForm'
+import { AuthenticatorForm, maskEmail } from './AuthenticatorForm'
 const api = vi.hoisted(() => ({
   rpc: vi.fn(),
   listFactors: vi.fn(),
@@ -9,9 +9,10 @@ const api = vi.hoisted(() => ({
   challengeAndVerify: vi.fn(),
   unenroll: vi.fn(),
   signOut: vi.fn(),
+  getUser: vi.fn(),
 }))
 vi.mock('../../backend/client', () => ({
-  client: { rpc: api.rpc, auth: { mfa: api, signOut: api.signOut } },
+  client: { rpc: api.rpc, auth: { mfa: api, signOut: api.signOut, getUser: api.getUser } },
 }))
 afterEach(cleanup)
 beforeEach(() => {
@@ -22,6 +23,61 @@ beforeEach(() => {
     error: null,
   })
   api.challengeAndVerify.mockResolvedValue({ error: null })
+  api.getUser.mockResolvedValue({ data: { user: null }, error: null })
+})
+
+it('masks email addresses according to m***@domain specification', () => {
+  expect(maskEmail('marcelson.rebato@gmail.com')).toBe('m***@gmail.com')
+  expect(maskEmail('admin@timber.org')).toBe('a***@timber.org')
+  expect(maskEmail('x@test.com')).toBe('x***@test.com')
+  expect(maskEmail('')).toBe('')
+  expect(maskEmail(null)).toBe('')
+  expect(maskEmail(undefined)).toBe('')
+})
+
+it('renders user Google profile picture and subtly masked email without redundant name text', async () => {
+  render(
+    <AuthenticatorForm
+      operatorName="Marc Rebato"
+      operatorAvatarUrl="https://lh3.googleusercontent.com/a/google-avatar-123"
+      operatorEmail="marcelson.rebato@gmail.com"
+      onVerified={() => {}}
+    />
+  )
+
+  await screen.findByLabelText('Authenticator code')
+
+  // Avatar image is rendered with secure attributes
+  const avatarImg = screen.getByRole('img', { name: /account avatar for marc rebato/i }) as HTMLImageElement
+  expect(avatarImg).toBeTruthy()
+  expect(avatarImg.src).toBe('https://lh3.googleusercontent.com/a/google-avatar-123')
+
+  // Masked email is displayed subtly
+  expect(screen.getByText('m***@gmail.com')).toBeTruthy()
+
+  // Full name is preserved in accessibility attributes but NOT rendered as a redundant visible text element
+  const maskedEmailElem = screen.getByText('m***@gmail.com')
+  expect(maskedEmailElem.getAttribute('aria-label')).toBe('Verifying account for Marc Rebato')
+  expect(maskedEmailElem.getAttribute('title')).toBe('Marc Rebato (marcelson.rebato@gmail.com)')
+
+  // Ensure full name is not displayed as standalone text
+  expect(screen.queryByText('Marc Rebato')).toBeNull()
+})
+
+it('renders fallback initials when profile picture is unavailable', async () => {
+  render(
+    <AuthenticatorForm
+      operatorName="Marc Rebato"
+      operatorAvatarUrl={null}
+      operatorEmail="marcelson.rebato@gmail.com"
+      onVerified={() => {}}
+    />
+  )
+
+  await screen.findByLabelText('Authenticator code')
+  expect(screen.queryByRole('img', { name: /account avatar for marc rebato/i })).toBeNull()
+  expect(screen.getByText('MR')).toBeTruthy()
+  expect(screen.getByText('m***@gmail.com')).toBeTruthy()
 })
 it('verifies an existing factor before completing server authorization', async () => {
   const done = vi.fn()

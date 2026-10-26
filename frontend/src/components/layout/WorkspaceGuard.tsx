@@ -10,9 +10,13 @@ export function WorkspaceGuard({
   initiallyLocked = false,
   onUnlocked,
   operatorName,
+  operatorAvatarUrl,
+  operatorEmail,
   state,
 }: {
   operatorName?: string
+  operatorAvatarUrl?: string | null
+  operatorEmail?: string | null
   state?: State
   children: ReactNode
   initiallyLocked?: boolean
@@ -117,6 +121,8 @@ export function WorkspaceGuard({
             {error && <p role="alert">{error}</p>}
             <AuthenticatorForm
               operatorName={operatorName}
+              operatorAvatarUrl={operatorAvatarUrl}
+              operatorEmail={operatorEmail}
               onVerified={async () => {
                 await onUnlocked()
                 setError('')
@@ -153,7 +159,12 @@ export function WorkspaceGuard({
               </button>
             </div>
           )}
-          <MfaActionHost state={state} />
+          <MfaActionHost
+            state={state}
+            operatorName={operatorName}
+            operatorAvatarUrl={operatorAvatarUrl}
+            operatorEmail={operatorEmail}
+          />
         </>
       )}
     </>

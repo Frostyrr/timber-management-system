@@ -3,7 +3,17 @@ import { summarizeMfaAction } from '../../backend/mfaSummary'
 import { useEffect, useRef, useState } from 'react'
 import { listenForMfa, type MfaRequest } from '../../backend/mfaPrompt'
 import { AuthenticatorForm } from '../ui/AuthenticatorForm'
-export function MfaActionHost({ state }: { state?: State }) {
+export function MfaActionHost({
+  state,
+  operatorName,
+  operatorAvatarUrl,
+  operatorEmail,
+}: {
+  state?: State
+  operatorName?: string
+  operatorAvatarUrl?: string | null
+  operatorEmail?: string | null
+}) {
   const [request, setRequest] = useState<MfaRequest | null>(null)
   const pending = useRef<MfaRequest | null>(null)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -47,6 +57,9 @@ export function MfaActionHost({ state }: { state?: State }) {
           summary={summarizeMfaAction(request.payload, state)}
           scope={request.scope}
           payload={request.payload}
+          operatorName={operatorName}
+          operatorAvatarUrl={operatorAvatarUrl}
+          operatorEmail={operatorEmail}
           onVerified={() => finish(true)}
           onCancel={() => finish(false)}
         />

@@ -366,6 +366,8 @@ function LiveProvider({ children }: { children: ReactNode }) {
     return (
       <WorkspaceGuard
         operatorName={person.name}
+        operatorAvatarUrl={person.avatar_url}
+        operatorEmail={person.email}
         initiallyLocked
         onUnlocked={async () => {
           if (!await loadWorkspace(generation.current, ++requestSequence.current)) {
@@ -388,6 +390,8 @@ function LiveProvider({ children }: { children: ReactNode }) {
     return (
       <WorkspaceGuard
         operatorName={person.name}
+        operatorAvatarUrl={person.avatar_url}
+        operatorEmail={person.email}
         state={state}
         initiallyLocked={false}
         onUnlocked={async () => {
