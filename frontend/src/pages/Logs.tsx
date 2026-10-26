@@ -1,6 +1,6 @@
 import { activitySheet } from '../exports/reports'
 import { ExportButton } from '../components/ui/ExportButton'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Package, ShieldAlert, Clock3, RefreshCw } from 'lucide-react'
 import { dateText } from '../components/format'
@@ -17,6 +17,9 @@ export function Logs() {
   const { state, person, refresh } = useInventory()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [actorFilter, setActorFilter] = useState('all')
+  const [actionDetailsFilter, setActionDetailsFilter] = useState('all')
+  const [equipmentFilter, setEquipmentFilter] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -26,7 +29,7 @@ export function Logs() {
     try { await refresh?.() } finally { setRefreshing(false) }
   }
 
-  const visibleEvents = scopedEvents(state,person)
+  const visibleEvents = scopedEvents(state, person)
 
   const isLoanEvent = (e: (typeof visibleEvents)[number], details: string) => {
     const raw = (e.action ?? '').toLowerCase()
@@ -64,27 +67,115 @@ export function Logs() {
     )
   }
 
-  const filteredEvents = visibleEvents.filter((e) => {
-    const item = state.items.find((i) => i.id === e.entityId)
-    const actor = {name:auditActorName(e,state),role:e.actorRole}
-    const actionDetails = formatEventDetails(e, state)
-    const matchesSearch = `${actionDetails} ${item?.name ?? ''} ${item?.tag ?? ''} ${actor?.name ?? ''}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
+  // Extract distinct actors present in visible events
+  const availableActors = useMemo(() => {
+    const set = new Set<string>()
+    visibleEvents.forEach((e) => {
+      const name = auditActorName(e, state)
+      if (name && name.trim()) set.add(name.trim())
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [visibleEvents, state])
 
-    if (!matchesSearch) return false
+  // Extract active inventory equipment for target equipment filter
+  const inventoryItems = useMemo(() => {
+    return [...state.items].sort((a, b) => a.name.localeCompare(b.name))
+  }, [state.items])
 
-    if (filter === 'loans') {
-      return isLoanEvent(e, actionDetails)
-    }
-    if (filter === 'incidents') {
-      return isIncidentEvent(e, actionDetails)
-    }
-    if (filter === 'equipment') {
-      return isEquipmentEvent(e, actionDetails)
-    }
-    return true
-  })
+  const filteredEvents = useMemo(() => {
+    return visibleEvents.filter((e) => {
+      const item = state.items.find((i) => i.id === e.entityId)
+      const actorName = auditActorName(e, state)
+      const actionDetails = formatEventDetails(e, state)
+
+      // 1. Text Search
+      const matchesSearch = !search.trim() ||
+        `${actionDetails} ${item?.name ?? ''} ${item?.tag ?? ''} ${actorName ?? ''}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      if (!matchesSearch) return false
+
+      // 2. High-level Category Filter
+      if (filter === 'loans' && !isLoanEvent(e, actionDetails)) return false
+      if (filter === 'incidents' && !isIncidentEvent(e, actionDetails)) return false
+      if (filter === 'equipment' && !isEquipmentEvent(e, actionDetails)) return false
+
+      // 3. Actor Filter
+      if (actorFilter !== 'all') {
+        if (!actorName || actorName.toLowerCase() !== actorFilter.toLowerCase()) {
+          return false
+        }
+      }
+
+      // 4. Action Details Filter
+      if (actionDetailsFilter !== 'all') {
+        const raw = (e.action ?? '').toLowerCase()
+        const details = actionDetails.toLowerCase()
+        switch (actionDetailsFilter) {
+          case 'checkout':
+            if (!raw.includes('checkout') && !details.includes('release') && !details.includes('checked out')) return false
+            break
+          case 'return':
+            if (!raw.includes('return') && !details.includes('return') && !details.includes('closed loan')) return false
+            break
+          case 'incident':
+            if (!raw.includes('incident') && !details.includes('incident') && !details.includes('flagged')) return false
+            break
+          case 'resolve':
+            if (!raw.includes('resolve') && !details.includes('resolved') && !details.includes('closed review')) return false
+            break
+          case 'item':
+            if (!raw.includes('item') && !raw.includes('catalog') && !details.includes('equipment') && !details.includes('registered')) return false
+            break
+          case 'archive':
+            if (!raw.includes('archive') && !details.includes('archive') && !details.includes('decommissioned')) return false
+            break
+          case 'restore':
+            if (!raw.includes('unarchive') && !details.includes('restored')) return false
+            break
+          case 'staff':
+            if (!raw.includes('people') && !raw.includes('person') && !details.includes('staff')) return false
+            break
+          case 'access':
+            if (!raw.includes('membership') && !raw.includes('security') && !raw.includes('profile') && !details.includes('access') && !details.includes('permission')) return false
+            break
+        }
+      }
+
+      // 5. Target Equipment Filter
+      if (equipmentFilter !== 'all') {
+        const targetItem = state.items.find((i) => i.id === equipmentFilter)
+        const matchesEntity = e.entityId === equipmentFilter
+        const matchesTargetItem = targetItem && (
+          actionDetails.toLowerCase().includes(targetItem.name.toLowerCase()) ||
+          actionDetails.toLowerCase().includes(targetItem.tag.toLowerCase())
+        )
+        const matchesLoan = state.loans.some(
+          (l) => (l.id === e.releaseId || l.id === e.entityId) && l.itemId === equipmentFilter
+        )
+        if (!matchesEntity && !matchesTargetItem && !matchesLoan) return false
+      }
+
+      return true
+    })
+  }, [visibleEvents, state, search, filter, actorFilter, actionDetailsFilter, equipmentFilter])
+
+  const hasActiveFilters = Boolean(
+    search.trim() ||
+    filter !== 'all' ||
+    actorFilter !== 'all' ||
+    actionDetailsFilter !== 'all' ||
+    equipmentFilter !== 'all'
+  )
+
+  const resetFilters = () => {
+    setSearch('')
+    setFilter('all')
+    setActorFilter('all')
+    setActionDetailsFilter('all')
+    setEquipmentFilter('all')
+    setPage(1)
+  }
 
   const paginatedEvents = filteredEvents.slice((page - 1) * pageSize, page * pageSize)
 
@@ -160,38 +251,120 @@ export function Logs() {
 
       {/* Frosted Panel with Logs Table */}
       <section className="panel animate-enter" aria-label="Activity log records">
-        <div className="toolbar">
-          <label className="search">
-            <Search size={16} />
-            <input
-              aria-label="Search logs"
-              placeholder="Search by action, item, tag, or actor…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            />
-          </label>
-          <div className="toolbar-controls">
-            <button
-              type="button"
-              className="icon-button"
-              title="Refresh log records"
-              aria-label="Refresh records"
-              onClick={handleRefresh}
-            >
-              <RefreshCw size={15} className={refreshing ? 'animate-spin text-primary' : ''} />
-            </button>
-            <Select
-              aria-label="Filter logs by type"
-              value={filter}
-              onChange={(e) => { setFilter(e.target.value); setPage(1); }}
-              className="w-auto min-w-[170px]"
-              buttonClassName="h-9 py-1 px-3 text-xs"
-            >
-              <option value="all">All log types</option>
-              <option value="loans">Releases & returns</option>
-              <option value="incidents">Incident events</option>
-              <option value="equipment">Equipment updates</option>
-            </Select>
+        <div className="toolbar flex flex-col gap-3">
+          {/* Top row: Search input + refresh button */}
+          <div className="flex w-full flex-wrap items-center justify-between gap-2.5">
+            <label className="search flex-1 min-w-[240px]">
+              <Search size={16} />
+              <input
+                aria-label="Search logs"
+                placeholder="Search by action, item, tag, or actor…"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
+            </label>
+            <div className="toolbar-controls flex items-center gap-2">
+              <button
+                type="button"
+                className="icon-button"
+                title="Refresh log records"
+                aria-label="Refresh records"
+                onClick={handleRefresh}
+              >
+                <RefreshCw size={15} className={refreshing ? 'animate-spin text-primary' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {/* Dedicated 3-Column Filter Deck: Actor, Action Details, Target Equipment */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 w-full pt-2 border-t border-line-subtle/50">
+            {/* 1. Actor Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider">Actor</label>
+              <Select
+                aria-label="Filter by actor"
+                value={actorFilter}
+                onChange={(e) => {
+                  setActorFilter(e.target.value)
+                  setPage(1)
+                }}
+                searchable={availableActors.length > 5}
+                className="w-full"
+                buttonClassName="h-9 py-1 px-3 text-xs"
+              >
+                <option value="all">All actors</option>
+                {availableActors.map((actor) => (
+                  <option key={actor} value={actor}>
+                    {actor}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* 2. Action Details Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider">Action Details</label>
+              <Select
+                aria-label="Filter by action details"
+                value={actionDetailsFilter}
+                onChange={(e) => {
+                  setActionDetailsFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="w-full"
+                buttonClassName="h-9 py-1 px-3 text-xs"
+              >
+                <option value="all">All action details</option>
+                <option value="checkout">Equipment releases</option>
+                <option value="return">Equipment returns</option>
+                <option value="incident">Incident reports</option>
+                <option value="resolve">Incident resolutions</option>
+                <option value="item">Equipment catalog updates</option>
+                <option value="archive">Equipment decommissioned</option>
+                <option value="restore">Equipment restored</option>
+                <option value="staff">Staff directory changes</option>
+                <option value="access">Access & security changes</option>
+              </Select>
+            </div>
+
+            {/* 3. Target Equipment Filter based on current inventory */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider">Target Equipment</label>
+              <Select
+                aria-label="Filter by target equipment"
+                value={equipmentFilter}
+                onChange={(e) => {
+                  setEquipmentFilter(e.target.value)
+                  setPage(1)
+                }}
+                searchable={inventoryItems.length > 5}
+                className="w-full"
+                buttonClassName="h-9 py-1 px-3 text-xs"
+              >
+                <option value="all">All target equipment</option>
+                {inventoryItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.tag})
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+
+          {/* Results Count & Reset Filters Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-subtle/50 pt-2 text-xs text-muted-ink">
+            <span>
+              {filteredEvents.length} matching {filteredEvents.length === 1 ? 'log record' : 'log records'}
+            </span>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="cursor-pointer font-medium text-primary hover:underline hover:text-forest-deep transition-colors"
+              >
+                Reset all filters
+              </button>
+            )}
           </div>
         </div>
 

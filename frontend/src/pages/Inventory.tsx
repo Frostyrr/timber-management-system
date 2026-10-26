@@ -665,45 +665,140 @@ export function Inventory() {
       </section>
 
       <section className="panel animate-enter">
-        <div className="toolbar">
-          <label className="search">
-            <Search size={16} />
-            <input
-              aria-label="Search equipment"
-              placeholder="Search equipment, category, or asset tag…"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setPage(1)
-              }}
-            />
-          </label>
-          <div className="toolbar-controls">
-            <button
-              type="button"
-              className="icon-button"
-              title="Refresh equipment inventory"
-              aria-label="Refresh records"
-              onClick={handleRefresh}
-            >
-              <RefreshCw size={15} className={refreshing ? 'animate-spin text-primary' : ''} />
-            </button>
-            <Select
-              aria-label="Equipment status"
-              value={filter}
-              onChange={(e) => {
-                setFilter(e.target.value)
-                setPage(1)
-              }}
-              className="w-auto min-w-[160px]"
-              buttonClassName="h-9 py-1 px-3 text-xs"
-            >
-              <option value="all">Active equipment</option>
-              <option value="archived">Archived equipment</option>
-              <option value="available">Available</option>
-              <option value="loans">Equipment in use</option>
-              <option value="overdue">Overdue returns</option>
-            </Select>
+        <div className="toolbar flex flex-col gap-3">
+          {/* Top row: Search input + refresh button */}
+          <div className="flex w-full flex-wrap items-center justify-between gap-2.5">
+            <label className="search flex-1 min-w-[240px]">
+              <Search size={16} />
+              <input
+                aria-label="Search equipment"
+                placeholder="Search equipment, category, asset tag, or location…"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+              />
+            </label>
+            <div className="toolbar-controls flex items-center gap-2">
+              <button
+                type="button"
+                className="icon-button"
+                title="Refresh equipment inventory"
+                aria-label="Refresh records"
+                onClick={handleRefresh}
+              >
+                <RefreshCw size={15} className={refreshing ? 'animate-spin text-primary' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {/* 4-Column Dedicated Filter Deck matching the Inventory columns */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 w-full pt-2 border-t border-line-subtle/50">
+            {/* 1. Location Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider">Location</label>
+              <Select
+                aria-label="Filter by location"
+                value={locationFilter}
+                onChange={(e) => {
+                  setLocationFilter(e.target.value)
+                  setPage(1)
+                }}
+                searchable={uniqueLocations.length > 5}
+                className="w-full"
+                buttonClassName="h-9 py-1 px-3 text-xs"
+              >
+                <option value="all">All locations</option>
+                {uniqueLocations.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* 2. Condition Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider">Condition</label>
+              <Select
+                aria-label="Filter by condition"
+                value={conditionFilter}
+                onChange={(e) => {
+                  setConditionFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="w-full"
+                buttonClassName="h-9 py-1 px-3 text-xs"
+              >
+                <option value="all">All conditions</option>
+                <option value="Good">Good</option>
+                <option value="Fair">Fair</option>
+                <option value="Damaged">Damaged</option>
+                <option value="Missing">Missing</option>
+              </Select>
+            </div>
+
+            {/* 3. Status Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider">Status</label>
+              <Select
+                aria-label="Equipment status"
+                value={filter}
+                onChange={(e) => {
+                  setFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="w-full"
+                buttonClassName="h-9 py-1 px-3 text-xs"
+              >
+                <option value="all">Active equipment</option>
+                <option value="available">Available for release</option>
+                <option value="loans">Equipment in use</option>
+                <option value="overdue">Overdue returns</option>
+                <option value="under_review">Under review</option>
+                <option value="unavailable">Temporarily unavailable</option>
+                <option value="archived">Archived equipment</option>
+              </Select>
+            </div>
+
+            {/* 4. Usage Details Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider">Usage Details</label>
+              <Select
+                aria-label="Filter by usage details"
+                value={usageFilter}
+                onChange={(e) => {
+                  setUsageFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="w-full"
+                buttonClassName="h-9 py-1 px-3 text-xs"
+              >
+                <option value="all">All usage details</option>
+                <option value="publication_use">Publication use</option>
+                <option value="member_borrowing">Member borrowing</option>
+                <option value="external_borrowing">External borrowing</option>
+                <option value="on_loan">Currently in use</option>
+                <option value="not_on_loan">Free / idle</option>
+              </Select>
+            </div>
+          </div>
+
+          {/* Results Count & Reset Filters Toolbar Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-subtle/50 pt-2 text-xs text-muted-ink">
+            <span>
+              {items.length} matching {items.length === 1 ? 'equipment asset' : 'equipment assets'}
+            </span>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="cursor-pointer font-medium text-primary hover:underline hover:text-forest-deep transition-colors"
+              >
+                Reset all filters
+              </button>
+            )}
           </div>
         </div>
 
