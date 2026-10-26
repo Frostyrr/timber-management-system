@@ -3,7 +3,7 @@ import { ExportButton } from '../components/ui/ExportButton'
 import { SearchableCombobox } from '../components/ui/SearchableCombobox'
 import { releaseDetailsSchema, USE_TYPES, type UseType } from '../demo/release'
 import { value, dateText, tomorrow, categoryClass } from '../components/format'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Plus,
@@ -412,6 +412,9 @@ export function Inventory() {
   const [useType, setUseType] = useState<UseType>('publication_use')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState(query.get('status') ?? 'all')
+  const [locationFilter, setLocationFilter] = useState('all')
+  const [conditionFilter, setConditionFilter] = useState('all')
+  const [usageFilter, setUsageFilter] = useState('all')
   const [modal, setModal] = useState<{
     type: 'item' | 'checkout' | 'return' | 'history'
     id?: string
@@ -458,26 +461,113 @@ export function Inventory() {
   const overdueLoans = visibleLoans.filter((l) => isOverdue(l.due))
   const availableItemsCount = availableItems.length
 
-  const items = state.items.filter(
-    (i) =>
-      `${i.name} ${i.tag} ${i.category}`.toLowerCase().includes(search.toLowerCase()) &&
-      (filter === 'archived' ? !!i.archived : !i.archived) &&
-      (filter === 'archived' ||
-        filter === 'all' ||
-        (filter === 'available' && available(state, i.id)) ||
-        (filter === 'loans' &&
-          state.loans.some(
+  const uniqueLocations = useMemo(() => {
+    const locs = new Set<string>()
+    state.items.forEach((i) => {
+      if (i.location && i.location.trim()) {
+        locs.add(i.location.trim())
+      }
+    })
+    return Array.from(locs).sort((a, b) => a.localeCompare(b))
+  }, [state.items])
+
+  const items = useMemo(() => {
+    return state.items.filter((i) => {
+      // 1. Text Search
+      const matchesSearch = !search.trim() ||
+        `${i.name} ${i.tag} ${i.category} ${i.location}`.toLowerCase().includes(search.toLowerCase())
+      if (!matchesSearch) return false
+
+      // 2. Location Filter
+      if (locationFilter !== 'all' && i.location !== locationFilter) {
+        return false
+      }
+
+      // 3. Condition Filter
+      if (conditionFilter !== 'all' && i.condition !== conditionFilter) {
+        return false
+      }
+
+      // 4. Status Filter
+      if (filter === 'archived') {
+        if (!i.archived) return false
+      } else {
+        if (i.archived) return false
+        if (filter === 'available' && !available(state, i.id)) return false
+        if (
+          filter === 'loans' &&
+          !state.loans.some(
             (l) => l.itemId === i.id && !l.returned && (manager || l.borrowerId === person.id),
-          )) ||
-        (filter === 'overdue' &&
-          state.loans.some(
+          )
+        )
+          return false
+        if (
+          filter === 'overdue' &&
+          !state.loans.some(
             (l) =>
               l.itemId === i.id &&
               !l.returned &&
               isOverdue(l.due) &&
               (manager || l.borrowerId === person.id),
-          ))),
+          )
+        )
+          return false
+        if (
+          filter === 'under_review' &&
+          !state.incidents.some((n) => n.itemId === i.id && !n.resolved)
+        )
+          return false
+        if (
+          filter === 'unavailable' &&
+          (available(state, i.id) ||
+            state.loans.some((l) => l.itemId === i.id && !l.returned) ||
+            state.incidents.some((n) => n.itemId === i.id && !n.resolved))
+        )
+          return false
+      }
+
+      // 5. Usage Details Filter
+      if (usageFilter !== 'all') {
+        const activeLoan = state.loans.find((l) => l.itemId === i.id && !l.returned)
+        if (usageFilter === 'on_loan') {
+          if (!activeLoan) return false
+        } else if (usageFilter === 'not_on_loan') {
+          if (activeLoan) return false
+        } else if (usageFilter === 'publication_use') {
+          const isActive = activeLoan?.useType === 'publication_use'
+          const isHistory = state.loans.some((l) => l.itemId === i.id && l.useType === 'publication_use')
+          if (!isActive && !isHistory) return false
+        } else if (usageFilter === 'member_borrowing') {
+          const isActive = activeLoan?.useType === 'member_borrowing'
+          const isHistory = state.loans.some((l) => l.itemId === i.id && l.useType === 'member_borrowing')
+          if (!isActive && !isHistory) return false
+        } else if (usageFilter === 'external_borrowing') {
+          const isActive = activeLoan?.useType === 'external_borrowing'
+          const isHistory = state.loans.some((l) => l.itemId === i.id && l.useType === 'external_borrowing')
+          if (!isActive && !isHistory) return false
+        }
+      }
+
+      return true
+    })
+  }, [state, search, filter, locationFilter, conditionFilter, usageFilter, manager, person.id])
+
+  const hasActiveFilters = Boolean(
+    search.trim() ||
+    filter !== 'all' ||
+    locationFilter !== 'all' ||
+    conditionFilter !== 'all' ||
+    usageFilter !== 'all'
   )
+
+  const resetFilters = () => {
+    setSearch('')
+    setFilter('all')
+    setLocationFilter('all')
+    setConditionFilter('all')
+    setUsageFilter('all')
+    setPage(1)
+  }
 
   const paginatedItems = items.slice((page - 1) * pageSize, page * pageSize)
 
