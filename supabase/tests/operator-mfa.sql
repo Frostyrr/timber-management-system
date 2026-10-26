@@ -1,0 +1,68 @@
+\set ON_ERROR_STOP on
+begin;
+insert into auth.users(id,raw_user_meta_data) values('70000000-0000-0000-0000-000000000001','{"full_name":"MFA admin"}');
+update timber.profiles set role='Administrator',status='active' where id='70000000-0000-0000-0000-000000000001';
+insert into auth.sessions(id,user_id,factor_id) values('70000000-0000-0000-0000-000000000002','70000000-0000-0000-0000-000000000001','70000000-0000-0000-0000-000000000003');
+insert into auth.mfa_factors values('70000000-0000-0000-0000-000000000003','70000000-0000-0000-0000-000000000001','verified','totp');
+select set_config('request.jwt.claim.sub','70000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claims',jsonb_build_object('session_id','70000000-0000-0000-0000-000000000002','aal','aal1')::text,true);
+set local role authenticated;
+do $$declare ticket uuid; proof bigint:=floor(extract(epoch from now()))::bigint; payload jsonb; second_ticket uuid; begin
+ begin perform public.inventory_snapshot(); raise exception 'AAL1 accepted'; exception when others then if sqlerrm not like 'MFA_REQUIRED:%' then raise; end if; end;
+ begin perform timber.inventory_snapshot_before_mfa(); raise exception 'Private bypass accepted'; exception when insufficient_privilege then null; end;
+ ticket:=public.operator_begin('unlock','{}');
+ begin perform public.operator_complete(ticket); raise exception 'Unverified challenge accepted'; exception when others then if sqlerrm<>'Enter a new authenticator code and verify again.' then raise; end if; end;
+ perform set_config('request.jwt.claims',jsonb_build_object('session_id','70000000-0000-0000-0000-000000000002','aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',proof)))::text,true);
+ perform public.operator_complete(ticket);
+ if not public.operator_access(false) then raise exception 'Verified lease rejected'; end if;
+ perform public.inventory_snapshot();
+ perform public.inventory_mutate('{"type":"person-save","id":"70000000-0000-0000-0000-000000000004","name":"Regression person","title":"Adviser","department":"Executives"}',gen_random_uuid());
+ perform public.inventory_mutate('{"type":"person-archive","id":"70000000-0000-0000-0000-000000000004","reason":"Test"}',gen_random_uuid());
+ payload:='{"type":"purge-archive","targetType":"staff","id":"70000000-0000-0000-0000-000000000004"}';
+ begin perform public.inventory_mutate(payload,gen_random_uuid()); raise exception 'Purge without fresh proof accepted'; exception when others then if sqlerrm<>'Fresh authenticator verification required for this action.' then raise; end if; end;
+ ticket:=public.operator_begin('inventory',payload);
+ begin perform public.operator_complete(ticket); raise exception 'Old MFA accepted'; exception when others then if sqlerrm<>'Enter a new authenticator code and verify again.' then raise; end if; end;
+ second_ticket:=public.operator_begin('inventory',payload||'{"reason":"second operation"}');
+ perform set_config('request.jwt.claims',jsonb_build_object('session_id','70000000-0000-0000-0000-000000000002','aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',proof+1)))::text,true);
+ perform public.operator_complete(ticket);
+ begin perform public.operator_complete(second_ticket); raise exception 'Verification reused'; exception when others then if sqlerrm<>'Verification already used. Enter a new code.' then raise; end if; end;
+ begin perform public.inventory_mutate(payload||'{"reason":"altered"}',gen_random_uuid()); raise exception 'Modified payload accepted'; exception when others then if sqlerrm<>'Fresh authenticator verification required for this action.' then raise; end if; end;
+ perform public.inventory_mutate(payload,gen_random_uuid());
+ perform public.inventory_mutate('{"type":"person-save","id":"70000000-0000-0000-0000-000000000005","name":"Bulk target","title":"Adviser"}',gen_random_uuid());
+ perform public.inventory_mutate('{"type":"person-archive","id":"70000000-0000-0000-0000-000000000005","reason":"Test"}',gen_random_uuid());
+ perform public.inventory_mutate('{"type":"person-save","id":"70000000-0000-0000-0000-000000000006","name":"Not approved for purge","title":"Adviser"}',gen_random_uuid());
+ perform public.inventory_mutate('{"type":"person-archive","id":"70000000-0000-0000-0000-000000000006","reason":"Test"}',gen_random_uuid());
+ payload:='{"type":"purge-all-archives","targetType":"staff","targets":["70000000-0000-0000-0000-000000000005"]}';
+ ticket:=public.operator_begin('inventory',payload);
+ perform set_config('request.jwt.claims',jsonb_build_object('session_id','70000000-0000-0000-0000-000000000002','aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',proof+2)))::text,true);
+ perform public.operator_complete(ticket);
+ perform public.inventory_mutate(payload,gen_random_uuid());
+ perform public.operator_lock();
+ if public.operator_access(true) then raise exception 'Heartbeat reopened lock'; end if;
+ begin perform public.inventory_snapshot(); raise exception 'Locked read accepted'; exception when others then if sqlerrm not like 'MFA_REQUIRED:%' then raise; end if; end;
+end $$;
+reset role;
+do $$begin
+ if exists(select 1 from timber.people where id='70000000-0000-0000-0000-000000000004') then raise exception 'Authorized purge failed'; end if;
+ if exists(select 1 from timber.people where id='70000000-0000-0000-0000-000000000005') or not exists(select 1 from timber.people where id='70000000-0000-0000-0000-000000000006') then raise exception 'Bulk purge did not respect approved target set'; end if;
+ if not exists(select 1 from timber.mfa_events where event='inventory verified') then raise exception 'Verification event absent'; end if;
+end $$;
+-- Expired leases, factor substitution, and custodian restrictions.
+update timber.mfa_leases set expires_at=now()+interval '3 minutes';
+update auth.sessions set factor_id='70000000-0000-0000-0000-000000000099';
+set local role authenticated;
+do $$begin if public.operator_access(false) then raise exception 'Replaced factor accepted'; end if; end $$;
+reset role;
+update auth.sessions set factor_id='70000000-0000-0000-0000-000000000003';
+update timber.mfa_leases set expires_at=now()-interval '1 second';
+set local role authenticated;
+do $$begin if public.operator_access(true) then raise exception 'Expired lease revived'; end if; end $$;
+reset role;
+update timber.mfa_leases set expires_at=now()+interval '3 minutes';
+update timber.profiles set role='Inventory Custodian' where id=auth.uid();
+set local role authenticated;
+do $$begin
+ begin perform public.operator_begin('inventory','{"type":"purge-archive","id":"70000000-0000-0000-0000-000000000006"}'); raise exception 'Custodian allowed to authorize purge'; exception when others then if sqlerrm<>'Administrator required for permanent purging.' then raise; end if; end;
+end $$;
+reset role;
+rollback;

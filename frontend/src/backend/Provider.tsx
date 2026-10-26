@@ -1,9 +1,10 @@
+import { WorkspaceGuard } from '../components/layout/WorkspaceGuard'
 import { WorkspaceSkeleton } from '../components/layout/WorkspaceSkeleton'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { InventoryContext } from '../backend/context'
 import { type Action, type Profile, type State } from '../backend/model'
 import type { ToastItem, ToastType } from '../types/notification'
-import { client, identity, mutate, snapshot } from './client'
+import { client, identity, mutate, snapshot, workspaceAccess } from './client'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Login } from '../pages/Login'
 
@@ -197,6 +198,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 }
 function LiveProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const [mfaRequired,setMfaRequired] = useState(false)
   const [person, setPerson] = useState<Profile | null>(null)
   const [state, setState] = useState<State | null>(null)
   const [loading, setLoading] = useState(!!client)
@@ -231,9 +233,13 @@ function LiveProvider({ children }: { children: ReactNode }) {
     try {
       const p = await identity()
       const permitted = p.status === 'active' && ['Administrator','Inventory Custodian'].includes(p.role)
+      if (permitted && !await workspaceAccess()) {
+        if (token === generation.current && sequence === requestSequence.current) { setPerson(p); setMfaRequired(true); setError('') }
+        return false
+      }
       const next = permitted ? await snapshot() : null
       if (token !== generation.current || sequence !== requestSequence.current) return false
-      setPerson(p); setState(next); setError('')
+      setPerson(p); setState(next); setMfaRequired(false); setError('')
       return true
     } catch (e) {
       if (token !== generation.current || sequence !== requestSequence.current) return false
@@ -259,7 +265,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
         currentUser.current = nextUser
         gen.current++
         pending.current.clear()
-        setState(null); setPerson(null); setError(''); setNotice(''); setToasts([])
+        setState(null); setPerson(null); setMfaRequired(false); setError(''); setNotice(''); setToasts([])
       }
       setSignedIn(!!session)
       if (!session) { sequence.current++; setLoading(false); return }
@@ -341,9 +347,10 @@ function LiveProvider({ children }: { children: ReactNode }) {
   if (loading) return <WorkspaceSkeleton />
 
   if (state && person && (location.pathname === '/login' || location.pathname === '/auth/callback')) return <Navigate to="/" replace />
-  if (state && person) return <InventoryContext.Provider value={{ state, person, act, refreshing: activeLoads > 0, mode: 'live', refresh, signOut,
+  if (state && person) return <WorkspaceGuard initiallyLocked={mfaRequired} onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}><InventoryContext.Provider value={{ state, person, act, refreshing: activeLoads > 0, mode: 'live', refresh, signOut,
     warning: error ? `Could not refresh inventory: ${error} Use Refresh to retry.` : '', notice,
-    toasts, dismissToast, activityHistory, clearActivityHistory }}>{children}</InventoryContext.Provider>
+    toasts, dismissToast, activityHistory, clearActivityHistory }}>{children}</InventoryContext.Provider></WorkspaceGuard>
+  if (signedIn && mfaRequired && person) return <WorkspaceGuard initiallyLocked onUnlocked={async()=>{if(!await loadWorkspace(generation.current, ++requestSequence.current))throw Error('Unable to unlock. Retry verification or reconnect.')}}>{null}</WorkspaceGuard>
   if (!signedIn) return <>
     {location.pathname !== '/login' && <Navigate to="/login" replace />}
     <main className="min-h-screen bg-workspace flex items-center justify-center p-4 sm:p-6 lg:p-10"><div className="w-full max-w-[1240px] flex justify-center"><Login checkingSession={false} /></div></main>

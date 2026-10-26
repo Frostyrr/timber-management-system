@@ -6,8 +6,9 @@ import { useState } from 'react'
 import { seed } from '../demo/model'
 import { DataProvider } from './Provider'
 import { useInventory } from './context'
-const api = vi.hoisted(()=>({identity:vi.fn(),snapshot:vi.fn(),mutate:vi.fn(),subscribe:vi.fn(),signOut:vi.fn()}))
-vi.mock('./client',()=>({client:{auth:{onAuthStateChange:api.subscribe,signOut:api.signOut}},identity:api.identity,snapshot:api.snapshot,mutate:api.mutate}))
+const api = vi.hoisted(()=>({identity:vi.fn(),snapshot:vi.fn(),mutate:vi.fn(),subscribe:vi.fn(),signOut:vi.fn(),access:vi.fn()}))
+vi.mock('../components/layout/WorkspaceGuard',()=>({WorkspaceGuard:({children}:{children:import('react').ReactNode})=>children}))
+vi.mock('./client',()=>({workspaceAccess:api.access,client:{auth:{onAuthStateChange:api.subscribe,signOut:api.signOut}},identity:api.identity,snapshot:api.snapshot,mutate:api.mutate}))
 let notify: (event:string,session:{user:{id:string}}|null)=>void
 const state=seed()
 function Workspace(){
@@ -20,6 +21,7 @@ beforeEach(()=>{
  vi.clearAllMocks()
  api.subscribe.mockImplementation(cb=>{notify=cb;return {data:{subscription:{unsubscribe:vi.fn()}}}})
  api.identity.mockResolvedValue({...state.profiles[0],status:'active'})
+ api.access.mockResolvedValue(true)
  api.snapshot.mockResolvedValue(state)
  api.mutate.mockResolvedValue(undefined)
  api.signOut.mockResolvedValue({error:null})
@@ -27,6 +29,12 @@ beforeEach(()=>{
 })
 afterEach(cleanup)
 describe('live session and loading behavior',()=>{
+ it('does not fetch inventory until the server grants MFA access',async()=>{
+  api.access.mockResolvedValue(false)
+  await auth('admin')
+  expect(api.snapshot).not.toHaveBeenCalled()
+  expect(screen.queryByLabelText('Draft')).toBeNull()
+ })
  it('preserves unsaved input on token refresh and repeated sign-in events',async()=>{
   await auth('admin'); await screen.findByLabelText('Draft')
   fireEvent.change(screen.getByLabelText('Draft'),{target:{value:'Unfinished release'}})
@@ -58,7 +66,8 @@ describe('live session and loading behavior',()=>{
  it.each([['Network offline','Unable to load inventory'],['Apply migration: database upgrade required','Database upgrade required']])('separates %s from approval',async(message,title)=>{
   api.snapshot.mockRejectedValue(Error(message));await auth('admin')
   expect(await screen.findByRole('heading',{name:title})).toBeTruthy()
-  api.snapshot.mockResolvedValue(state);fireEvent.click(screen.getByText('Retry loading'))
+  api.access.mockResolvedValue(true)
+ api.snapshot.mockResolvedValue(state);fireEvent.click(screen.getByText('Retry loading'))
   expect(await screen.findByLabelText('Draft')).toBeTruthy()
  })
  it('reports a committed save followed by refresh failure without resubmitting',async()=>{
@@ -67,7 +76,8 @@ describe('live session and loading behavior',()=>{
   fireEvent.click(screen.getByText('Save'))
   expect(await screen.findByText(/Saved, but the latest data could not be loaded/)).toBeTruthy()
   expect(screen.queryByRole('heading',{name:'Membership approval required'})).toBeNull()
-  api.snapshot.mockResolvedValue(state);fireEvent.click(screen.getByText('Refresh'))
+  api.access.mockResolvedValue(true)
+ api.snapshot.mockResolvedValue(state);fireEvent.click(screen.getByText('Refresh'))
   await waitFor(()=>expect(screen.queryByText(/Could not refresh inventory/)).toBeNull())
   expect(api.mutate).toHaveBeenCalledTimes(1)
  })

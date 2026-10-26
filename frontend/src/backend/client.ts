@@ -1,3 +1,4 @@
+import { requestMfa } from './mfaPrompt'
 import { createClient } from '@supabase/supabase-js'
 import { profileSchema, stateSchema } from './model'
 import type { SecurityState } from './security'
@@ -31,8 +32,20 @@ export async function snapshot() {
   return stateSchema.parse(data)
 }
 
+export async function workspaceAccess(renew = false): Promise<boolean> {
+  if (!client) return false
+  const { data, error } = await client.rpc('operator_access', { renew })
+  if (error) throw Error(error.message)
+  return data === true
+}
+export async function lockWorkspace() {
+  if (!client) return
+  const { error } = await client.rpc('operator_lock')
+  if (error) throw Error(error.message)
+}
 export async function mutate(action: unknown, requestId: string) {
   if (!client) throw Error('Supabase is not configured.')
+  if (['purge-archive','purge-all-archives','membership','delete-profile','self-delete'].includes((action as {type:string}).type)) await requestMfa('inventory',action)
   const { error } = await client.rpc('inventory_mutate', { action, request_id: requestId })
   if (error) throw Error(error.message)
 }
@@ -46,6 +59,7 @@ export async function fetchSecuritySnapshot(): Promise<SecurityState> {
 
 export async function mutateSecurity(action: unknown, requestId: string = crypto.randomUUID()): Promise<void> {
   if (!client) throw Error('Supabase is not configured.')
+  if ((action as {type:string}).type !== 'register-session') await requestMfa('security',action)
   const { error } = await client.rpc('security_mutate', { action, request_id: requestId })
   if (error) throw Error(error.message)
 }

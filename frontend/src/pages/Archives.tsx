@@ -109,6 +109,7 @@ export function Archives() {
     await act({
       type: 'purge-all-archives',
       targetType: tab,
+      targets: records.map(record => record.id),
     } as Action)
     setPurgeAllConfirm(false)
   }
@@ -146,7 +147,7 @@ export function Archives() {
       {records.length > 0 && (
         <button
           type="button"
-          onClick={() => setPurgeAllConfirm(true)}
+          disabled={person.role !== 'Administrator'} onClick={() => setPurgeAllConfirm(true)}
           className="secondary text-xs h-9 px-3 text-danger-text hover:bg-danger-bg hover:border-danger-border flex items-center gap-1.5 font-medium transition"
           title={`Permanently clean up archived ${tab} test records`}
         >
@@ -264,6 +265,7 @@ export function Archives() {
                       <button
                         type="button"
                         className="secondary text-xs px-2 py-1 text-danger-text hover:bg-danger-bg hover:border-danger-border"
+                        disabled={person.role !== 'Administrator'}
                         aria-label={`Purge ${r.name}`}
                         onClick={() => setPurgingRecord({ id: r.id, name: r.name, type: tab })}
                         title="Permanently purge mock archive record"
