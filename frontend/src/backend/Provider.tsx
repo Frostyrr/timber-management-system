@@ -136,14 +136,19 @@ export function getActionToastDetails(
         type: 'info',
       }
     }
-    case 'correct':
+    case 'correct': {
+      const loan = state?.loans.find((l) => l.id === action.loanId)
+      const item = loan ? state?.items.find((i) => i.id === loan.itemId) : null
       return {
-        title: 'Loan schedule adjusted',
-        message: 'Loan schedule and details updated successfully.',
-        actionLabel: 'View in Logs',
-        actionUrl: '/logs',
+        title: 'Return deadline updated',
+        message: item
+          ? `Return deadline for "${item.name}" adjusted successfully.`
+          : 'Loan return deadline and schedule adjusted successfully.',
+        actionLabel: 'View in Catalog',
+        actionUrl: '/inventory?status=loans',
         type: 'success',
       }
+    }
     case 'membership': {
       const target = state?.profiles.find((p) => p.id === action.id)
       return {

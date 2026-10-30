@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, ArrowUpRight, Clock3, ShieldAlert, Boxes, RefreshCw } from 'lucide-react'
+import { Package, ArrowUpRight, Clock3, CalendarClock, ShieldAlert, Boxes, RefreshCw } from 'lucide-react'
 import { dateText, categoryClass } from '../components/format'
 import { useInventory } from '../backend/context'
 import { available, canInventory, isOverdue, visibleIncidents, formatEventDetails } from '../backend/model'
@@ -160,8 +160,25 @@ export function Dashboard() {
                             </div>
                           </div>
                           <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-ink">
-                            <span>
-                              {borrower?.name}{borrower?.title ? ` (${borrower.title})` : ''} · Due {dateText(l.due)}
+                            <span className="flex items-center gap-1.5 flex-wrap">
+                              <span>
+                                {borrower?.name}{borrower?.title ? ` (${borrower.title})` : ''}
+                              </span>
+                              <span>·</span>
+                              {manager ? (
+                                <Link
+                                  to={`/inventory?action=adjust&loan=${encodeURIComponent(l.id)}`}
+                                  className="group inline-flex items-center gap-1 rounded-md border border-primary/20 bg-pale/60 px-1.5 py-0.5 text-[11px] font-medium text-primary hover:bg-pale hover:border-primary/40 transition-colors"
+                                  title="Adjust return deadline"
+                                  aria-label={`Adjust return deadline for ${eq?.name}`}
+                                >
+                                  <Clock3 size={11} className="text-primary" />
+                                  <span>Due {dateText(l.due)}</span>
+                                  <span className="text-[9.5px] text-muted-ink underline group-hover:text-primary">(Edit)</span>
+                                </Link>
+                              ) : (
+                                <span>Due {dateText(l.due)}</span>
+                              )}
                             </span>
                             {l.event && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-[#cde0d2] bg-pale px-2 py-0.5 text-[11px] font-medium text-primary">
@@ -179,17 +196,33 @@ export function Dashboard() {
                       <div className="hidden shrink-0 sm:inline-flex">
                         <Badge>{isOverdue(l.due) ? 'Overdue' : 'In use'}</Badge>
                       </div>
-                      <Link
-                        className="action-pill primary-pill flex min-h-[40px] w-full items-center justify-center shrink-0 sm:min-h-0 sm:w-auto"
-                        aria-label={`${manager ? 'Record return for' : 'View usage history for'} ${eq?.name}`}
-                        to={
-                          manager
-                            ? `/inventory?action=return&loan=${encodeURIComponent(l.id)}`
-                            : `/inventory?action=history&item=${encodeURIComponent(l.itemId)}`
-                        }
-                      >
-                        {manager ? 'Record return' : 'Usage history'}
-                      </Link>
+                      {manager ? (
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <Link
+                            className="action-pill primary-pill flex min-h-[40px] flex-1 items-center justify-center shrink-0 sm:min-h-0 sm:flex-initial"
+                            aria-label={`Record return for ${eq?.name}`}
+                            to={`/inventory?action=return&loan=${encodeURIComponent(l.id)}`}
+                          >
+                            Record return
+                          </Link>
+                          <Link
+                            className="action-pill flex h-[34px] w-[34px] items-center justify-center rounded-full border border-line bg-surface hover:bg-white hover:text-primary transition-colors shrink-0"
+                            title={`Adjust return deadline for ${eq?.name}`}
+                            aria-label={`Adjust return deadline for ${eq?.name}`}
+                            to={`/inventory?action=adjust&loan=${encodeURIComponent(l.id)}`}
+                          >
+                            <CalendarClock size={14} />
+                          </Link>
+                        </div>
+                      ) : (
+                        <Link
+                          className="action-pill primary-pill flex min-h-[40px] w-full items-center justify-center shrink-0 sm:min-h-0 sm:w-auto"
+                          aria-label={`View usage history for ${eq?.name}`}
+                          to={`/inventory?action=history&item=${encodeURIComponent(l.itemId)}`}
+                        >
+                          Usage history
+                        </Link>
+                      )}
                     </div>
                   )
                 })}

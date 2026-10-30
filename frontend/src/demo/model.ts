@@ -193,7 +193,7 @@ export type Action =
   | { type: 'person-unarchive'; id: string; reason?: string }
   | { type: 'purge-archive'; targetType: 'equipment' | 'staff'; id: string; reason?: string }
   | { type: 'purge-all-archives'; targetType?: 'equipment' | 'staff' | 'all'; reason?: string }
-  | { type: 'correct'; loanId: string; purpose: string; due: string; reason: string }
+  | { type: 'correct'; loanId: string; purpose?: string; due: string; reason: string }
   | { type: 'membership'; id: string; role: Profile['role']; status: 'active' | 'pending' | 'suspended'; reason: string }
   | { type: 'add-profile'; name: string; role: Profile['role']; title?: string; department: string; status?: 'active' | 'pending' | 'suspended' }
   | { type: 'update-profile'; id: string; name?: string; role?: Profile['role']; title?: string; department?: string; status?: 'active' | 'pending' | 'suspended'; reason?: string }
@@ -464,6 +464,20 @@ export function transition(state: State, actorId: string, action: Action): State
         'Condition recorded when closing the loan. Review required; no responsibility presumed.',
       )
     log(`Recorded return · ${action.condition}`, l!.itemId)
+  } else if (action.type === 'correct') {
+    requireThat(canInventory(p), 'Only custodians and administrators can adjust loan schedules.')
+    const l = s.loans.find((x) => x.id === action.loanId)
+    requireThat(Boolean(l && !l?.returned), 'This usage record is already closed or does not exist.')
+    if (!l || l.returned) throw Error('This usage record is already closed or does not exist.')
+    requireThat(action.reason.trim(), 'Document a reason for adjusting the loan schedule.')
+    requireThat(future(action.due), 'Return deadline must be in the future.')
+    l.due = action.due
+    if (action.purpose?.trim()) {
+      l.purpose = action.purpose.trim()
+      l.event = action.purpose.trim()
+    }
+    const itemObj = s.items.find((i) => i.id === l.itemId)
+    log(`Adjusted return deadline for ${itemObj?.name || 'equipment'}: Due ${action.due}`, l.itemId)
   } else if (action.type === 'incident') {
     requireThat(
       s.items.some((i) => i.id === action.itemId),

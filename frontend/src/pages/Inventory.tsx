@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  CalendarClock,
   Trash2,
   History,
   Pencil,
@@ -406,6 +407,108 @@ function SchedulePicker({ defaultValue }: { defaultValue: string }) {
   )
 }
 
+function AdjustSchedulePicker({
+  initialDue,
+  onChange,
+}: {
+  initialDue: string
+  onChange?: (iso: string) => void
+}) {
+  const calculatePresetIso = (days: number) => {
+    const base = Math.max(Date.now(), new Date(initialDue).getTime())
+    const target = new Date(base + days * 86400000)
+    target.setHours(18, 0, 0, 0)
+    const tzOffset = target.getTimezoneOffset() * 60000
+    return new Date(target.getTime() - tzOffset).toISOString().slice(0, 16)
+  }
+
+  const [preset, setPreset] = useState<'3d' | '7d' | '14d' | 'custom'>('7d')
+  const [isoValue, setIsoValue] = useState(() => calculatePresetIso(7))
+  const [summary, setSummary] = useState(() => getScheduleSummary(isoValue))
+  const [calendarOpen, setCalendarOpen] = useState(false)
+
+  const handlePreset = (type: '3d' | '7d' | '14d') => {
+    setPreset(type)
+    const days = type === '3d' ? 3 : type === '7d' ? 7 : 14
+    const iso = calculatePresetIso(days)
+    setIsoValue(iso)
+    setSummary(getScheduleSummary(iso))
+    onChange?.(iso)
+  }
+
+  const handleCustomChange = (newIso: string) => {
+    setIsoValue(newIso)
+    setPreset('custom')
+    setSummary(getScheduleSummary(newIso))
+    onChange?.(newIso)
+  }
+
+  return (
+    <div className="schedule-picker-card relative z-20">
+      <div className="flex items-center justify-between">
+        <span className="text-[11.5px] font-medium tracking-[0.03em] text-muted-ink uppercase">
+          New Return Deadline
+        </span>
+        <span className="text-[11px] text-muted-ink">Choose extension or calendar</span>
+      </div>
+
+      <div className="schedule-preset-grid">
+        <button
+          type="button"
+          className={`schedule-preset-btn ${preset === '3d' ? 'active' : ''}`}
+          onClick={() => handlePreset('3d')}
+        >
+          <strong>+3 Days</strong>
+          <span>Short Extension</span>
+        </button>
+        <button
+          type="button"
+          className={`schedule-preset-btn ${preset === '7d' ? 'active' : ''}`}
+          onClick={() => handlePreset('7d')}
+        >
+          <strong>+1 Week</strong>
+          <span>Standard (7d)</span>
+        </button>
+        <button
+          type="button"
+          className={`schedule-preset-btn ${preset === '14d' ? 'active' : ''}`}
+          onClick={() => handlePreset('14d')}
+        >
+          <strong>+2 Weeks</strong>
+          <span>Extended (14d)</span>
+        </button>
+      </div>
+
+      <div className="schedule-summary-badge">
+        <div className="flex min-w-0 items-center gap-2">
+          <CalendarIcon size={15} className="shrink-0 text-primary" />
+          <span className="truncate">
+            New deadline: <strong>{summary.dateStr}</strong> {summary.duration ? `(${summary.duration})` : ''}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="shrink-0 text-[11.5px] font-medium text-primary underline hover:text-primary-hover cursor-pointer"
+          onClick={() => setCalendarOpen(true)}
+        >
+          {preset === 'custom' ? 'Change custom date' : 'Pick specific date'}
+        </button>
+      </div>
+
+      {calendarOpen && (
+        <CustomDatePickerModal
+          value={isoValue}
+          onChange={handleCustomChange}
+          onClose={() => setCalendarOpen(false)}
+        />
+      )}
+
+      {/* Hidden input ensures FormData always receives the exact selected timestamp */}
+      <input type="hidden" name="due" value={isoValue} required />
+    </div>
+  )
+}
+
 export function Inventory() {
   const { state, person, act, refresh } = useInventory()
   const query = new URLSearchParams(useLocation().search)
@@ -416,8 +519,9 @@ export function Inventory() {
   const [locationFilter, setLocationFilter] = useState('all')
   const [conditionFilter, setConditionFilter] = useState('all')
   const [usageFilter, setUsageFilter] = useState('all')
+  const [adjustReason, setAdjustReason] = useState('')
   const [modal, setModal] = useState<{
-    type: 'item' | 'checkout' | 'return' | 'history'
+    type: 'item' | 'checkout' | 'return' | 'history' | 'adjust'
     id?: string
   } | null>(() => {
     if (query.get('action') === 'register' && canInventory(person))
@@ -430,9 +534,17 @@ export function Inventory() {
     if (
       query.get('action') === 'return' &&
       canInventory(person) &&
+      query.get('loan') &&
       state.loans.some((l) => l.id === query.get('loan') && !l.returned)
     )
       return { type: 'return', id: query.get('loan')! }
+    if (
+      (query.get('action') === 'adjust' || query.get('action') === 'extend') &&
+      canInventory(person) &&
+      query.get('loan') &&
+      state.loans.some((l) => l.id === query.get('loan') && !l.returned)
+    )
+      return { type: 'adjust', id: query.get('loan')! }
     if (query.get('action') === 'history' && state.items.some((i) => i.id === query.get('item')))
       return { type: 'history', id: query.get('item')! }
     return null
@@ -452,8 +564,10 @@ export function Inventory() {
   }
 
   const manager = canInventory(person)
-  const item = state.items.find((i) => i.id === modal?.id)
-  const loan = state.loans.find((l) => l.id === modal?.id)
+  const loan = state.loans.find(
+    (l) => l.id === modal?.id || (modal?.type === 'adjust' && l.itemId === modal?.id && !l.returned),
+  )
+  const item = state.items.find((i) => i.id === (loan ? loan.itemId : modal?.id))
   const availableItems = state.items.filter((i) => available(state, i.id))
 
   const visibleLoans = state.loans.filter(
@@ -856,20 +970,40 @@ export function Inventory() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[11.5px] text-muted-ink">
+                      <div className="text-[11.5px] text-muted-ink">
                         {canSeeBorrower ? (
-                          <>
-                            In care of{' '}
-                            <strong className="font-medium text-ink">
-                              {borrower?.name}
-                              {borrower?.title ? ` (${borrower.title})` : ''}
-                            </strong>{' '}
-                            · Due {dateText(active.due)}
-                          </>
+                          <div className="flex flex-col gap-1">
+                            <span>
+                              In care of{' '}
+                              <strong className="font-medium text-ink">
+                                {borrower?.name}
+                                {borrower?.title ? ` (${borrower.title})` : ''}
+                              </strong>
+                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {manager ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAdjustReason('')
+                                    setModal({ type: 'adjust', id: active.id })
+                                  }}
+                                  className="group inline-flex items-center gap-1 rounded-md bg-pale px-2 py-0.5 text-[11px] font-medium text-primary border border-primary/25 cursor-pointer hover:bg-pale/80 transition-colors"
+                                  aria-label={`Adjust return deadline for ${i.name}`}
+                                >
+                                  <CalendarClock size={12} className="text-primary" />
+                                  <span>Due {dateText(active.due)}</span>
+                                  <span className="text-[10px] text-muted-ink underline group-hover:text-primary">(Edit)</span>
+                                </button>
+                              ) : (
+                                <span>Due {dateText(active.due)}</span>
+                              )}
+                            </div>
+                          </div>
                         ) : (
-                          <>Currently in active use · Due {dateText(active.due)}</>
+                          <p>Currently in active use · Due {dateText(active.due)}</p>
                         )}
-                      </p>
+                      </div>
                     </div>
                   ) : isItemAvailable ? (
                     <div className="mt-1 flex items-center gap-1.5 border-t border-line-subtle pt-1.5 text-[11.5px] font-medium text-primary">
@@ -925,6 +1059,15 @@ export function Inventory() {
                           label: 'Record equipment return',
                           icon: <Clock3 size={14} className="text-primary" />,
                           onClick: () => setModal({ type: 'return', id: active.id }),
+                        },
+                      manager &&
+                        active && {
+                          label: 'Adjust return deadline…',
+                          icon: <CalendarClock size={14} className="text-primary" />,
+                          onClick: () => {
+                            setAdjustReason('')
+                            setModal({ type: 'adjust', id: active.id })
+                          },
                         },
                       {
                         label: 'View usage history',
@@ -1000,11 +1143,33 @@ export function Inventory() {
                       <Badge>{equipmentStatus(state, i)}</Badge>
                       {active && canSeeBorrower && (
                         <div className="mt-1 flex flex-col gap-1">
-                          <small className="font-medium text-ink">
-                            {borrower?.name}
-                            {borrower?.title ? ` (${borrower.title})` : ''} · Due{' '}
-                            {dateText(active.due)}
-                          </small>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <small className="font-medium text-ink">
+                              {borrower?.name}
+                              {borrower?.title ? ` (${borrower.title})` : ''}
+                            </small>
+                            <span className="text-xs text-muted-ink">·</span>
+                            {manager ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAdjustReason('')
+                                  setModal({ type: 'adjust', id: active.id })
+                                }}
+                                className="group inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-primary hover:bg-pale border border-primary/20 bg-pale/50 transition-colors cursor-pointer"
+                                title="Click to adjust return deadline"
+                                aria-label={`Adjust return deadline for ${i.name}`}
+                              >
+                                <CalendarClock size={11} className="text-primary" />
+                                <span>Due {dateText(active.due)}</span>
+                                <Pencil size={10} className="text-muted-ink opacity-70 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                            ) : (
+                              <small className="font-medium text-ink">
+                                Due {dateText(active.due)}
+                              </small>
+                            )}
+                          </div>
                           {(active.event || active.eventCategory) && (
                             <div className="flex flex-wrap items-center gap-1.5">
                               {active.event && (
@@ -1061,6 +1226,15 @@ export function Inventory() {
                                 icon: <Clock3 size={14} className="text-primary" />,
                                 onClick: () => setModal({ type: 'return', id: active.id }),
                               },
+                            manager &&
+                              active && {
+                                label: 'Adjust return deadline…',
+                                icon: <CalendarClock size={14} className="text-primary" />,
+                                onClick: () => {
+                                  setAdjustReason('')
+                                  setModal({ type: 'adjust', id: active.id })
+                                },
+                              },
                             {
                               label: 'View usage history',
                               icon: <History size={14} className="text-muted-ink" />,
@@ -1116,13 +1290,26 @@ export function Inventory() {
                   ? `Record equipment release for ${item.name}`
                   : 'Record equipment release'
                 : modal.type === 'return'
-                  ? 'Record equipment return'
-                  : `${item?.name} · usage history`
+                  ? `Record equipment return · ${item?.name}`
+                  : modal.type === 'adjust'
+                    ? `Adjust return deadline · ${item?.name}`
+                    : `${item?.name} · usage history`
           }
-          submit={modal.type === 'history' ? 'Done' : 'Save changes'}
+          submit={
+            modal.type === 'history'
+              ? 'Done'
+              : modal.type === 'adjust'
+                ? 'Update return deadline'
+                : modal.type === 'return'
+                  ? 'Record return'
+                  : modal.type === 'checkout'
+                    ? 'Release equipment'
+                    : 'Save changes'
+          }
           onClose={() => {
             setModal(null)
             setContactMethod('email')
+            setAdjustReason('')
           }}
           onSubmit={async (f) => {
             if (modal.type === 'item')
@@ -1163,6 +1350,17 @@ export function Inventory() {
                 loanId: loan!.id,
                 condition: value(f, 'condition') as Item['condition'],
               })
+            if (modal.type === 'adjust') {
+              const reasonVal = (adjustReason || value(f, 'reason')).trim()
+              if (!reasonVal) throw Error('Document a reason for adjusting the loan schedule.')
+              await act({
+                type: 'correct',
+                loanId: loan!.id,
+                due: value(f, 'due'),
+                purpose: value(f, 'purpose') || loan!.purpose || loan!.event || 'Schedule adjusted',
+                reason: reasonVal,
+              })
+            }
           }}
         >
           {modal.type === 'item' && (
@@ -1368,6 +1566,81 @@ export function Inventory() {
               </Field>
             </>
           )}
+          {modal.type === 'adjust' && loan && (
+            <>
+              <div className="rounded-xl border border-line-subtle bg-[#f9faf9] p-3.5 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <strong className="block text-sm font-semibold text-ink truncate">
+                      {item?.name ?? 'Assigned Equipment'}
+                    </strong>
+                    <span className="text-xs text-muted-ink">
+                      Asset Tag: <span className="font-mono font-medium text-ink">{item?.tag || '—'}</span>
+                    </span>
+                  </div>
+                  <Badge>{isOverdue(loan.due) ? 'Overdue' : 'Active loan'}</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-line-subtle text-xs">
+                  <div>
+                    <span className="block text-[10.5px] uppercase tracking-wider text-muted-ink font-medium">Borrower</span>
+                    <span className="font-medium text-ink truncate block">{borrowerName(state, loan)}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10.5px] uppercase tracking-wider text-muted-ink font-medium">Current Return Deadline</span>
+                    <span className="font-medium text-ink block">{dateText(loan.due)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Field label="Adjusted Return Deadline & Duration">
+                <AdjustSchedulePicker initialDue={loan.due} />
+              </Field>
+
+              <Field label="Reason for schedule adjustment (Required for audit log)">
+                <input
+                  name="reason"
+                  required
+                  maxLength={1000}
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  placeholder="e.g. Approved extension for multi-day field coverage..."
+                  autoComplete="off"
+                />
+                <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                  <span className="text-[11px] text-muted-ink font-medium mr-1">Quick reasons:</span>
+                  {[
+                    'Coverage extension',
+                    'Production timeline delay',
+                    'Approved renewal request',
+                    'Event rescheduled',
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAdjustReason(preset)}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                        adjustReason === preset
+                          ? 'border-primary bg-primary/10 text-primary font-medium'
+                          : 'border-line-subtle bg-white text-muted-ink hover:text-ink hover:border-line'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="Assignment / Purpose notes (Optional)">
+                <input
+                  name="purpose"
+                  maxLength={200}
+                  defaultValue={loan.purpose || loan.event || ''}
+                  placeholder="e.g. Extended for second round coverage..."
+                  autoComplete="off"
+                />
+              </Field>
+            </>
+          )}
           {modal.type === 'history' && (
             <>
               {manager && (
@@ -1450,9 +1723,22 @@ export function Inventory() {
                         <span className="block text-[10.5px] font-medium tracking-[0.04em] text-muted-ink uppercase">
                           Release Timeline
                         </span>
-                        <span className="mt-0.5 block text-muted-ink">
-                          Released {dateText(l.out)} · Due {dateText(l.due)}
-                        </span>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                          <span className="text-muted-ink">
+                            Released {dateText(l.out)} · Due {dateText(l.due)}
+                          </span>
+                          {manager && !l.returned && (
+                            <button
+                              type="button"
+                              onClick={() => setModal({ type: 'adjust', id: l.id })}
+                              className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                              title="Adjust return deadline"
+                            >
+                              <CalendarClock className="h-3 w-3" />
+                              <span>Adjust</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <span className="block text-[10.5px] font-medium tracking-[0.04em] text-muted-ink uppercase">

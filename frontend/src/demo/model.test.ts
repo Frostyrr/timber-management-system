@@ -352,3 +352,75 @@ describe('inventory migration and scoped incidents', () => {
     )
   })
 })
+
+describe('loan schedule adjustment (correct action)', () => {
+  it('allows custodians and administrators to extend/adjust return deadline and purpose with reason', () => {
+    const s = seed()
+    const activeLoan = s.loans.find((l) => !l.returned)!
+    const newDue = new Date(Date.now() + 7 * 86400000).toISOString()
+    const updated = transition(s, 'custodian', {
+      type: 'correct',
+      loanId: activeLoan.id,
+      due: newDue,
+      purpose: 'Extended for multi-day championship coverage',
+      reason: 'Coverage extension requested and approved',
+    })
+    const updatedLoan = updated.loans.find((l) => l.id === activeLoan.id)!
+    expect(updatedLoan.due).toBe(newDue)
+    expect(updatedLoan.purpose).toBe('Extended for multi-day championship coverage')
+    expect(updated.events[0].text).toContain('Adjusted return deadline')
+  })
+
+  it('rejects adjustment if reason is empty or return date is not in future', () => {
+    const s = seed()
+    const activeLoan = s.loans.find((l) => !l.returned)!
+    const newDue = new Date(Date.now() + 7 * 86400000).toISOString()
+    expect(() =>
+      transition(s, 'admin', {
+        type: 'correct',
+        loanId: activeLoan.id,
+        due: newDue,
+        reason: '   ',
+      }),
+    ).toThrow('reason')
+
+    expect(() =>
+      transition(s, 'admin', {
+        type: 'correct',
+        loanId: activeLoan.id,
+        due: '2020-01-01T00:00:00.000Z',
+        reason: 'Delayed',
+      }),
+    ).toThrow('future')
+  })
+
+  it('rejects unauthorized staff or closed loan adjustment', () => {
+    const s = seed()
+    const activeLoan = s.loans.find((l) => !l.returned)!
+    const newDue = new Date(Date.now() + 7 * 86400000).toISOString()
+    expect(() =>
+      transition(s, 'staff', {
+        type: 'correct',
+        loanId: activeLoan.id,
+        due: newDue,
+        reason: 'Self extension',
+      }),
+    ).toThrow('Only custodians and administrators')
+
+    // Close the loan
+    const closed = transition(s, 'admin', {
+      type: 'return',
+      loanId: activeLoan.id,
+      condition: 'Good',
+    })
+    expect(() =>
+      transition(closed, 'admin', {
+        type: 'correct',
+        loanId: activeLoan.id,
+        due: newDue,
+        reason: 'Post-return change',
+      }),
+    ).toThrow('already closed')
+  })
+})
+

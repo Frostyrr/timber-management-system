@@ -12,6 +12,7 @@ Current stack: React, TypeScript, Tailwind CSS, Vite, and browser-local storage.
 
 Implementation roadmap: [Inventory implementation plan](docs/implementation-plan.md).
 
+Design System & Host Integration: [Dashboard Design System Specification](DASHBOARD_DESIGN_SYSTEM.md).
 
 First-time backend setup: [Supabase setup guide](docs/supabase-setup-guide.md).
 

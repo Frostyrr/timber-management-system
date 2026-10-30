@@ -122,7 +122,7 @@ export type Action =
   | { type: 'archive-note'; targetType: 'equipment' | 'staff'; id: string; reason: string }
   | { type: 'purge-archive'; targetType: 'equipment' | 'staff'; id: string; reason?: string }
   | { type: 'purge-all-archives'; targetType?: 'equipment' | 'staff' | 'all'; reason?: string }
-  | { type: 'correct'; loanId: string; purpose: string; due: string; reason: string }
+  | { type: 'correct'; loanId: string; purpose?: string; due: string; reason: string }
   | { type: 'membership'; id: string; role: Profile['role']; status: 'active' | 'pending' | 'suspended'; reason: string }
   | { type: 'update-profile'; id: string; name?: string; role?: Profile['role']; title?: string; department?: string; status?: 'active' | 'pending' | 'suspended'; reason?: string }
   | { type: 'delete-profile'; id: string; reason?: string }
