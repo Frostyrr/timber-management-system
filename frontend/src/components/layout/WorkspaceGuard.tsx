@@ -1,3 +1,5 @@
+import { ComputerModeContext } from '../../backend/computerMode'
+import { ComputerModeReminder } from '../ui/ComputerModeReminder'
 import { WorkspaceLockContext } from '../../backend/workspaceLock'
 import type { State } from '../../backend/model'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -138,37 +140,22 @@ export function WorkspaceGuard({
         style={{ display: showLock ? 'none' : undefined }}
       >
         <WorkspaceLockContext.Provider value={() => void lock()}>
-          <section aria-label="Computer security options" className="mx-4 mt-3 rounded-xl border border-emerald-100 bg-white p-3 text-sm sm:mx-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <strong>{shared ? 'Shared computer' : 'Personal computer'}</strong>
-                <p className="text-xs text-muted-ink">Locks after {shared ? '5' : '30'} minutes without activity. Lock manually whenever you step away.</p>
-              </div>
-              <button type="button" role="switch" aria-checked={shared} aria-label="Shared computer"
-                disabled={!modeReady || savingMode} className="secondary"
-                onClick={async () => {
-                  setSavingMode(true)
-                  setModeError('')
-                  try {
-                    const mode = await computerMode(!shared)
-                    setShared(mode)
-                    channel.current?.postMessage({ type: 'computer-mode', shared: mode })
-                  } catch { setModeError('Could not change computer mode. Your previous setting is still active.') }
-                  finally { setSavingMode(false) }
-                }}>
-                {savingMode ? 'Saving...' : `Shared computer: ${shared ? 'On' : 'Off'}`}
-              </button>
-            </div>
-            {reminder && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-emerald-100 pt-3">
-              <p className="max-w-2xl text-xs text-muted-ink">You can choose how quickly this workspace locks. Keep Shared computer on for the publication PC; turn it off only on your personal device. Routine work needs no repeated code while unlocked. Sensitive actions still require verification. This choice lasts for this sign-in session.</p>
-              <button type="button" className="secondary" onClick={() => {
-                setReminder(false)
-                try { localStorage.setItem('timber-computer-mode-reminder', 'seen') } catch { /* Reminder may reappear when storage is unavailable. */ }
-              }}>Got it</button>
-            </div>}
-            {modeError && <p role="alert" className="mt-2 text-xs text-red-700">{modeError}</p>}
-          </section>
+          <ComputerModeContext.Provider value={{ shared, ready: modeReady, saving: savingMode, error: modeError, change: async () => {
+            setSavingMode(true)
+            setModeError('')
+            try {
+              const mode = await computerMode(!shared)
+              setShared(mode)
+              channel.current?.postMessage({ type: 'computer-mode', shared: mode })
+            } catch { setModeError('Could not change computer mode. Your previous setting is still active.') }
+            finally { setSavingMode(false) }
+          } }}>
           {children}
+          {reminder && !showLock && <ComputerModeReminder onDismiss={() => {
+            setReminder(false)
+            try { localStorage.setItem('timber-computer-mode-reminder', 'seen') } catch { /* Optional reminder preference. */ }
+          }} />}
+          </ComputerModeContext.Provider>
         </WorkspaceLockContext.Provider>
       </div>
       {showLock ? (

@@ -1,8 +1,12 @@
+import { MemoryRouter } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { ComputerModeSettings } from '../ui/ComputerModeSettings'
 import { LockWorkspaceButton } from '../ui/LockWorkspaceButton'
 // @vitest-environment jsdom
 import { afterEach, it, expect, vi } from 'vitest'
-import { cleanup, render, screen, fireEvent, act } from '@testing-library/react'
+import { cleanup, render as renderUI, screen, fireEvent, act } from '@testing-library/react'
 import { WorkspaceGuard } from './WorkspaceGuard'
+const render = (ui: ReactNode) => renderUI(<MemoryRouter>{ui}</MemoryRouter>)
 const api = vi.hoisted(() => ({
   computerMode: vi.fn(async (shared?: boolean) => shared ?? true),
   workspaceAccess: vi.fn(async () => true),
@@ -33,7 +37,7 @@ it('locks after five minutes without interaction', async () => {
   vi.useFakeTimers()
   render(
     <WorkspaceGuard onUnlocked={async () => {}}>
-      <p>Private records</p>
+      <ComputerModeSettings /><p>Private records</p>
     </WorkspaceGuard>,
   )
   await act(async () => {
@@ -45,7 +49,7 @@ it('locks after five minutes without interaction', async () => {
 
 it('personal mode allows activity beyond five minutes and locks after thirty', async () => {
   vi.useFakeTimers()
-  render(<WorkspaceGuard onUnlocked={async () => {}}><p>Private records</p></WorkspaceGuard>)
+  render(<WorkspaceGuard onUnlocked={async () => {}}><ComputerModeSettings /><p>Private records</p></WorkspaceGuard>)
   await act(async () => {})
   await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Shared computer' })) })
   expect(api.computerMode).toHaveBeenCalledWith(false)
@@ -56,7 +60,7 @@ it('personal mode allows activity beyond five minutes and locks after thirty', a
 })
 
 it('keeps shared mode when the server rejects a change', async () => {
-  render(<WorkspaceGuard onUnlocked={async () => {}}><p>Private records</p></WorkspaceGuard>)
+  render(<WorkspaceGuard onUnlocked={async () => {}}><ComputerModeSettings /><p>Private records</p></WorkspaceGuard>)
   await act(async () => {})
   api.computerMode.mockRejectedValueOnce(new Error('Offline'))
   await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Shared computer' })) })
@@ -79,11 +83,12 @@ it('keeps routine work unlocked while the operator remains active', async () => 
 it('shows a first-use reminder and remembers dismissal', async () => {
   const view = render(<WorkspaceGuard onUnlocked={async () => {}}><p>Records</p></WorkspaceGuard>)
   await act(async () => {})
-  expect(screen.getByText(/You can choose how quickly/)).toBeTruthy()
+  expect(screen.getByText(/Choose when your workspace locks/)).toBeTruthy()
+  expect(screen.getByRole('link', { name: 'Open account settings' }).getAttribute('href')).toBe('/settings#workspace-security')
   fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
   view.unmount()
   render(<WorkspaceGuard onUnlocked={async () => {}}><p>Records</p></WorkspaceGuard>)
   await act(async () => {})
-  expect(screen.queryByText(/You can choose how quickly/)).toBeNull()
-  expect(screen.getByRole('switch', { name: 'Shared computer' })).toBeTruthy()
+  expect(screen.queryByText(/Choose when your workspace locks/)).toBeNull()
+  expect(screen.queryByRole('switch', { name: 'Shared computer' })).toBeNull()
 })

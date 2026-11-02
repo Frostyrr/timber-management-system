@@ -1,3 +1,4 @@
+import { ComputerModeSettings } from '../components/ui/ComputerModeSettings'
 import { useState, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
@@ -261,6 +262,8 @@ export function Settings() {
           <span>Sign out</span>
         </button>
       </Heading>
+
+      <div className="mb-6"><ComputerModeSettings /></div>
 
       {/* Tabs Navigation with Touch Slide */}
       <div className="touch-slide-x mb-2 border-b border-line pb-3" role="tablist" aria-label="Account Settings Tabs">
