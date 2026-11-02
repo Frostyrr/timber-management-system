@@ -1,7 +1,7 @@
 import { WorkspaceLockContext } from '../../backend/workspaceLock'
 import type { State } from '../../backend/model'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { lockWorkspace, workspaceAccess } from '../../backend/client'
+import { computerMode, lockWorkspace, workspaceAccess } from '../../backend/client'
 import { AuthenticatorForm } from '../ui/AuthenticatorForm'
 import { MfaActionHost } from './MfaActionHost'
 import { Clock3 } from 'lucide-react'
@@ -24,6 +24,31 @@ export function WorkspaceGuard({
 }) {
   const [locked, setLocked] = useState(initiallyLocked)
   const [warning, setWarning] = useState(false)
+  const [shared, setShared] = useState(true)
+  const [modeReady, setModeReady] = useState(false)
+  const [savingMode, setSavingMode] = useState(false)
+  const [modeError, setModeError] = useState('')
+  const [reminder, setReminder] = useState(() => {
+    try { return localStorage.getItem('timber-computer-mode-reminder') !== 'seen' }
+    catch { return true }
+  })
+  const idleMs = shared ? 300000 : 1800000
+  useEffect(() => {
+    if (locked) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        const mode = await computerMode()
+        if (!cancelled) { setShared(mode); setModeReady(true); setModeError('') }
+      } catch {
+        if (!cancelled) setModeError('Computer options are unavailable. Reload to retry, or contact your administrator.')
+      }
+    }
+    void load()
+    const refresh = () => { if (document.visibilityState === 'visible') void load() }
+    document.addEventListener('visibilitychange', refresh)
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', refresh) }
+  }, [locked])
   const [error, setError] = useState('')
   const lastActivity = useRef(0)
   const busy = useRef(false)
@@ -35,6 +60,7 @@ export function WorkspaceGuard({
     channel.current = connection
     connection.onmessage = (event) => {
       if (event.data === 'lock') setLocked(true)
+      if (event.data?.type === 'computer-mode') { setShared(event.data.shared === true); setModeReady(true) }
     }
     return () => {
       connection.close()
@@ -62,7 +88,7 @@ export function WorkspaceGuard({
     if (locked) return
     lastActivity.current = Date.now()
     const activity = () => {
-      if (Date.now() - lastActivity.current >= 180000) {
+      if (Date.now() - lastActivity.current >= idleMs) {
         void lock()
         return
       }
@@ -71,11 +97,11 @@ export function WorkspaceGuard({
     }
     const check = async () => {
       const elapsed = Date.now() - lastActivity.current
-      if (elapsed >= 180000) {
+      if (elapsed >= idleMs) {
         await lock()
         return
       }
-      setWarning(elapsed >= 150000)
+      setWarning(elapsed >= idleMs - 30000)
       if (busy.current) return
       busy.current = true
       try {
@@ -101,7 +127,7 @@ export function WorkspaceGuard({
       window.removeEventListener('wheel', activity)
       document.removeEventListener('visibilitychange', visible)
     }
-  }, [locked])
+  }, [locked, idleMs])
   const showLock = locked || initiallyLocked
   return (
     <>
@@ -112,6 +138,36 @@ export function WorkspaceGuard({
         style={{ display: showLock ? 'none' : undefined }}
       >
         <WorkspaceLockContext.Provider value={() => void lock()}>
+          <section aria-label="Computer security options" className="mx-4 mt-3 rounded-xl border border-emerald-100 bg-white p-3 text-sm sm:mx-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <strong>{shared ? 'Shared computer' : 'Personal computer'}</strong>
+                <p className="text-xs text-muted-ink">Locks after {shared ? '5' : '30'} minutes without activity. Lock manually whenever you step away.</p>
+              </div>
+              <button type="button" role="switch" aria-checked={shared} aria-label="Shared computer"
+                disabled={!modeReady || savingMode} className="secondary"
+                onClick={async () => {
+                  setSavingMode(true)
+                  setModeError('')
+                  try {
+                    const mode = await computerMode(!shared)
+                    setShared(mode)
+                    channel.current?.postMessage({ type: 'computer-mode', shared: mode })
+                  } catch { setModeError('Could not change computer mode. Your previous setting is still active.') }
+                  finally { setSavingMode(false) }
+                }}>
+                {savingMode ? 'Saving...' : `Shared computer: ${shared ? 'On' : 'Off'}`}
+              </button>
+            </div>
+            {reminder && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-emerald-100 pt-3">
+              <p className="max-w-2xl text-xs text-muted-ink">You can choose how quickly this workspace locks. Keep Shared computer on for the publication PC; turn it off only on your personal device. Routine work needs no repeated code while unlocked. Sensitive actions still require verification. This choice lasts for this sign-in session.</p>
+              <button type="button" className="secondary" onClick={() => {
+                setReminder(false)
+                try { localStorage.setItem('timber-computer-mode-reminder', 'seen') } catch { /* Reminder may reappear when storage is unavailable. */ }
+              }}>Got it</button>
+            </div>}
+            {modeError && <p role="alert" className="mt-2 text-xs text-red-700">{modeError}</p>}
+          </section>
           {children}
         </WorkspaceLockContext.Provider>
       </div>

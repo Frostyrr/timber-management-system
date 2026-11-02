@@ -5,7 +5,7 @@ import { checkMutationRequest, cookie, seal, sessionHash, sessionId, unseal } fr
 
 type Request = IncomingMessage & { body?: unknown }
 type Vault = { kind:'oauth'|'session'; storage:Record<string,string> }
-const rpcNames = new Set(['inventory_identity','inventory_snapshot','inventory_mutate','operator_access','operator_lock','operator_begin','operator_complete','security_snapshot','security_mutate'])
+const rpcNames = new Set(['inventory_identity','inventory_snapshot','inventory_mutate','operator_access','operator_computer_mode','operator_lock','operator_begin','operator_complete','security_snapshot','security_mutate'])
 export async function handler(req:Request,res:ServerResponse) {
  res.setHeader('Cache-Control','no-store, private');res.setHeader('Pragma','no-cache');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer')
  const send=(status:number,data:unknown,error:string|null=null)=>{res.statusCode=status;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data,error:error?{message:error}:null}))}

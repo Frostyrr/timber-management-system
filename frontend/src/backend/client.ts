@@ -118,3 +118,10 @@ export async function fetchRecentPublicActivity(): Promise<PublicActivityLog[]> 
     return []
   }
 }
+
+export async function computerMode(shared?: boolean): Promise<boolean> {
+  const { data, error } = await client.rpc('operator_computer_mode', { shared: shared ?? null })
+  if (error) throw Error(error.message)
+  if (typeof data !== 'boolean') throw Error('Invalid computer mode response.')
+  return data
+}
