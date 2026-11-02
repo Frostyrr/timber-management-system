@@ -2016,13 +2016,15 @@ export function Incidents() {
           {modal === 'new' ? (
             <>
               <Field label="Equipment">
-                <Select name="item" defaultValue={reportable[0]?.id}>
-                  {reportable.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.name}
-                    </option>
-                  ))}
-                </Select>
+                <SearchableCombobox
+                  name="item"
+                  label="Equipment"
+                  placeholder="Search equipment, asset tag, or category…"
+                  options={reportable.map((i) => ({
+                    value: i.id,
+                    label: `${i.name} (${i.tag}) · ${i.category}`,
+                  }))}
+                />
               </Field>
               <Field label="Observed condition">
                 <Select name="kind" defaultValue="Damaged">
